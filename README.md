@@ -6,4 +6,5 @@ To invoke new menus, create a new script, enter the following, set the type to S
 ```
 PTUAutoFight.ChatWindow(actor);
 ```
-
+Manifest link:
+https://raw.githubusercontent.com/caffyn/PTUMoveMaster/main/module.json 
