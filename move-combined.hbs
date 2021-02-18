@@ -1,0 +1,114 @@
+{{#if move}}
+
+<div class="content flexrow pt-1" style="font-variant: normal;">
+    <div class="swsh-box">
+        <div class="swsh-header" style="border-bottom: 1px solid #00000020; text-align: center;">
+            <div class="d-flex w-100 mt-1 mb-1 justify-content-center">
+                <span style="padding: 5px;">{{move.name}}</span>
+            </div>
+        </div>
+{{#if move.type}}
+        <div class="swsh-header">
+            <div class="d-flex w-100 mt-1 mb-1 h-100">
+{{#if (eq move.type "Untyped")}}
+                <div class="col" style="width: 128px; height: auto"><span>Untyped</span></div>
+{{else}}
+                <div class="col"><span class="type-img"><img src="/systems/ptu/css/images/types/{{move.type}}IC.webp" style="width: 128px; height:auto"></span></div>
+{{/if}}
+                <div class="col"><span class="type-img"><img src="/systems/ptu/css/images/categories/{{move.category}}.png" style="width: 128px; height: auto"></span></div>
+            </div>
+        </div>
+{{/if}}
+        <div class="swsh-body">
+            {{#if roll}}
+                <div class="dice-roll w-100" style="padding: 10px 5px;">
+                    <div class="dice-result">
+                        <div class="dice-formula">  
+                            {{#each roll.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;"><h4 class="num-total">{{roll._total}}</h4><h5>To Hit</h5></span>
+                    </div>
+                </div>
+            {{/if}}
+            {{#if crit}}
+                {{#if (not crit "normal")}}
+                    <div class="d-flex w-100 pt-1 pb-1" style="word-break: break-word;text-align: center;border-top: 1px solid #00000080;padding: 5px;">
+                        {{#if (is crit "hit")}}
+                            <h4>It's a Critical Hit!</h4>
+                        {{else}}
+                            <h4>It's a Critical Miss!</h4>
+                        {{/if}}
+                    </div>
+                {{/if}}
+            {{/if}}
+            {{#if damageRoll}}
+                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px;">
+                    <div class="dice-result">
+                        <div class="dice-formula">  
+                            {{#each damageRoll.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;"><h4 class="num-total">{{damageRoll._total}}</h4><h5>Damage</h5></span>
+			<div class="row justify-content-center">
+			<div><button class="automated-damage-button" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="false">apply</button></div>
+			<div><button class="automated-damage-button" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="false">1/2</button></div>
+			<div><button class="automated-damage-button" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="false">Resist</button></div>
+			</div>
+                    </div>
+                </div>
+            {{/if}}
+            {{#if critDamageRoll}}
+                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px;">
+                    <div class="dice-result">
+                        <div class="dice-formula">  
+                            {{#each critDamageRoll.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;"><h4 class="num-total">{{critDamageRoll._total}}</h4><h5>If Crit</h5></span>
+			<div class="row justify-content-center">
+			<div><button class="automated-damage-button" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="true">apply</button></div>
+			<div><button class="automated-damage-button" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="true">1/2</button></div>
+			<div><button class="automated-damage-button" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="true">Resist</button></div>
+			</div>
+                    </div>
+                </div>
+            {{/if}}
+        </div>
+
+            <div class="swsh-header col-sm-12">
+                <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
+                    <div class="col">Effect</div>
+                </div>
+            </div>
+            <div class="swsh-body col-sm-12">
+                <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
+                    <div class="p-1 readable pokemon p8 tight"
+                        style="word-break: break-word;text-align: start;line-height: 16px;">{{{move.effect}}}</div>
+                </div>
+            </div>
+            <div class="swsh-body col-sm-12">
+                <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
+                    <div class="p-1 readable pokemon p8 tight"
+                        style="word-break: break-word;text-align: start;line-height: 16px;">Frequency: {{{move.frequency}}}</div>
+                </div>
+                <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
+                    <div class="p-1 readable pokemon p8 tight"
+                        style="word-break: break-word;text-align: start;line-height: 16px;">Range: {{{move.range}}}</div>
+                </div>
+            </div>
+
+
+
+    </div>
+</div>
+{{/if}}
