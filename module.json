@@ -3,7 +3,7 @@
 	"title": "PTU Combat Automation Module",
 	"description": "A combat automation module for the Foundry PTU system. Gives new combat menues and can apply move damage to targets",
 	"authors": ["c4ffeine","GSV A Nest of Kindled Embers"],
-	"version": "0.3.1",
+	"version": "0.3.2",
 	"download": "https://github.com/caffyn/PTUMoveMaster/raw/main/MoveMaster.zip",
 	"minimumCoreVersion": "0.5.0",
 	"compatibleCoreVersion": "0.7.9",

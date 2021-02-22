@@ -27,7 +27,7 @@ export function PTUAutoFight(){
 	const ConeIcon = "🔱";
 	const LineIcon = "➡";
 
-	const SoundDirectory = "modules/PTUMoveMaster/move_sounds/";
+	const SoundDirectory = "pokemon_sounds/";
 
 	const UIButtonClickSound = "buttonclickrelease.wav";
 
