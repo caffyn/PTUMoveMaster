@@ -1,27 +1,28 @@
 {{#if move}}
 
-<div class="content flexrow pt-1" style="font-variant: normal;">
+<div class="content flexrow pt-1" style="font-variant: normal; padding: 0px ! important;">
     <div class="swsh-box">
-        <div class="swsh-header" style="border-bottom: 1px solid #00000020; text-align: center;">
-            <div class="d-flex w-100 mt-1 mb-1 justify-content-center">
-                <span style="padding: 5px;">{{move.name}}</span>
+        <div class="swsh-header" style="border-bottom: 0px solid #272727; text-align: center; padding: 0px ! important;">
+            <div class="d-flex w-100 mt-0 mb-0 justify-content-center" style=";background-color: #272727 ;">
+                <span style="padding: 1px;font-family:Modesto Condensed;font-size:40px; color: white; overflow-wrap: normal ! important; word-break: keep-all ! important;">{{move.name}}</span>
             </div>
         </div>
 {{#if move.type}}
-        <div class="swsh-header">
-            <div class="d-flex w-100 mt-1 mb-1 h-100">
+        <div class="swsh-header" style="padding: 0px ! important;">
+            <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important;">
+                <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/{{move.category}}.png" style="width: 124px; height: auto; padding: 0px ! important;"></span></div>
 {{#if (eq move.type "Untyped")}}
-                <div class="col" style="width: 128px; height: auto"><span>Untyped</span></div>
+                <div class="col" style="width: 124px; height: auto; padding: 0px ! important;"><span>Untyped</span></div>
 {{else}}
-                <div class="col"><span class="type-img"><img src="/systems/ptu/css/images/types/{{move.type}}IC.webp" style="width: 128px; height:auto"></span></div>
+                <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/{{move.type}}IC.png" style="width: 124px; height: auto; padding: 0px ! important;"></span></div>
 {{/if}}
-                <div class="col"><span class="type-img"><img src="/systems/ptu/css/images/categories/{{move.category}}.png" style="width: 128px; height: auto"></span></div>
             </div>
         </div>
 {{/if}}
-        <div class="swsh-body">
+        <div class="swsh-body" style="background-color: #b3b3b3;">
             {{#if roll}}
-                <div class="dice-roll w-100" style="padding: 10px 5px;">
+            {{#if hasAC}}
+                <div class="dice-roll w-100" style="padding: 0px 0px;">
                     <div class="dice-result">
                         <div class="dice-formula">  
                             {{#each roll.terms as | term |}}
@@ -30,9 +31,10 @@
                                 {{else}}{{term}}{{/if}}
                             {{/each}}
                         </div>
-                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;"><h4 class="num-total">{{roll._total}}</h4><h5>To Hit</h5></span>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:38px; color: rgb(0, 0, 0);"><h3 class="num-total">{{roll._total}}</h3><h5>vs {{move.category}} Evasion</h5></span>
                     </div>
                 </div>
+            {{/if}}
             {{/if}}
             {{#if crit}}
                 {{#if (not crit "normal")}}
@@ -55,11 +57,11 @@
                                 {{else}}{{term}}{{/if}}
                             {{/each}}
                         </div>
-                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;"><h4 class="num-total">{{damageRoll._total}}</h4><h5>Damage</h5></span>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px;"><h4 class="num-total">{{damageRoll._total}}</h4><h5><button class="automated-damage-button" style="background-color: #800c0c00; font-family:Modesto Condensed;font-size:36px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="false">Apply Damage</button></h5></span>
 			<div class="row justify-content-center">
-			<div><button class="automated-damage-button" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="false">apply</button></div>
-			<div><button class="automated-damage-button" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="false">1/2</button></div>
-			<div><button class="automated-damage-button" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="false">Resist</button></div>
+            <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="false">1/2 Damage</button></div>
+			<div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="false">Resist 1 Step</button></div>
+            <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="false">Flat Damage</button></div>
 			</div>
                     </div>
                 </div>
@@ -74,36 +76,36 @@
                                 {{else}}{{term}}{{/if}}
                             {{/each}}
                         </div>
-                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;"><h4 class="num-total">{{critDamageRoll._total}}</h4><h5>If Crit</h5></span>
-			<div class="row justify-content-center">
-			<div><button class="automated-damage-button" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="true">apply</button></div>
-			<div><button class="automated-damage-button" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="true">1/2</button></div>
-			<div><button class="automated-damage-button" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="true">Resist</button></div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px; line-height: 0.8"><h4 class="num-total">{{critDamageRoll._total}}</h4><h5><button class="automated-damage-button" style=" background-color: #800c0c00; font-family:Modesto Condensed;font-size:36px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="true">Critical Damage</button></h5></span>
+			<div class="row justify-content-center" style="text-align: center;">
+			<div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="true">1/2 Damage</button></div>
+			<div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="true">Resist 1 Step</button></div>
+            <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="true">Flat Damage</button></div>
 			</div>
                     </div>
                 </div>
             {{/if}}
         </div>
 
-            <div class="swsh-header col-sm-12">
+            <div class="swsh-header col-sm-12" style=" background-color: #272727; padding: 0px ! important;">
                 <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
-                    <div class="col">Effect</div>
+                    <div class="col" style=";font-family:Modesto Condensed;font-size:20px; color: white ; overflow-wrap: normal ! important; word-break: keep-all ! important;">Effect</div>
                 </div>
             </div>
-            <div class="swsh-body col-sm-12">
-                <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
+            <div class="swsh-body col-sm-12" style="background-color: #b3b3b3;">
+                <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center; background-color: #b3b3b3;">
                     <div class="p-1 readable pokemon p8 tight"
-                        style="word-break: break-word;text-align: start;line-height: 16px;">{{{move.effect}}}</div>
+                        style="word-break: break-word;text-align: start;line-height: 16px;font-family:'Segoe UI';font-size:16px;">{{{move.effect}}}</div>
                 </div>
             </div>
-            <div class="swsh-body col-sm-12">
+            <div class="swsh-body col-sm-12" style="background-color: #b3b3b3;">
                 <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
                     <div class="p-1 readable pokemon p8 tight"
-                        style="word-break: break-word;text-align: start;line-height: 16px;">Frequency: {{{move.frequency}}}</div>
+                        style="word-break: break-word;text-align: start;line-height: 16px;font-family:Modesto Condensed;font-size:20px;">Frequency: {{{move.frequency}}}</div>
                 </div>
                 <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center;">
                     <div class="p-1 readable pokemon p8 tight"
-                        style="word-break: break-word;text-align: start;line-height: 16px;">Range: {{{move.range}}}</div>
+                        style="word-break: break-word;text-align: start;line-height: 16px;font-family:Modesto Condensed;font-size:20px;">Range: {{{move.range}}}</div>
                 </div>
             </div>
 

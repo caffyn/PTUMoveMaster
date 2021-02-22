@@ -1,5 +1,7 @@
 
 export function PTUAutoFight(){
+	var UseAlternateStyling = true;
+
 	const AtWillReadyMark = "∞";
 
 	const SceneReadyMark = "✅";
@@ -25,8 +27,9 @@ export function PTUAutoFight(){
 	const ConeIcon = "🔱";
 	const LineIcon = "➡";
 
+	const SoundDirectory = "modules/PTUMoveMaster/move_sounds/";
 
-	const UIButtonClickSound = "buttonclickrelease.wav"
+	const UIButtonClickSound = "buttonclickrelease.wav";
 
 	const RefreshEOTMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
 	const RefreshSceneMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
@@ -40,18 +43,19 @@ export function PTUAutoFight(){
 	const TypeIconPath = "systems/ptu/css/images/types/";
 	const CategoryIconPath = "systems/ptu/css/images/categories/";
 
+	const AlternateIconPath = "modules/PTUMoveMaster/images/icons/";
+
 	const PhysicalIcon = "Physical.png";
 	const SpecialIcon = "Special.png";
 	const StatusIcon = "Status.png";
 
-	const TypeIconSuffix = "IC.webp";
+	const TypeIconSuffix = "IC.png";
 	const CategoryIconSuffix = ".png";
 
 	const DISPOSITION_HOSTILE = -1;
 	const DISPOSITION_NEUTRAL = 0;
 	const DISPOSITION_FRIENDLY = 1;
 
-	const SoundDirectory = "pokemon_sounds/"
 	const MoveMessageTypes = {
 	DAMAGE: 'damage',
 	TO_HIT: 'to-hit',
@@ -97,8 +101,15 @@ export function PTUAutoFight(){
 				flavor+="(1/2 damage) ";
 				initial_damage_total=Number(initial_damage_total/2);
 			}
+
 			var defended_damage = Number(Number(initial_damage_total) - Number(DR));
 			var final_effective_damage = Math.max(Math.floor(Number(defended_damage)*Number(effectiveness)), 0);
+			if(mode=="flat"){
+				flavor+="(flat damage) ";
+				final_effective_damage = initial_damage_total;
+				defended_damage = 0;
+				effectiveness = 1;
+			}
 			ui.notifications.info(flavor + token.actor.name + "'s defensive effectiveness against " + damage_type + " is x" + effectiveness + ", and their " + damage_category + " defense is " + DR + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
 			chatMessage(token, flavor + token.actor.name + "'s defensive effectiveness against " + damage_type + " is x" + effectiveness + ", and their " + damage_category + " defense is " + DR + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
@@ -186,7 +197,7 @@ export function PTUAutoFight(){
 				}
 				else
 				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
+					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
 					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>).";
 				}
 			}
@@ -199,7 +210,7 @@ export function PTUAutoFight(){
 				}
 				else
 				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>/<img src='" + TypeIconPath+targetType2+TypeIconSuffix+ "'>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
+					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
 					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>/<img src='" + TypeIconPath+targetType2+TypeIconSuffix+ "'>).";
 				}
 			}
@@ -238,7 +249,7 @@ export function PTUAutoFight(){
 				if (search_item._id == item._id)
 				{
 					console.log("updating item",search_item);
-					search_item.update({ "data.LastRoundUsed" : -2});
+					await search_item.update({ "data.LastRoundUsed" : -2});
 				}
 			}
 		}
@@ -251,7 +262,7 @@ export function PTUAutoFight(){
 			{
 				if (search_item._id == item._id)
 				{
-					search_item.update({ "data.LastEncounterUsed": 0});
+					await search_item.update({ "data.LastEncounterUsed": 0});
 				}
 			}
 			// item.update({ "data.LastEncounterUsed": Number(0)});
@@ -265,7 +276,7 @@ export function PTUAutoFight(){
 			{
 				if (search_item._id == item._id)
 				{
-					search_item.update({ "data.UseCount": 0});
+					await search_item.update({ "data.UseCount": 0});
 				}
 			}
 			// item.update({ "data.UseCount": Number(0)});
@@ -283,7 +294,7 @@ export function PTUAutoFight(){
 		{
 			// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
 
-			if( Number(currentRound - currentLastRoundUsed) < 2 && (currentEncounterID == currentLastEncounterUsed) )
+			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 			{
 				currentCooldownLabel = EOTCooldownMark;
 			}
@@ -413,7 +424,7 @@ export function PTUAutoFight(){
 		}
 		var currenttype=item.type;
 		var currentCategory=item.data.category;
-		var effectivenessBackgroundColor = "lightgrey"
+		var effectivenessBackgroundColor = "darkgrey"
 		var effectivenessTextColor = "black";
 		if(currenttype=="move" && (currentCategory == "Status"))
 		{
@@ -428,7 +439,7 @@ export function PTUAutoFight(){
 					}
 					else if (effectiveness[item.data.type] == 1)
 					{
-						effectivenessBackgroundColor = "white";
+						effectivenessBackgroundColor = "lightgrey";
 						effectivenessTextColor = "black";
 					}
 					else if (effectiveness[item.data.type] == 0.25)
@@ -459,10 +470,10 @@ export function PTUAutoFight(){
 				}
 			}
 
-			let currentMoveTypeLabel = "<div><img src='" + TypeIconPath + item.data.type + TypeIconSuffix + "'></img><img src='" + CategoryIconPath + item.data.category + CategoryIconSuffix + "'></img></div>";
+			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
 			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
 			{
-				currentMoveTypeLabel = "<div><img src='" + CategoryIconPath + item.data.category + CategoryIconSuffix + "'></img></div>";
+				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 			}
 
 			let currentMoveRange = item.data.range;
@@ -510,8 +521,8 @@ export function PTUAutoFight(){
 
 
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-			buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
-			callback: () => {
+			buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding-left: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
+			callback: async () => {
 				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				PerformFullAttack (actor,item);
 				if(game.combat == null)
@@ -531,7 +542,7 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.UseCount": 0});
+							await search_item.update({ "data.UseCount": 0});
 						}
 					}
 					// item.update({ "data.UseCount": Number(0)});
@@ -543,7 +554,8 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+							await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+							console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
 						}
 					}
 					// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
@@ -553,7 +565,7 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+							await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 						}
 					}
 				// item.update({ "data.LastRoundUsed": currentRound});
@@ -601,7 +613,7 @@ export function PTUAutoFight(){
 			{
 				if (search_item._id == item._id)
 				{
-					search_item.update({ "data.LastRoundUsed" : -2});
+					await search_item.update({ "data.LastRoundUsed" : -2});
 				}
 			}
 		}
@@ -614,7 +626,7 @@ export function PTUAutoFight(){
 			{
 				if (search_item._id == item._id)
 				{
-					search_item.update({ "data.LastEncounterUsed": 0});
+					await search_item.update({ "data.LastEncounterUsed": 0});
 				}
 			}
 			// item.update({ "data.LastEncounterUsed": Number(0)});
@@ -628,7 +640,7 @@ export function PTUAutoFight(){
 			{
 				if (search_item._id == item._id)
 				{
-					search_item.update({ "data.UseCount": 0});
+					await search_item.update({ "data.UseCount": 0});
 				}
 			}
 			// item.update({ "data.UseCount": Number(0)});
@@ -776,7 +788,7 @@ export function PTUAutoFight(){
 		}
 		var currenttype=item.type;
 		var currentCategory = item.data.category;
-		var effectivenessBackgroundColor = "lightgrey"
+		var effectivenessBackgroundColor = "darkgrey"
 		var effectivenessTextColor = "black";
 		if(currenttype=="move" && (currentCategory == "Physical" || currentCategory == "Special"))
 		{
@@ -791,7 +803,7 @@ export function PTUAutoFight(){
 					}
 					else if (effectiveness[item.data.type] == 1)
 					{
-						effectivenessBackgroundColor = "white";
+						effectivenessBackgroundColor = "lightgrey";
 						effectivenessTextColor = "black";
 					}
 					else if (effectiveness[item.data.type] == 0.25)
@@ -822,10 +834,10 @@ export function PTUAutoFight(){
 				}
 			}
 
-			let currentMoveTypeLabel = "<div><img src='" + TypeIconPath + item.data.type + TypeIconSuffix + "'></img><img src='" + CategoryIconPath + item.data.category + CategoryIconSuffix + "'></img></div>";
+			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
 			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
 			{
-				currentMoveTypeLabel = "<div><img src='" + CategoryIconPath + item.data.category + CategoryIconSuffix + "'></img></div>";
+				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 			}
 
 			let currentMoveRange = item.data.range;
@@ -873,8 +885,8 @@ export function PTUAutoFight(){
 
 
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-			buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
-			callback: () => {
+			buttons[currentid]={label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
+			callback: async () => {
 				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				PerformFullAttack (actor,item);
 				if(game.combat == null)
@@ -894,7 +906,7 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.UseCount": 0});
+							await search_item.update({ "data.UseCount": 0});
 						}
 					}
 					// item.update({ "data.UseCount": Number(0)});
@@ -906,7 +918,8 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+							await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+							console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
 						}
 					}
 					// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
@@ -916,7 +929,7 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+							await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 						}
 					}
 				// item.update({ "data.LastRoundUsed": currentRound});
@@ -984,9 +997,9 @@ export function PTUAutoFight(){
 			var respdata=item.data;
 			respdata['category']='details';
 			buttons[currentid]={label: "<center><div style='background-color:gray;color:black;border:2px solid darkgray;width:333px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+AbilityIcon+currentlabel+"</div></center>",
-				callback: () => {
+				callback: async () => {
 					AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-					sendMoveMessage({move: item.data,templateType: MoveMessageTypes.DETAILS,category: "details"
+					sendMoveMessage({move: item.data,templateType: MoveMessageTypes.DETAILS,category: "details", hasAC: (!isNaN(item.data.ac))
 					});
 			}
 			}
@@ -995,7 +1008,7 @@ export function PTUAutoFight(){
 
 
 	buttons["resetEOT"] = {label: ResetEOTMark,
-		callback: () => {
+		callback: async () => {
 			AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			for(let item of items)
 			{
@@ -1005,7 +1018,7 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.LastRoundUsed": Number(-2)});
+							await search_item.update({ "data.LastRoundUsed": Number(-2)});
 						}
 					}
 					// item.update({ "data.LastRoundUsed": Number(-2)});
@@ -1016,7 +1029,7 @@ export function PTUAutoFight(){
 		  }};
 
 	buttons["resetScene"] = {label: ResetSceneMark,
-		callback: () => {
+		callback: async () => {
 			AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			for(let item of items)
 			{
@@ -1026,7 +1039,7 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.UseCount": Number(0)});
+							await search_item.update({ "data.UseCount": Number(0)});
 						}
 					}
 					// item.update({ "data.UseCount": Number(0)});
@@ -1037,7 +1050,7 @@ export function PTUAutoFight(){
 		  }};
 
 	buttons["resetDaily"] = {label: ResetDailyMark,
-	callback: () => {
+	callback: async () => {
 			AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			for(let item of items)
 			{
@@ -1047,7 +1060,7 @@ export function PTUAutoFight(){
 					{
 						if (search_item._id == item._id)
 						{
-							search_item.update({ "data.UseCount": Number(0)});
+							await search_item.update({ "data.UseCount": Number(0)});
 						}
 					}
 					// item.update({ "data.UseCount": Number(0)});
@@ -1073,7 +1086,7 @@ export function PTUAutoFight(){
 		  content: "<center><div><h1>Use A Move!</h1></div><div style='font-family:Modesto Condensed;font-size:20px'>"+AtWillReadyMark+"At-Will / "+EOTReadyMark+"EOT / "+SceneReadyMark+"Scene / "+DailyReadyMark+"Daily</div><div style='font-family:Modesto Condensed;font-size:20px'>"+MeleeIcon+"Melee / "+RangeIcon+"Ranged / "+BurstIcon+"Burst / "+ConeIcon+"Cone / "+LineIcon+"Line / "+BlastIcon+"Blast</div><div style='font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2><div><center>",
 		  buttons: buttons
 		});
-		;
+		
 		dialogEditor.render(true);
 		};
 
@@ -1118,11 +1131,11 @@ export function PTUAutoFight(){
 		{
 			if(change > 0)
 			{
-				AudioHelper.play({src: stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+				AudioHelper.play({src: SoundDirectory+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 			}
 			else
 			{
-				AudioHelper.play({src: stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+				AudioHelper.play({src: SoundDirectory+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 			}
 
 			let new_stage = eval("Math.max(Math.min((actor.data.data.stats."+stat+".stage + change), 6), -6)");
@@ -1132,7 +1145,7 @@ export function PTUAutoFight(){
 
 		function healActor(actor,pct_healing)
 		{
-			AudioHelper.play({src: heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+			AudioHelper.play({src: SoundDirectory+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 			let new_health = Math.min( (actor.data.data.health.value + Number(pct_healing*actor.data.data.health.max) ), actor.data.data.health.max);
 			actor.update({'data.health.value': Number(new_health) });
@@ -1174,7 +1187,8 @@ export function PTUAutoFight(){
 						damageRoll: damageRoll,
 						critDamageRoll: critDamageRoll,
 						templateType: MoveMessageTypes.FULL_ATTACK,
-						crit: crit
+						crit: crit,
+						hasAC: (!isNaN(move.data.ac))
 					}).then(data => console.log(data));
 
 					var moveSoundFile = (move.data.name + ".mp3");
@@ -1270,14 +1284,17 @@ export function PTUAutoFight(){
 			    let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
 			    console.log("db_from_stages = " + db_from_stages );
 
-			    dbRoll = game.ptu.DbData[moveData.stab ? Math.min(parseInt(moveData.damageBase) + db_from_stages, 20) + 2 : Math.min(parseInt(moveData.damageBase) + db_from_stages, 20)];
+			    dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? Math.min(parseInt(moveData.damageBase) + db_from_stages, 20) + 2 : Math.min(parseInt(moveData.damageBase) + db_from_stages, 20)];
 			}
 			else
 			{
-			    dbRoll = game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase];
+				// console.log("Normal DB Calculation. moveData.damageBase = " + moveData.damageBase + ", moveData.stab = " + moveData.stab + ", game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase] = " + game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase]);
+			    // dbRoll = game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase];
+				dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? parseInt(moveData.damageBase) + 2 : moveData.damageBase];
 			}
 
 			let bonus = Math.max(moveData.category === "Physical" ? actorData.stats.atk.total : actorData.stats.spatk.total, 0);
+			console.log("BONUS: " + bonus);
 			if (!dbRoll) return;
 			return new Roll(isCrit == CritOptions.CRIT_HIT ? '@roll+@roll+@bonus' : '@roll+@bonus', {
 				roll: dbRoll,
