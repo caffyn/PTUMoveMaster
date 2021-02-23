@@ -110,6 +110,11 @@ export function PTUAutoFight(){
 			}
 
 			let effectiveness = token.actor.data.data.effectiveness.All[damage_type];
+			if (isNaN(effectiveness) || effectiveness == null)
+			{
+				effectiveness = 1;
+				damage_type = "Untyped";
+			}
 			if(mode=="resist")
 			{
 				flavor+="(resisted 1 step) "
@@ -522,7 +527,8 @@ export function PTUAutoFight(){
 			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
 			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
 			{
-				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
 			}
 
 			let currentMoveRange = item.data.range;
@@ -894,7 +900,8 @@ export function PTUAutoFight(){
 			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
 			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
 			{
-				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
 			}
 
 			let currentMoveRange = item.data.range;
@@ -1249,6 +1256,12 @@ export function PTUAutoFight(){
 				game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
 			}
 
+			let isUntyped = false;
+			if(move.data.type == "Untyped" || move.data.type == "" || move.data.type == null)
+			{
+				isUntyped = true;
+			}
+
 			let currentHasExtraEffect = false;
 			let currentExtraEffectText = "";
 
@@ -1282,7 +1295,8 @@ export function PTUAutoFight(){
 				crit: crit,
 				hasAC: (!isNaN(move.data.ac)),
 				hasExtraEffect: currentHasExtraEffect,
-				extraEffectText: currentExtraEffectText
+				extraEffectText: currentExtraEffectText,
+				isUntyped: isUntyped
 			}).then(data => console.log(data));
 
 			var moveSoundFile = (move.data.name + ".mp3");
