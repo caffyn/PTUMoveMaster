@@ -62,66 +62,102 @@ export function PTUAutoFight(){
 	DETAILS: 'details',
 	FULL_ATTACK: 'full-attack'
 	};
-	async function ApplyDamage(event){
+
+
+	async function ApplyDamage(event)
+	{
 		var initial_damage_total=event.currentTarget.dataset.damage;
 		var damage_category=event.currentTarget.dataset.category;
 		var damage_type=event.currentTarget.dataset.type;
 		var mode=event.currentTarget.dataset.mode;
 		var crit=event.currentTarget.dataset.crit;
-		for(let token of canvas.tokens.controlled){
+		for(let token of canvas.tokens.controlled)
+		{
 			let def = token.actor.data.data.stats.def.total
 			let spdef = token.actor.data.data.stats.spdef.total
+			let extraDR = 0;
+			let extraDRSource = "";
+
 			var flavor;
-			if(crit=="true"){
+			var postEffectNotes = "";
+			var extraDRNotes = "";
+
+			if(game.combat == null)
+			{
+				var currentRound = 0;
+				var currentEncounterID = 0;
+			}
+			else
+			{
+				var currentRound = game.combat.round;
+				var currentEncounterID = game.combat.data._id;
+			}
+
+			if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
+			{
+				console.log("DEBUG: ApplyDamage TypeStrategist Conditional Triggered!")
+				extraDR = token.actor.data.data.TypeStrategistDR;
+				extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
+				extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
+			}
+
+			if(crit=="true")
+			{
 				flavor = "Critical Hit! ";
-			}else{
+			}else
+			{
 				flavor = "Hit! ";
 			}
 
 			let effectiveness = token.actor.data.data.effectiveness.All[damage_type];
-			if(mode=="resist"){
+			if(mode=="resist")
+			{
 				flavor+="(resisted 1 step) "
 				let old_effectiveness=effectiveness;
-				if(old_effectiveness > 1){
+				if(old_effectiveness > 1)
+				{
 					effectiveness=effectiveness - .5;
-				}else {
+				}
+				else
+				{
 					effectiveness=Number(effectiveness /2);
 				}
 			}
 
 			if(damage_category == "Physical")
 			{
-			var DR = def;
+				var DR = def + extraDR;
 			}
 			if(damage_category == "Special")
 			{
-			var DR = spdef;
+				var DR = spdef + extraDR;
 			}
-			if(mode=="half"){
+			if(mode=="half")
+			{
 				flavor+="(1/2 damage) ";
 				initial_damage_total=Number(initial_damage_total/2);
 			}
 
 			var defended_damage = Number(Number(initial_damage_total) - Number(DR));
 			var final_effective_damage = Math.max(Math.floor(Number(defended_damage)*Number(effectiveness)), 0);
-			if(mode=="flat"){
+
+			if(mode=="flat")
+			{
 				flavor+="(flat damage) ";
 				final_effective_damage = initial_damage_total;
 				defended_damage = 0;
 				effectiveness = 1;
 			}
-			ui.notifications.info(flavor + token.actor.name + "'s defensive effectiveness against " + damage_type + " is x" + effectiveness + ", and their " + damage_category + " defense is " + DR + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
+			// ui.notifications.info(flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
-			chatMessage(token, flavor + token.actor.name + "'s defensive effectiveness against " + damage_type + " is x" + effectiveness + ", and their " + damage_category + " defense is " + DR + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
+			chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
 			//token.actor.modifyTokenAttribute("health", final_effective_damage, true, true)
 			token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
-
 		}
-		
-		
-
 	};
+
+
 	async function chatMessage(token, messageContent) {
         // create the message
 		if (messageContent !== '') {
@@ -230,6 +266,19 @@ export function PTUAutoFight(){
 		var currentRound = game.combat.round;
 		var currentEncounterID = game.combat.data._id;
 	}
+
+	var typeStrategist = [];
+
+	for(let item of items) // START Ability Check Loop
+	{
+		if(item.name.search("Type Strategist \\(") > -1)
+		{
+			typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+			console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+			console.log(typeStrategist);
+			console.log(typeStrategist.length);
+		}
+	} // END Ability Check Loop
 
 	var buttons={};
 
@@ -566,6 +615,14 @@ export function PTUAutoFight(){
 						if (search_item._id == item._id)
 						{
 							await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+
+							if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
+							{
+								let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
+								let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
+								console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+								await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
+							}
 						}
 					}
 				// item.update({ "data.LastRoundUsed": currentRound});
@@ -930,6 +987,14 @@ export function PTUAutoFight(){
 						if (search_item._id == item._id)
 						{
 							await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+
+							if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
+							{
+								let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
+								let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
+								console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+								await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
+							}
 						}
 					}
 				// item.update({ "data.LastRoundUsed": currentRound});
@@ -1162,48 +1227,74 @@ export function PTUAutoFight(){
 
 
 
-		function PerformFullAttack (actor,move) {
-					let acRoll = CalculateAcRoll(move.data, actor.data.data);
-					let diceResult = GetDiceResult(acRoll);
+		function PerformFullAttack (actor,move) 
+		{
+			let acRoll = CalculateAcRoll(move.data, actor.data.data);
+			let diceResult = GetDiceResult(acRoll);
 
-					let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
-					let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal');
-					if(damageRoll) damageRoll.roll();
-					let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit');
-		if(!move.data.name){
-		move.data.name=move.name;
-		}
-					if(critDamageRoll) critDamageRoll.roll();
-		if(damageRoll && damageRoll._total){
-		game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
+			let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
+			let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal');
+			if(damageRoll) damageRoll.roll();
+			let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit');
+			if(!move.data.name)
+			{
+				move.data.name=move.name;
+			}
+			if(critDamageRoll)
+			{
+				critDamageRoll.roll();
+			}
+			if(damageRoll && damageRoll._total)
+			{
+				game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
+			}
 
-		}
+			let currentHasExtraEffect = false;
+			let currentExtraEffectText = "";
 
-					sendMoveRollMessage(acRoll, {
-						speaker: ChatMessage.getSpeaker({
-							actor: actor
-						}),
-						move: move.data,
-						damageRoll: damageRoll,
-						critDamageRoll: critDamageRoll,
-						templateType: MoveMessageTypes.FULL_ATTACK,
-						crit: crit,
-						hasAC: (!isNaN(move.data.ac))
-					}).then(data => console.log(data));
+			let typeStrategist = [];
+			for(let item of actor.data.items) // START Ability Check Loop
+			{
+				if(item.name.search("Type Strategist \\(") > -1)
+				{
+					typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+					console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+					console.log(typeStrategist);
+					console.log(typeStrategist.length);
+				}
+			} // END Ability Check Loop
 
-					var moveSoundFile = (move.data.name + ".mp3");
+			if( (typeStrategist.length > 0) && (typeStrategist.indexOf(move.data.type) > -1) )
+			{
+				console.log("DEBUG: PerformFullAttack function TypeStrategist trigger!")
+				currentExtraEffectText = "Type Strategist (" + move.data.type + ") activated!";
+				currentHasExtraEffect = true;
+			}
 
-					if(move.data.name.toString().match(/Hidden Power/) != null)
-					{
-						moveSoundFile = ("Hidden Power" + ".mp3");
-					}
+			sendMoveRollMessage(acRoll, {
+				speaker: ChatMessage.getSpeaker({
+					actor: actor
+				}),
+				move: move.data,
+				damageRoll: damageRoll,
+				critDamageRoll: critDamageRoll,
+				templateType: MoveMessageTypes.FULL_ATTACK,
+				crit: crit,
+				hasAC: (!isNaN(move.data.ac)),
+				hasExtraEffect: currentHasExtraEffect,
+				extraEffectText: currentExtraEffectText
+			}).then(data => console.log(data));
 
-					moveSoundFile.replace(/ /g,"%20");
-					//if(moveSoundFile)
-					//{
-					AudioHelper.play({src: SoundDirectory+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
-				console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
-				//}
+			var moveSoundFile = (move.data.name + ".mp3");
+
+			if(move.data.name.toString().match(/Hidden Power/) != null)
+			{
+				moveSoundFile = ("Hidden Power" + ".mp3");
+			}
+
+			moveSoundFile.replace(/ /g,"%20");
+			AudioHelper.play({src: SoundDirectory+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+			console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
 			};
 
 	function PerformStruggleAttack (move) // TODO: Implement Struggles
@@ -1253,14 +1344,20 @@ export function PTUAutoFight(){
 	};
 
 
-
-	function GetDiceResult(roll) {
-		if (!roll._rolled) roll.evaluate();
+	function GetDiceResult(roll)
+	{
+		if (!roll._rolled)
+		{
+			roll.evaluate();
+		}
 
 		let diceResult = -2;
-		try {
+		try 
+		{
 			diceResult = roll.terms[0].results[0].result;
-		} catch (err) {
+		}
+		catch (err) 
+		{
 			console.log("Old system detected, using deprecated rolling...")
 			diceResult = roll.parts[0].results[0];
 		}
@@ -1268,10 +1365,12 @@ export function PTUAutoFight(){
 	};
 
 
-	function CalculateDmgRoll(moveData, actorData, isCrit) {
+	function CalculateDmgRoll(moveData, actorData, isCrit) 
+	{
 		if (moveData.category === "Status") return;
 
-		if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) {
+		if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
+		{
 		    let dbRoll;
 			if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
 			{
@@ -1295,21 +1394,31 @@ export function PTUAutoFight(){
 
 			let bonus = Math.max(moveData.category === "Physical" ? actorData.stats.atk.total : actorData.stats.spatk.total, 0);
 			console.log("BONUS: " + bonus);
-			if (!dbRoll) return;
+			if (!dbRoll)
+			{
+				return;
+			}
 			return new Roll(isCrit == CritOptions.CRIT_HIT ? '@roll+@roll+@bonus' : '@roll+@bonus', {
 				roll: dbRoll,
 				bonus: bonus
 			})
 		}
 		let dbRoll = game.ptu.DbData[moveData.damageBase];
-		if (!dbRoll) return;
+		if (!dbRoll) 
+		{
+			return;
+		}
 		return new Roll('@roll', {
 			roll: dbRoll
 		})
 	};
 
-	async function sendMoveRollMessage(rollData, messageData = {}) {
-		if (!rollData._rolled) rollData.evaluate();
+	async function sendMoveRollMessage(rollData, messageData = {})
+	{
+		if (!rollData._rolled) 
+		{
+			rollData.evaluate();
+		}
 
 		messageData = mergeObject({
 			user: game.user._id,
@@ -1320,7 +1429,8 @@ export function PTUAutoFight(){
 		}, messageData);
 
 
-		if(!messageData.move) {
+		if(!messageData.move) 
+		{
 			console.error("Can't display move chat message without move data.")
 			return;
 		}
@@ -1329,8 +1439,9 @@ export function PTUAutoFight(){
 
 		return ChatMessage.create(messageData, {});
 	};
+
 	return {
 		ChatWindow:ChatWindow,
 		ApplyDamage:ApplyDamage
 	}
-	};
+};
