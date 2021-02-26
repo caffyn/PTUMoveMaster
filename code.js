@@ -2,6 +2,35 @@
 export function PTUAutoFight(){
 	var UseAlternateStyling = true;
 
+	var ShowTargetTypeEffectivenessIfKnown = true;
+
+	var stats = ["atk", "def", "spatk", "spdef", "spd"];
+
+	var move_stage_changes = {
+		"Blank Template"  :   {
+			"atk"   : 0,
+			"def"   : 0,
+			"spatk" : 0,
+			"spdef" : 0,
+			"spd"   : 0,
+			"pct-healing": 0,
+			"pct-self-damage": 0
+		},
+		"Calm Mind"  :   {
+			"spatk" : 1,
+			"spdef" : 1
+		},
+		"Nasty Plot"  :   {
+			"spdef" : 2,
+		},
+		"Swords Dance"  :   {
+			"atk" : 2,
+		},
+		"Recover"  :   {
+			"pct-healing": 0.5,
+		},
+	};
+
 	const AtWillReadyMark = "∞";
 
 	const SceneReadyMark = "✅";
@@ -177,32 +206,6 @@ export function PTUAutoFight(){
 
 
 	async function ChatWindow(actor){
-		const ShowTargetTypeEffectivenessIfKnown = true;
-
-		var stats = ["atk", "def", "spatk", "spdef", "spd"];
-
-		var move_stage_changes = {
-			"Blank Template"  :   {
-				"atk"   : 0,
-				"def"   : 0,
-				"spatk" : 0,
-				"spdef" : 0,
-				"spd"   : 0,
-				"pct-healing": 0,
-				"pct-self-damage": 0
-			},
-			"Calm Mind"  :   {
-				"spatk" : 1,
-				"spdef" : 1
-			},
-			"Nasty Plot"  :   {
-				"spdef" : 2,
-			},
-			"Recover"  :   {
-				"pct-healing": 0.5,
-			},
-		};
-
 
 		let target = Array.from(game.user.targets)[0];
 		let targetTypingText = "";
