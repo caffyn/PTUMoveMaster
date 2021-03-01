@@ -911,6 +911,8 @@ export function PTUAutoFight(){
 
 			let currentMoveRangeIcon = "";
 
+			let currentMoveFiveStrike = false;
+
 			if (currentMoveRange != "")
 			{
 				// console.log("currentMoveRange"+currentMoveRange);
@@ -950,6 +952,11 @@ export function PTUAutoFight(){
 				}
 			}
 
+			if(currentMoveRange.search("Five Strike") > -1)
+			{
+				console.log("DEBUG: FIVE STRIKE FOUND!");
+				currentMoveFiveStrike = true;
+			}
 
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
 			buttons[currentid]={label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
@@ -1239,13 +1246,43 @@ export function PTUAutoFight(){
 
 		function PerformFullAttack (actor,move) 
 		{
+			let isFiveStrike = false;
+			let isDoubleStrike = false;
+			let fiveStrikeMultiplier = 1;
+
+			if(move.data.range.search("Five Strike") > -1)
+			{
+				isFiveStrike = true;
+				console.log("DEBUG: ROLLING FIVE STRIKE");
+				let fiveStrikeD8 = Math.floor(Math.random() * (8 - 1 + 1)) + 1;
+				console.log("DEBUG: FIVE STRIKE D8 = " + fiveStrikeD8);
+				let fiveStrikeHitsDictionary = {
+					1: 1,
+					2: 2,
+					3: 2,
+					4: 3,
+					5: 3,
+					6: 3,
+					7: 4,
+					8: 5
+				}
+				let fiveStrikeHits = fiveStrikeHitsDictionary[fiveStrikeD8];
+				console.log("DEBUG: FIVE STRIKE HITS = " + fiveStrikeHits);
+				fiveStrikeMultiplier = fiveStrikeHits;
+			}
+			if(move.data.range.search("Double Strike") > -1)
+			{
+				isDoubleStrike = true;
+				console.log("DEBUG: ROLLING DOUBLE STRIKE");
+			}
+
 			let acRoll = CalculateAcRoll(move.data, actor.data.data);
 			let diceResult = GetDiceResult(acRoll);
 
 			let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
-			let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal');
+			let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal', fiveStrikeMultiplier);
 			if(damageRoll) damageRoll.roll();
-			let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit');
+			let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit', fiveStrikeMultiplier);
 			if(!move.data.name)
 			{
 				move.data.name=move.name;
@@ -1299,7 +1336,9 @@ export function PTUAutoFight(){
 				hasAC: (!isNaN(move.data.ac)),
 				hasExtraEffect: currentHasExtraEffect,
 				extraEffectText: currentExtraEffectText,
-				isUntyped: isUntyped
+				isUntyped: isUntyped,
+				isFiveStrike: isFiveStrike,
+				fiveStrikeMultiplier: fiveStrikeMultiplier
 			}).then(data => console.log(data));
 
 			var moveSoundFile = (move.data.name + ".mp3");
@@ -1382,8 +1421,10 @@ export function PTUAutoFight(){
 	};
 
 
-	function CalculateDmgRoll(moveData, actorData, isCrit) 
+	function CalculateDmgRoll(moveData, actorData, isCrit, fiveStrikeMultiplier) 
 	{
+		console.log("DEBUG: fiveStrikeMultiplier = " + fiveStrikeMultiplier)
+		console.log("DEBUG: final DB = " + (parseInt(moveData.damageBase)*fiveStrikeMultiplier))
 		if (moveData.category === "Status") return;
 
 		if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
@@ -1400,13 +1441,13 @@ export function PTUAutoFight(){
 			    let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
 			    console.log("db_from_stages = " + db_from_stages );
 
-			    dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? Math.min(parseInt(moveData.damageBase) + db_from_stages, 20) + 2 : Math.min(parseInt(moveData.damageBase) + db_from_stages, 20)];
+			    dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? Math.min((parseInt(moveData.damageBase)*fiveStrikeMultiplier) + db_from_stages, 20) + 2 : Math.min((parseInt(moveData.damageBase)*fiveStrikeMultiplier) + db_from_stages, 20)];
 			}
 			else
 			{
 				// console.log("Normal DB Calculation. moveData.damageBase = " + moveData.damageBase + ", moveData.stab = " + moveData.stab + ", game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase] = " + game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase]);
 			    // dbRoll = game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase];
-				dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? parseInt(moveData.damageBase) + 2 : moveData.damageBase];
+				dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? (parseInt(moveData.damageBase)*fiveStrikeMultiplier) + 2 : (moveData.damageBase*fiveStrikeMultiplier)];
 			}
 
 			let bonus = Math.max(moveData.category === "Physical" ? actorData.stats.atk.total : actorData.stats.spatk.total, 0);
