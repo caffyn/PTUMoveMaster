@@ -2,14 +2,14 @@
 
 <div class="content flexrow pt-1" style="font-variant: normal; padding: 0px ! important;">
     <div class="swsh-box">
-        <div class="swsh-header" style="border-bottom: 0px solid #272727; text-align: center; padding: 0px ! important;">
+        <div class="swsh-header" style="border-bottom: 0px solid #272727; text-align: center; padding: 0px ! important; background-color: #b3b3b3;">
             <div class="d-flex w-100 mt-0 mb-0 justify-content-center" style=";background-color: #272727 ;">
                 <span style="padding: 1px;font-family:Modesto Condensed;font-size:40px; color: white; overflow-wrap: normal ! important; word-break: keep-all ! important;">{{move.name}}</span>
             </div>
         </div>
         
-        <div class="swsh-header" style="padding: 0px ! important;">
-            <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important;">
+        <div class="swsh-header" style="padding: 0px ! important;background-color: #b3b3b3;">
+            <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important;background-color: #b3b3b3;">
                 <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/{{move.category}}.png" style="width: 124px; height: auto; padding: 0px ! important;"></span></div>
             {{#if isUntyped}}
                 <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/UntypedIC.png" style="width: 124px; height: auto; padding: 0px ! important;"></span></div>
@@ -22,77 +22,203 @@
         {{#if isFiveStrike}}
         <div class="swsh-header" style="padding: 0px ! important;">
             <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important;">
-                <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/FiveStrike{{fiveStrikeMultiplier}}.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/FiveStrike{{fiveStrikeHits}}.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+            </div>
+        </div>
+        {{/if}}
+
+        {{#if isDoubleStrike}}
+        <div class="swsh-header" style="padding: 0px ! important;">
+            <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important;">
+                <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DoubleStrike.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
             </div>
         </div>
         {{/if}}
         
-        <div class="swsh-body" style="background-color: #b3b3b3;">
-            {{#if roll}}
-            {{#if hasAC}}
-                <div class="dice-roll w-100" style="padding: 0px 0px;">
-                    <div class="dice-result">
-                        <div class="dice-formula">  
-                            {{#each roll.terms as | term |}}
-                                {{#if term.faces}}
-                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
-                                {{else}}{{term}}{{/if}}
-                            {{/each}}
-                        </div>
-                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:38px; color: rgb(0, 0, 0);"><h3 class="num-total">{{roll._total}}</h3><h5>vs {{move.category}} Evasion</h5></span>
-                    </div>
-                </div>
-            {{/if}}
-            {{/if}}
+        {{#if hasAC}}
+        <div class="swsh-header" style="padding: 0px ! important;background-color: #b3b3b3;">
+            <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important;">
+                <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/AttackRollDivider.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+            </div>
+        </div>
+        {{/if}}
+
+        {{#if hasAC}}
             {{#if crit}}
                 {{#if (not crit "normal")}}
-                    <div class="d-flex w-100 pt-1 pb-1" style="word-break: break-word;text-align: center;border-top: 1px solid #00000080;padding: 5px;">
+                    <div class="swsh-header" style="padding: 0px ! important;background-color: #b3b3b3;">
                         {{#if (is crit "hit")}}
-                            <h4>It's a Critical Hit!</h4>
+                        <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important;">
+                            <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/CriticalHit.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                        </div>
                         {{else}}
-                            <h4>It's a Critical Miss!</h4>
+                        <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important;">
+                            <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/CriticalMiss.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                        </div>
                         {{/if}}
                     </div>
                 {{/if}}
             {{/if}}
-            {{#if damageRoll}}
-                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px;">
-                    <div class="dice-result">
-                        <div class="dice-formula">  
-                            {{#each damageRoll.terms as | term |}}
+        {{/if}}
+
+        <div class="swsh-body" style="background-color: #b3b3b3;">
+            {{#if roll}}
+            {{#if hasAC}}
+                <div class="dice-roll w-100" style="padding: 0px 0px; font-size: 10px ! important;">
+                    <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">
+                        <div class="dice-formula" style="padding: 0px 0px; font-size: 10px ! important;">  
+                            {{#each roll.terms as | term |}}
                                 {{#if term.faces}}
-                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}" style="padding: 0px 0px; font-size: 10px ! important;">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
                                 {{else}}{{term}}{{/if}}
                             {{/each}}
                         </div>
-                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px;"><h4 class="num-total">{{damageRoll._total}}</h4><h5><button class="automated-damage-button" style="background-color: #800c0c00; font-family:Modesto Condensed;font-size:36px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="false">Apply Damage</button></h5></span>
-			<div class="row justify-content-center">
-            <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="false">1/2 Damage</button></div>
-			<div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="false">Resist 1 Step</button></div>
-            <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="false">Flat Damage</button></div>
-			</div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:38px; color: rgb(0, 0, 0);"><h3 class="num-total">{{roll._total}}</h3><h6>vs. {{move.category}} Evasion</h6></span>
+                    </div>
+                </div>
+            {{/if}}
+
+            {{#if isDoubleStrike}}
+            </div>
+
+            {{#if crit2}}
+                {{#if (not crit2 "normal")}}
+                    <div class="swsh-header" style="padding: 0px ! important;background-color: #b3b3b3;">
+                        {{#if (is crit2 "hit")}}
+                        <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important;">
+                            <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/CriticalHit.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                        </div>
+                        {{else}}
+                        <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important;">
+                            <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/CriticalMiss.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                        </div>
+                        {{/if}}
+                    </div>
+                {{/if}}
+            {{/if}}
+
+            <div class="swsh-body" style="background-color: #b3b3b3;">
+                <div class="dice-roll w-100" style="padding: 0px 0px; font-size: 10px ! important;">
+                    <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">
+                        <div class="dice-formula" style="padding: 0px 0px; font-size: 10px ! important;">  
+                            {{#each roll2.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}" style="padding: 0px 0px; font-size: 10px ! important;">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:38px; color: rgb(0, 0, 0);"><h3 class="num-total">{{roll2._total}}</h3><h6>vs. {{move.category}} Evasion</h6></span>
+                    </div>
+                </div>
+
+            
+            {{/if}}
+
+            {{/if}}
+            
+            {{#if damageRoll}}
+            </div>
+                <div class="swsh-header" style="padding: 0px ! important;">
+                    <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important;">
+                        <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DamageRollDivider.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                    </div>
+                </div>
+            <div class="swsh-body" style="background-color: #b3b3b3;">
+                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px; font-size: 10px ! important;">
+                    <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">
+                        <div class="dice-formula" style="padding: 0px 0px; font-size: 10px ! important;">  
+                            {{#each damageRoll.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}" style="padding: 0px 0px; font-size: 10px ! important;">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px;"><h4 class="num-total">{{damageRoll._total}}</h4><h6><button class="automated-damage-button" style="background-color: #800c0c00; font-family:Modesto Condensed;font-size:28px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="false">Apply Damage</button></h6></span>
+                            <div class="row justify-content-center">
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="false">1/2 Damage</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="false">Resist 1 Step</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="false">Flat Damage</button></div>
+                            </div>
                     </div>
                 </div>
             {{/if}}
             {{#if critDamageRoll}}
-                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px;">
-                    <div class="dice-result">
-                        <div class="dice-formula">  
+                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px; font-size: 10px ! important;">
+                    <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">
+                        <div class="dice-formula" style="padding: 0px 0px; font-size: 10px ! important;">  
                             {{#each critDamageRoll.terms as | term |}}
                                 {{#if term.faces}}
-                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}" style="padding: 0px 0px; font-size: 10px ! important;">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
                                 {{else}}{{term}}{{/if}}
                             {{/each}}
                         </div>
-                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px; line-height: 0.8"><h4 class="num-total">{{critDamageRoll._total}}</h4><h5><button class="automated-damage-button" style=" background-color: #800c0c00; font-family:Modesto Condensed;font-size:36px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="true">Critical Damage</button></h5></span>
-			<div class="row justify-content-center" style="text-align: center;">
-			<div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="true">1/2 Damage</button></div>
-			<div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="true">Resist 1 Step</button></div>
-            <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="true">Flat Damage</button></div>
-			</div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px; line-height: 0.8"><h4 class="num-total">{{critDamageRoll._total}}</h4><h5><button class="automated-damage-button" style=" background-color: #800c0c00; font-family:Modesto Condensed;font-size:28px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="true">Critical Damage</button></h5></span>
+                            <div class="row justify-content-center" style="text-align: center;">
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="true">1/2 Damage</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="true">Resist 1 Step</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRoll._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="true">Flat Damage</button></div>
+                        </div>
                     </div>
                 </div>
             {{/if}}
+
+            {{#if isDoubleStrike}}
+                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px; font-size: 10px ! important;">
+                    <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">
+                        <div class="dice-formula" style="padding: 0px 0px; font-size: 10px ! important;">  
+                            {{#each damageRollTwoHits.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}" style="padding: 0px 0px; font-size: 10px ! important;">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px;"><h4 class="num-total">{{damageRollTwoHits._total}}</h4><h5><button class="automated-damage-button" style="background-color: #800c0c00; font-family:Modesto Condensed;font-size:28px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{damageRollTwoHits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="false">Two Hits</button></h5></span>
+                            <div class="row justify-content-center">
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRollTwoHits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="false">1/2 Damage</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRollTwoHits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="false">Resist 1 Step</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{damageRollTwoHits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="false">Flat Damage</button></div>
+                            </div>
+                    </div>
+                </div>
+
+                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px; font-size: 10px ! important;">
+                    <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">
+                        <div class="dice-formula" style="padding: 0px 0px; font-size: 10px ! important;">  
+                            {{#each critDamageRollOneHitOneCrit.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}" style="padding: 0px 0px; font-size: 10px ! important;">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px; line-height: 0.8"><h4 class="num-total">{{critDamageRollOneHitOneCrit._total}}</h4><h5><button class="automated-damage-button" style=" background-color: #800c0c00; font-family:Modesto Condensed;font-size:28px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{critDamageRollOneHitOneCrit._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="true">One Hit, One Crit</button></h5></span>
+                            <div class="row justify-content-center" style="text-align: center;">
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRollOneHitOneCrit._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="true">1/2 Damage</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRollOneHitOneCrit._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="true">Resist 1 Step</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRollOneHitOneCrit._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="true">Flat Damage</button></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="dice-roll w-100" style="border-top: 1px solid #00000080;padding: 10px 5px; font-size: 10px ! important;">
+                    <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">
+                        <div class="dice-formula" style="padding: 0px 0px; font-size: 10px ! important;">  
+                            {{#each critDamageRollTwoCrits.terms as | term |}}
+                                {{#if term.faces}}
+                                    {{#each term.results as |result|}}<span class="roll die d{{term.faces}} {{minMaxDiceCheck result.result term.faces}}" style="padding: 0px 0px; font-size: 10px ! important;">{{result.result}}</span>{{#if @last}}{{else}}+{{/if}}{{/each}}
+                                {{else}}{{term}}{{/if}}
+                            {{/each}}
+                        </div>
+                        <span class="dice-total" style="display: inline-flex;justify-content: space-evenly; align-items: center;width:100%;font-family:Modesto Condensed;font-size:40px; line-height: 0.8"><h4 class="num-total">{{critDamageRollTwoCrits._total}}</h4><h5><button class="automated-damage-button" style=" background-color: #800c0c00; font-family:Modesto Condensed;font-size:28px; color: rgb(0, 0, 0); padding: 0px ! important;" data-damage="{{critDamageRollTwoCrits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="full" data-crit="true">Two Crits</button></h5></span>
+                            <div class="row justify-content-center" style="text-align: center;">
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRollTwoCrits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="half" data-crit="true">1/2 Damage</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRollTwoCrits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="resist" data-crit="true">Resist 1 Step</button></div>
+                                <div><button class="automated-damage-button" style="line-height: 1.0; background-color: #919191; font-family:'Segoe UI';font-size:10px; color: rgb(180, 180, 180); margin-left: 0px ; margin-right: 0px ; height: 20px ; padding-left: 10px; padding-right: 10px;" data-damage="{{critDamageRollTwoCrits._total}}" data-type="{{move.type}}" data-category="{{move.category}}" data-mode="flat" data-crit="true">Flat Damage</button></div>
+                        </div>
+                    </div>
+                </div>
+
+            {{/if}}
+
         </div>
 
             <div class="swsh-header col-sm-12" style=" background-color: #272727; padding: 0px ! important;">

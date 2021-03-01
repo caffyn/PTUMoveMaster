@@ -276,6 +276,7 @@ export function PTUAutoFight(){
 	}
 
 	var typeStrategist = [];
+	var technician = false;
 
 	for(let item of items) // START Ability Check Loop
 	{
@@ -285,6 +286,11 @@ export function PTUAutoFight(){
 			console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
 			console.log(typeStrategist);
 			console.log(typeStrategist.length);
+		}
+		if(item.name.search("Technician") > -1)
+		{
+			technician = true;
+			console.log("DEBUG: Technician Ability Found");
 		}
 	} // END Ability Check Loop
 
@@ -912,6 +918,7 @@ export function PTUAutoFight(){
 			let currentMoveRangeIcon = "";
 
 			let currentMoveFiveStrike = false;
+			let currentMoveDoubleStrike = false;
 
 			if (currentMoveRange != "")
 			{
@@ -954,8 +961,14 @@ export function PTUAutoFight(){
 
 			if(currentMoveRange.search("Five Strike") > -1)
 			{
-				console.log("DEBUG: FIVE STRIKE FOUND!");
+				// console.log("DEBUG: FIVE STRIKE FOUND!");
 				currentMoveFiveStrike = true;
+			}
+
+			if( (currentMoveRange.search("Doublestrike") > -1) || (currentMoveRange.search("Double Strike") > -1) )
+			{
+				// console.log("DEBUG: DOUBLE STRIKE FOUND!");
+				currentMoveDoubleStrike = true;
 			}
 
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
@@ -1248,14 +1261,32 @@ export function PTUAutoFight(){
 		{
 			let isFiveStrike = false;
 			let isDoubleStrike = false;
-			let fiveStrikeMultiplier = 1;
+			let userHasTechnician = false;
+			let userHasAdaptability = false;
+			let fiveStrikeCount = 0;
+
+			let currentHasExtraEffect = false;
+			let currentExtraEffectText = "";
+
+			for(let search_item of actor.items)
+			{
+				// console.log(search_item.name);
+				if(search_item.name == "Technician")
+				{
+					userHasTechnician = true;
+				}
+				if(search_item.name == "Adaptability")
+				{
+					userHasAdaptability = true;
+				}
+			}
 
 			if(move.data.range.search("Five Strike") > -1)
 			{
 				isFiveStrike = true;
-				console.log("DEBUG: ROLLING FIVE STRIKE");
+				// console.log("DEBUG: ROLLING FIVE STRIKE");
 				let fiveStrikeD8 = Math.floor(Math.random() * (8 - 1 + 1)) + 1;
-				console.log("DEBUG: FIVE STRIKE D8 = " + fiveStrikeD8);
+				// console.log("DEBUG: FIVE STRIKE D8 = " + fiveStrikeD8);
 				let fiveStrikeHitsDictionary = {
 					1: 1,
 					2: 2,
@@ -1267,10 +1298,10 @@ export function PTUAutoFight(){
 					8: 5
 				}
 				let fiveStrikeHits = fiveStrikeHitsDictionary[fiveStrikeD8];
-				console.log("DEBUG: FIVE STRIKE HITS = " + fiveStrikeHits);
-				fiveStrikeMultiplier = fiveStrikeHits;
+				// console.log("DEBUG: FIVE STRIKE HITS = " + fiveStrikeHits);
+				fiveStrikeCount = fiveStrikeHits-1;
 			}
-			if(move.data.range.search("Double Strike") > -1)
+			if( (move.data.range.search("Doublestrike") > -1) || (move.data.range.search("Double Strike") > -1) )
 			{
 				isDoubleStrike = true;
 				console.log("DEBUG: ROLLING DOUBLE STRIKE");
@@ -1279,10 +1310,16 @@ export function PTUAutoFight(){
 			let acRoll = CalculateAcRoll(move.data, actor.data.data);
 			let diceResult = GetDiceResult(acRoll);
 
+			let acRoll2 = CalculateAcRoll(move.data, actor.data.data);
+			let diceResult2 = GetDiceResult(acRoll2);
+
 			let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
-			let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal', fiveStrikeMultiplier);
+			let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
+
+			// console.log("DEBUG: isDoubleStrike = " + isDoubleStrike);
+			let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0);
 			if(damageRoll) damageRoll.roll();
-			let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit', fiveStrikeMultiplier);
+			let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0);
 			if(!move.data.name)
 			{
 				move.data.name=move.name;
@@ -1296,14 +1333,29 @@ export function PTUAutoFight(){
 				game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
 			}
 
+			let damageRollTwoHits = CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 0);
+			if(damageRollTwoHits)
+			{
+				damageRollTwoHits.roll();
+			}
+
+			let critDamageRollOneHitOneCrit = CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 1);
+			if(critDamageRollOneHitOneCrit)
+			{
+				critDamageRollOneHitOneCrit.roll();
+			}
+
+			let critDamageRollTwoCrits = CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 2);
+			if(critDamageRollTwoCrits)
+			{
+				critDamageRollTwoCrits.roll();
+			}
+
 			let isUntyped = false;
 			if(move.data.type == "Untyped" || move.data.type == "" || move.data.type == null)
 			{
 				isUntyped = true;
 			}
-
-			let currentHasExtraEffect = false;
-			let currentExtraEffectText = "";
 
 			let typeStrategist = [];
 			for(let item of actor.data.items) // START Ability Check Loop
@@ -1311,34 +1363,57 @@ export function PTUAutoFight(){
 				if(item.name.search("Type Strategist \\(") > -1)
 				{
 					typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-					console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-					console.log(typeStrategist);
-					console.log(typeStrategist.length);
+					// console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+					// console.log(typeStrategist);
+					// console.log(typeStrategist.length);
 				}
 			} // END Ability Check Loop
 
 			if( (typeStrategist.length > 0) && (typeStrategist.indexOf(move.data.type) > -1) )
 			{
-				console.log("DEBUG: PerformFullAttack function TypeStrategist trigger!")
-				currentExtraEffectText = "Type Strategist (" + move.data.type + ") activated!";
+				// console.log("DEBUG: PerformFullAttack function TypeStrategist trigger!")
+				currentExtraEffectText = currentExtraEffectText+ "<br>Type Strategist (" + move.data.type + ") activated!";
 				currentHasExtraEffect = true;
 			}
 
-			sendMoveRollMessage(acRoll, {
+			let hasAC = true;
+			if(move.data.ac == "" || move.data.ac == "--")
+			{
+				hasAC = false;
+			}
+
+			if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (move.data.damageBase <= 6) ) )
+			{
+				currentExtraEffectText = currentExtraEffectText+ "<br>Technician applies!";
+				currentHasExtraEffect = true;
+			}
+
+			if(userHasAdaptability && (move.data.type == actor.data.data.typing[0] || move.data.type == actor.data.data.typing[1]) )
+			{
+				currentExtraEffectText = currentExtraEffectText+ "<br>Adaptability applies!";
+				currentHasExtraEffect = true;
+			}
+
+			sendMoveRollMessage(acRoll, acRoll2, {
 				speaker: ChatMessage.getSpeaker({
 					actor: actor
 				}),
 				move: move.data,
 				damageRoll: damageRoll,
+				damageRollTwoHits: damageRollTwoHits,
 				critDamageRoll: critDamageRoll,
+				critDamageRollOneHitOneCrit: critDamageRollOneHitOneCrit,
+				critDamageRollTwoCrits: critDamageRollTwoCrits,
 				templateType: MoveMessageTypes.FULL_ATTACK,
 				crit: crit,
-				hasAC: (!isNaN(move.data.ac)),
+				crit2: crit2,
+				hasAC: hasAC,
 				hasExtraEffect: currentHasExtraEffect,
 				extraEffectText: currentExtraEffectText,
 				isUntyped: isUntyped,
 				isFiveStrike: isFiveStrike,
-				fiveStrikeMultiplier: fiveStrikeMultiplier
+				fiveStrikeHits: (fiveStrikeCount+1),
+				isDoubleStrike: isDoubleStrike
 			}).then(data => console.log(data));
 
 			var moveSoundFile = (move.data.name + ".mp3");
@@ -1346,6 +1421,19 @@ export function PTUAutoFight(){
 			if(move.data.name.toString().match(/Hidden Power/) != null)
 			{
 				moveSoundFile = ("Hidden Power" + ".mp3");
+			}
+
+			if(move.data.name.toString().match(/Pin Missile/) != null)
+			{
+				if((fiveStrikeCount+1) <= 1)
+				{
+					moveSoundFile = ("Pin Missile 1hit" + ".mp3");
+				}
+				else if((fiveStrikeCount+1) > 1)
+				{
+					moveSoundFile = ("Pin Missile 2hits" + ".mp3");
+				}
+				
 			}
 
 			moveSoundFile.replace(/ /g,"%20");
@@ -1421,17 +1509,38 @@ export function PTUAutoFight(){
 	};
 
 
-	function CalculateDmgRoll(moveData, actorData, isCrit, fiveStrikeMultiplier) 
+	function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, hitCount, critCount) 
 	{
-		console.log("DEBUG: fiveStrikeMultiplier = " + fiveStrikeMultiplier)
-		console.log("DEBUG: final DB = " + (parseInt(moveData.damageBase)*fiveStrikeMultiplier))
+		console.log("DEBUG: fiveStrikeCount = " + fiveStrikeCount)
+		console.log("DEBUG: hitCount = " + hitCount)
+		// console.log("DEBUG: final DB = " + (parseInt(moveData.damageBase)*fiveStrikeCount))
 		if (moveData.category === "Status") return;
 
 		if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
 		{
+			let db = parseInt(moveData.damageBase);
+			let damageBase;
+			let damageBaseOriginal;
 		    let dbRoll;
+			let dbRollOriginal;
+			let technicianDBBonus = 0;
+			let STABBonus = 2;
+
+			if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
+			{
+				console.log("DEBUG: TECHNICIAN APPLIES");
+				technicianDBBonus = 2;
+			}
+
+			if(userHasAdaptability)
+			{
+				console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
+				STABBonus = 3;
+			}
+
 			if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
 			{
+				console.log("DEBUG: STORED POWER ROLLED!")
 			    let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
 			    let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
 			    let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
@@ -1441,23 +1550,67 @@ export function PTUAutoFight(){
 			    let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
 			    console.log("db_from_stages = " + db_from_stages );
 
-			    dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? Math.min((parseInt(moveData.damageBase)*fiveStrikeMultiplier) + db_from_stages, 20) + 2 : Math.min((parseInt(moveData.damageBase)*fiveStrikeMultiplier) + db_from_stages, 20)];
+				damageBase = (
+					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
+
+				damageBaseOriginal = (
+					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+					Math.min(db + db_from_stages, 20) + technicianDBBonus;
+				
+			    dbRoll = game.ptu.DbData[damageBase];
+				dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
 			}
 			else
 			{
-				// console.log("Normal DB Calculation. moveData.damageBase = " + moveData.damageBase + ", moveData.stab = " + moveData.stab + ", game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase] = " + game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase]);
-			    // dbRoll = game.ptu.DbData[moveData.stab ? parseInt(moveData.damageBase) + 2 : moveData.damageBase];
-				dbRoll = game.ptu.DbData[(moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? (parseInt(moveData.damageBase)*fiveStrikeMultiplier) + 2 : (moveData.damageBase*fiveStrikeMultiplier)];
+				damageBase = (
+					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					db*(hitCount + fiveStrikeCount) + STABBonus + technicianDBBonus : 
+					db*(hitCount + fiveStrikeCount) + technicianDBBonus;
+
+				damageBaseOriginal = (
+					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					db + STABBonus + technicianDBBonus : 
+					db + technicianDBBonus;
+
+				console.log("DEBUG: db = " + db);
+				console.log("DEBUG: STABBonus = " + STABBonus);
+				console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
+
+				dbRoll = game.ptu.DbData[damageBase];
+				dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
 			}
 
+			console.log("damageBase = " + damageBase);
+			console.log("damageBaseOriginal = " + damageBaseOriginal);
+
 			let bonus = Math.max(moveData.category === "Physical" ? actorData.stats.atk.total : actorData.stats.spatk.total, 0);
-			console.log("BONUS: " + bonus);
+			let rollString = '@roll+@bonus';
+			let rollStringCrit = '@roll+@roll+@bonus';
+			if(isDoubleStrike)
+			{
+				// console.log("DEBUG: IS DOUBLE STRIKE DB CALC!");
+				if(critCount == 1)
+				{
+					rollStringCrit = '@roll+@originalRoll+@bonus';
+				}
+				else if(critCount == 2)
+				{
+					rollStringCrit = '@roll+@originalRoll+@originalRoll+@bonus';
+				}
+			}
+
 			if (!dbRoll)
 			{
 				return;
 			}
-			return new Roll(isCrit == CritOptions.CRIT_HIT ? '@roll+@roll+@bonus' : '@roll+@bonus', {
+			console.log("DEBUG: DB ROLL: " + dbRoll);
+			console.log("DEBUG: DB ROLL ORIGINAL: " + dbRollOriginal);
+			return new Roll(isCrit == CritOptions.CRIT_HIT ? rollStringCrit : rollString, {
 				roll: dbRoll,
+				originalRoll: dbRollOriginal,
 				bonus: bonus
 			})
 		}
@@ -1471,16 +1624,22 @@ export function PTUAutoFight(){
 		})
 	};
 
-	async function sendMoveRollMessage(rollData, messageData = {})
+	async function sendMoveRollMessage(rollData, rollData2, messageData = {})
 	{
 		if (!rollData._rolled) 
 		{
 			rollData.evaluate();
 		}
 
+		if (!rollData2._rolled) 
+		{
+			rollData2.evaluate();
+		}
+
 		messageData = mergeObject({
 			user: game.user._id,
 			roll: rollData,
+			roll2: rollData2,
 			sound: CONFIG.sounds.dice,
 			templateType: MoveMessageTypes.DAMAGE,
 			verboseChatInfo: game.settings.get("ptu", "verboseChatInfo") ?? false
