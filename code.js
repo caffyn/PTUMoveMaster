@@ -13,6 +13,7 @@ export function PTUAutoFight(){
 			"spatk" : 0,
 			"spdef" : 0,
 			"spd"   : 0,
+			"accuracy": 0,
 			"pct-healing": 0,
 			"pct-self-damage": 0
 		},
@@ -28,6 +29,130 @@ export function PTUAutoFight(){
 		},
 		"Recover"  :   {
 			"pct-healing": 0.5,
+		},
+		"Defend Order"  :   {
+			"def" : 1,
+			"spdef" : 1
+		},
+		"Quiver Dance"  :   {
+			"spatk" : 1,
+			"spdef" : 1,
+			"spd" : 1
+		},
+		"Tail Glow"  :   {
+			"spatk" : 3
+		},
+		"Hone Claws"  :   {
+			"atk" : 1,
+			"accuracy" : 1 // TODO: Implement Accuracy 'stage' changing.
+		},
+		"Draco Meteor"  :   {
+			"spatk" : -2,
+		},
+		"Dragon Dance"  :   {
+			"atk" : 1,
+			"spd" : 1,
+		},
+		"Charge"  :   {
+			"spdef" : 1,
+		},
+		"Bulk Up"  :   {
+			"atk" : 1,
+			"def" : 1,
+		},
+		"Close Combat"  :   {
+			"def" : -1,
+			"spdef" : -1,
+		},
+		"Hammer Arm"  :   {
+			"spd" : -1,
+		},
+		"Superpower"  :   {
+			"atk" : -1,
+			"def" : -1,
+		},
+		"Flame Charge"  :   {
+			"spd" : 1,
+		},
+		"Overheat"  :   {
+			"spatk" : -2,
+		},
+		"Dragon Ascent"  :   {
+			"def" : -1,
+			"spdef" : -1,
+		},
+		"Cotton Guard"  :   {
+			"def" : 3,
+		},
+		"Leaf Storm"  :   {
+			"spatk" : -2,
+		},
+		"Belly Drum"  :   {
+			"atk" : 6,
+			"pct-self-damage": 0.5,
+		},
+		"Growth"  :   {
+			"atk" : 1,
+			"spatk" : 1,
+		},
+		"Harden"  :   {
+			"def" : 1,
+		},
+		"Howl"  :   {
+			"atk" : 1,
+		},
+		"Sharpen"  :   {
+			"atk" : 1,
+		},
+		"Shell Smash"  :   {
+			"atk" : 2,
+			"spatk" : 2,
+			"spd" : 2,
+			"def" : -1,
+			"spdef" : -1,
+		},
+		"Stockpile"  :   {
+			"def" : 1,
+			"spdef" : 1,
+		},
+		"Work Up"  :   {
+			"atk" : 1,
+			"spatk" : 1,
+		},
+		"Coil"  :   {
+			"atk" : 1,
+			"def" : 1,
+			"accuracy" : 1,
+		},
+		"Agility"  :   {
+			"spd" : 2,
+		},
+		"Amnesia"  :   {
+			"spdef" : 2,
+		},
+		"Cosmic Power"  :   {
+			"def" : 1,
+			"spdef" : 1,
+		},
+		"Meditate"  :   {
+			"atk" : 1,
+		},
+		"Psycho Boost"  :   {
+			"spatk" : -2,
+		},
+		"Rock Polish"  :   {
+			"spd" : 2,
+		},
+		"Autotomize"  :   {
+			"spd" : 2,
+			"weight" : -1, // TODO: Implement weight changes
+		},
+		"Iron Defense"  :   {
+			"def" : 2,
+		},
+		"Shift Gear"  :   {
+			"atk" : 1,
+			"spd" : 2,
 		},
 	};
 
@@ -68,6 +193,7 @@ export function PTUAutoFight(){
 	const stat_zero_sound_file = "Stat%20Fall%20Down.mp3";
 	const stat_down_sound_file = "Stat%20Fall%20Down.mp3";
 	const heal_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
+	const damage_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
 
 	const TypeIconPath = "systems/ptu/css/images/types/";
 	const CategoryIconPath = "systems/ptu/css/images/categories/";
@@ -658,6 +784,10 @@ export function PTUAutoFight(){
 						{
 							healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
 						}
+						if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+						{
+							damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+						}
 					}
 				}
 
@@ -1247,6 +1377,15 @@ export function PTUAutoFight(){
 			chatMessage(actor, actor.name + ' healed '+ pct_healing*100 +'% of their max hit points!');
 		}
 
+		function damageActor(actor,pct_damage)
+		{
+			AudioHelper.play({src: SoundDirectory+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+			let new_health = Math.min( (actor.data.data.health.value - Number(pct_damage*actor.data.data.health.max) ), actor.data.data.health.max);
+			actor.update({'data.health.value': Number(new_health) });
+			chatMessage(actor, actor.name + ' took damage equal to '+ pct_damage*100 +'% of their max hit points!');
+		}
+
 		function CalculateAcRoll (moveData, actorData)   {
 			return new Roll('1d20-@ac+@acBonus', {
 				ac: (parseInt(moveData.ac) || 0),
@@ -1554,6 +1693,31 @@ export function PTUAutoFight(){
 					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
 					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
 					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
+
+				damageBaseOriginal = (
+					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+					Math.min(db + db_from_stages, 20) + technicianDBBonus;
+				
+			    dbRoll = game.ptu.DbData[damageBase];
+				dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+			}
+			else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
+			{
+				console.log("DEBUG: STORED POWER ROLLED!")
+			    let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
+			    let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
+			    let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
+			    let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
+			    let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
+
+			    let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
+			    console.log("db_from_stages = " + db_from_stages );
+
+				damageBase = (
+					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + STABBonus + technicianDBBonus : 
+					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + technicianDBBonus;
 
 				damageBaseOriginal = (
 					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
