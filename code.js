@@ -5,7 +5,7 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	let current_token_species = canvas.tokens.get(current_token).actor.data.data.species;
 
 	let CryDirectory = "pokemon_cries/";
-	let SpeciesCryFilename = current_token_species +".mp3";
+	let SpeciesCryFilename = current_token_species.toLowerCase() +".mp3";
 
 	AudioHelper.play({src: CryDirectory+SpeciesCryFilename, volume: 0.8, autoplay: true, loop: false}, true);
 });
