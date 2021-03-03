@@ -5,9 +5,12 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	let current_token_species = canvas.tokens.get(current_token).actor.data.data.species;
 
 	let CryDirectory = "pokemon_cries/";
-	let SpeciesCryFilename = current_token_species.toLowerCase() +".mp3";
-
-	AudioHelper.play({src: CryDirectory+SpeciesCryFilename, volume: 0.8, autoplay: true, loop: false}, true);
+	let SpeciesCryFilename;
+	if(current_token_species)
+	{
+		SpeciesCryFilename = current_token_species.toLowerCase() +".mp3";
+		AudioHelper.play({src: CryDirectory+SpeciesCryFilename, volume: 0.8, autoplay: true, loop: false}, true);
+	}
 });
 
 export function PTUAutoFight(){
@@ -237,6 +240,8 @@ export function PTUAutoFight(){
 		var damage_type=event.currentTarget.dataset.type;
 		var mode=event.currentTarget.dataset.mode;
 		var crit=event.currentTarget.dataset.crit;
+		let damageSoundFile = "";
+
 		for(let token of canvas.tokens.controlled)
 		{
 			let def = token.actor.data.data.stats.def.total
@@ -270,9 +275,12 @@ export function PTUAutoFight(){
 			if(crit=="true")
 			{
 				flavor = "Critical Hit! ";
-			}else
+				damageSoundFile = "Hit%20Super%20Effective.mp3";
+			}
+			else
 			{
 				flavor = "Hit! ";
+				damageSoundFile = "Hit%20Normal%20Damage.mp3";
 			}
 
 			let effectiveness = token.actor.data.data.effectiveness.All[damage_type];
@@ -326,6 +334,7 @@ export function PTUAutoFight(){
 			//token.actor.modifyTokenAttribute("health", final_effective_damage, true, true)
 			token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
 		}
+		AudioHelper.play({src: SoundDirectory+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 	};
 
 
@@ -1112,8 +1121,15 @@ export function PTUAutoFight(){
 				currentMoveDoubleStrike = true;
 			}
 
+			let STABBorderImage = "";
+
+			if(item.data.type == actor.data.data.typing[0] || item.data.type == actor.data.data.typing[1])
+			{
+				STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+			}
+
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-			buttons[currentid]={label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
+			buttons[currentid]={label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 			callback: async () => {
 				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				PerformFullAttack (actor,item);
@@ -1200,20 +1216,48 @@ export function PTUAutoFight(){
 		i++;
 	} // END DAMAGE MOVE LOOP
 
+	let menuButtonWidth = "333px";
 
-	buttons["struggleMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:333px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
+	buttons["struggleMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
 		callback: () => {
 
 			//PerformStruggleAttack ("Normal", "Physical");
 
 		  }};
 
-	buttons["maneuverMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:333px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
+	buttons["maneuverMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
 	callback: () => {
 
 		//PerformStruggleAttack ("Normal", "Physical");
 
 	}};
+
+	buttons["itemMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
+	callback: () => {
+
+		//PerformStruggleAttack ("Normal", "Physical");
+
+	}};
+
+	if(actor.data.type == "character")
+	{
+		buttons["pokeballMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
+		callback: () => {
+	
+			//PerformStruggleAttack ("Normal", "Physical");
+	
+		}};
+	
+	}
+	else
+	{
+		buttons["trainerMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Trainer 💬"+"</div></center>",
+		callback: () => {
+	
+			//PerformStruggleAttack ("Normal", "Physical");
+	
+		}};
+	}
 
 	for(let item of items)
 	{
@@ -1235,8 +1279,40 @@ export function PTUAutoFight(){
 			buttons[currentid]={label: "<center><div style='background-color:gray;color:black;border:2px solid darkgray;width:333px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+AbilityIcon+currentlabel+"</div></center>",
 				callback: async () => {
 					AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-					sendMoveMessage({move: item.data,templateType: MoveMessageTypes.DETAILS,category: "details", hasAC: (!isNaN(item.data.ac))
+
+
+					
+					sendMoveMessage({
+						move: item.data,
+						templateType: MoveMessageTypes.DETAILS,
+						category: "details", 
+						hasAC: (!isNaN(item.data.ac)),
+						isAbility: true
 					});
+
+					// sendMoveRollMessage(acRoll, acRoll2, {
+					// 	speaker: ChatMessage.getSpeaker({
+					// 		actor: actor
+					// 	}),
+					// 	move: move.data,
+					// 	damageRoll: damageRoll,
+					// 	damageRollTwoHits: damageRollTwoHits,
+					// 	critDamageRoll: critDamageRoll,
+					// 	critDamageRollOneHitOneCrit: critDamageRollOneHitOneCrit,
+					// 	critDamageRollTwoCrits: critDamageRollTwoCrits,
+					// 	templateType: MoveMessageTypes.FULL_ATTACK,
+					// 	crit: crit,
+					// 	crit2: crit2,
+					// 	hasAC: hasAC,
+					// 	hasExtraEffect: currentHasExtraEffect,
+					// 	extraEffectText: currentExtraEffectText,
+					// 	isUntyped: isUntyped,
+					// 	isFiveStrike: isFiveStrike,
+					// 	fiveStrikeHits: (fiveStrikeCount+1),
+					// 	isDoubleStrike: isDoubleStrike
+					// }).then(data => console.log(data));
+
+					
 			}
 			}
 		}
@@ -1414,6 +1490,7 @@ export function PTUAutoFight(){
 			let userHasTechnician = false;
 			let userHasAdaptability = false;
 			let fiveStrikeCount = 0;
+			let hasSTAB = false;
 
 			let currentHasExtraEffect = false;
 			let currentExtraEffectText = "";
@@ -1534,14 +1611,19 @@ export function PTUAutoFight(){
 
 			if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (move.data.damageBase <= 6) ) )
 			{
-				currentExtraEffectText = currentExtraEffectText+ "<br>Technician applies!";
+				currentExtraEffectText = currentExtraEffectText+ "<br>Technician applied!";
 				currentHasExtraEffect = true;
 			}
 
 			if(userHasAdaptability && (move.data.type == actor.data.data.typing[0] || move.data.type == actor.data.data.typing[1]) )
 			{
-				currentExtraEffectText = currentExtraEffectText+ "<br>Adaptability applies!";
+				currentExtraEffectText = currentExtraEffectText+ "<br>Adaptability applied!";
 				currentHasExtraEffect = true;
+			}
+
+			if(move.data.type == actor.data.data.typing[0] || move.data.type == actor.data.data.typing[1])
+			{
+				hasSTAB = true;
 			}
 
 			sendMoveRollMessage(acRoll, acRoll2, {
@@ -1563,7 +1645,8 @@ export function PTUAutoFight(){
 				isUntyped: isUntyped,
 				isFiveStrike: isFiveStrike,
 				fiveStrikeHits: (fiveStrikeCount+1),
-				isDoubleStrike: isDoubleStrike
+				isDoubleStrike: isDoubleStrike,
+				hasSTAB: hasSTAB
 			}).then(data => console.log(data));
 
 			var moveSoundFile = (move.data.name + ".mp3");
