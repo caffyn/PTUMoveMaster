@@ -4,16 +4,38 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	let current_token = game.combat.current.tokenId;
 	let current_token_species = canvas.tokens.get(current_token).actor.data.data.species;
 
-	let CryDirectory = "pokemon_cries/";
-	let SpeciesCryFilename;
 	if(current_token_species)
 	{
-		SpeciesCryFilename = current_token_species.toLowerCase() +".mp3";
-		AudioHelper.play({src: CryDirectory+SpeciesCryFilename, volume: 0.8, autoplay: true, loop: false}, true);
+		game.ptu.PlayPokemonCry(current_token_species);
 	}
 });
 
+// Hooks.on("hoverToken", async (token, update, options, userId) => {
+
+// 	console.log(token);
+// 	// let current_token_species = canvas.tokens.get(token).actor.data.data.species;
+
+// 	if(update) // Hover-on
+// 	{
+// 		console.log("Mouse has hovered the token.");
+// 		console.log(token.data);
+// 	}
+
+// 	if(!update) // Hover-off
+// 	{
+// 		console.log("Mouse has left the token.");
+// 	}
+// });
+
+// function PokedexCheck (actorData, targetData)   {
+// 	return new Roll('1d20-@ac+@acBonus', {
+// 		ac: (parseInt(moveData.ac) || 0),
+// 		acBonus: (parseInt(actorData.modifiers.acBonus) || 0)
+// 	})
+// };
+
 export function PTUAutoFight(){
+
 	var UseAlternateStyling = true;
 
 	var ShowTargetTypeEffectivenessIfKnown = true;
@@ -22,6 +44,7 @@ export function PTUAutoFight(){
 
 	var move_stage_changes = {
 		"Blank Template"  :   {
+			"roll-trigger": 20, // If roll-trigger is included in a move's entry here, the other effects will only trigger on a natural to-hit roll of that number or higher
 			"atk"   : 0,
 			"def"   : 0,
 			"spatk" : 0,
@@ -105,7 +128,7 @@ export function PTUAutoFight(){
 			"atk" : 6,
 			"pct-self-damage": 0.5,
 		},
-		"Growth"  :   {
+		"Growth"  :   { // TODO: Double these gains if in Sunny Weather
 			"atk" : 1,
 			"spatk" : 1,
 		},
@@ -168,6 +191,72 @@ export function PTUAutoFight(){
 			"atk" : 1,
 			"spd" : 2,
 		},
+		"Heal Order"  :   {
+			"pct-healing": 0.5,
+		},
+		"Silver Wind"  :   {
+			"roll-trigger": 19,
+			"atk"   : 1,
+			"def"   : 1,
+			"spatk" : 1,
+			"spdef" : 1,
+			"spd"   : 1,
+		},
+		"Moonlight"  :   {// TODO: The healing percent varies depending on the weather
+			"pct-healing": 0.5,
+		},
+		"Roost"  :   {
+			"pct-healing": 0.5,
+		},
+		"Ominous Wind"  :   {
+			"roll-trigger": 19,
+			"atk"   : 1,
+			"def"   : 1,
+			"spatk" : 1,
+			"spdef" : 1,
+			"spd"   : 1,
+		},
+		"Synthesis"  :   {// TODO: The healing percent varies depending on the weather
+			"pct-healing": 0.5,
+		},
+		"Double-Edge"  :   {
+			"pct-self-damage": 0.33333,
+		},
+		"Morning Sun"  :   {// TODO: The healing percent varies depending on the weather
+			"pct-healing": 0.5,
+		},
+		"Slack Off"  :   {
+			"pct-healing": 0.5,
+		},
+		"Substitute"  :   {
+			"pct-self-damage": 0.25,
+		},
+		"Rest"  :   {
+			"pct-healing": 1,
+		},
+		"Ancient Power"  :   {
+			"roll-trigger": 19,
+			"atk"   : 1,
+			"def"   : 1,
+			"spatk" : 1,
+			"spdef" : 1,
+			"spd"   : 1,
+		},
+		"Head Smash"  :   {
+			"pct-self-damage": 0.33333,
+		},
+		"Metal Claw"  :   {
+			"roll-trigger": 18,
+			"atk"   : 1,
+		},
+		"Meteor Mash"  :   {
+			"roll-trigger": 15,
+			"atk"   : 1,
+		},
+		"Steel Wing"  :   {
+			"roll-trigger": 15,
+			"def"   : 1,
+		},
 	};
 
 	const AtWillReadyMark = "∞";
@@ -195,9 +284,12 @@ export function PTUAutoFight(){
 	const ConeIcon = "🔱";
 	const LineIcon = "➡";
 
-	const SoundDirectory = "pokemon_sounds/";
+	const SoundDirectory = game.settings.get("ptu", "moveSoundDirectory");
+	const JingleDirectory = "pokemon_jingles/";
+	const NameVoiceLinesDirectory = "pokemon_names/";
 
 	const UIButtonClickSound = "buttonclickrelease.wav";
+	const UIPopupSound = "packopen_6_A_cardflip.wav";
 
 	const RefreshEOTMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
 	const RefreshSceneMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
@@ -352,6 +444,8 @@ export function PTUAutoFight(){
 
 
 	async function ChatWindow(actor){
+
+		AudioHelper.play({src: SoundDirectory+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 
 		let target = Array.from(game.user.targets)[0];
 		let targetTypingText = "";
@@ -734,7 +828,7 @@ export function PTUAutoFight(){
 			buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding-left: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 			callback: async () => {
 				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-				PerformFullAttack (actor,item);
+				let diceRoll = PerformFullAttack (actor,item);
 				if(game.combat == null)
 				{
 					var currentRound = 0;
@@ -793,21 +887,55 @@ export function PTUAutoFight(){
 				{
 					if(searched_move == item.name)
 					{
-						for (let searched_stat of stats)
+						if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
 						{
-							if (move_stage_changes[searched_move][searched_stat] != null)
+							let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+							console.log("EFFECT THRESHOLD"+effectThreshold);
+							console.log("DICE ROLL"+diceRoll);
+							if(diceRoll >= effectThreshold) // Effect Range Hit
 							{
-								adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+								console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
+								
+								for (let searched_stat of stats)
+								{
+									if (move_stage_changes[searched_move][searched_stat] != null)
+									{
+										adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+									}
+								}
+								if(move_stage_changes[searched_move]["pct-healing"] != null)
+								{
+									healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+								}
+								if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+								{
+									damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+								}
+							}
+							else // Effect Range Missed
+							{
+								console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
 							}
 						}
-						if(move_stage_changes[searched_move]["pct-healing"] != null)
+						else // No Effect Range
 						{
-							healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+							for (let searched_stat of stats)
+							{
+								if (move_stage_changes[searched_move][searched_stat] != null)
+								{
+									adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+								}
+							}
+							if(move_stage_changes[searched_move]["pct-healing"] != null)
+							{
+								healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+							}
+							if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+							{
+								damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+							}
 						}
-						if(move_stage_changes[searched_move]["pct-self-damage"] != null)
-						{
-							damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
-						}
+						
 					}
 				}
 
@@ -1123,16 +1251,19 @@ export function PTUAutoFight(){
 
 			let STABBorderImage = "";
 
-			if(item.data.type == actor.data.data.typing[0] || item.data.type == actor.data.data.typing[1])
+			if(actor.data.data.typing)
 			{
-				STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+				if(item.data.type == actor.data.data.typing[0] || item.data.type == actor.data.data.typing[1])
+				{
+					STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+				}
 			}
 
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
 			buttons[currentid]={label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 			callback: async () => {
 				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-				PerformFullAttack (actor,item);
+				let diceRoll = PerformFullAttack (actor,item);
 				if(game.combat == null)
 				{
 					var currentRound = 0;
@@ -1193,17 +1324,55 @@ export function PTUAutoFight(){
 				{
 					if(searched_move == item.name)
 					{
-						for (let searched_stat of stats)
+						if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
 						{
-							if (move_stage_changes[searched_move][searched_stat] != null)
+							let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+							console.log("EFFECT THRESHOLD"+effectThreshold);
+							console.log("DICE ROLL"+diceRoll);
+							if(diceRoll >= effectThreshold) // Effect Range Hit
 							{
-								adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+								console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
+								
+								for (let searched_stat of stats)
+								{
+									if (move_stage_changes[searched_move][searched_stat] != null)
+									{
+										adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+									}
+								}
+								if(move_stage_changes[searched_move]["pct-healing"] != null)
+								{
+									healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+								}
+								if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+								{
+									damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+								}
+							}
+							else // Effect Range Missed
+							{
+								console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
 							}
 						}
-						if(move_stage_changes[searched_move]["pct-healing"] != null)
+						else // No Effect Range
 						{
-							healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+							for (let searched_stat of stats)
+							{
+								if (move_stage_changes[searched_move][searched_stat] != null)
+								{
+									adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+								}
+							}
+							if(move_stage_changes[searched_move]["pct-healing"] != null)
+							{
+								healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+							}
+							if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+							{
+								damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+							}
 						}
+						
 					}
 				}
 
@@ -1672,7 +1841,8 @@ export function PTUAutoFight(){
 			moveSoundFile.replace(/ /g,"%20");
 			AudioHelper.play({src: SoundDirectory+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 			console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
-			};
+			return diceResult;
+		};
 
 	function PerformStruggleAttack (move) // TODO: Implement Struggles
 	{
