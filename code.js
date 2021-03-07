@@ -1,4 +1,29 @@
 
+/* -------------------------------------------- */
+/*  Module Setting Initialization               */
+/* -------------------------------------------- */
+
+function _loadModuleSettings() {
+	game.settings.register("PTUMoveMaster", "autoApplyInjuries", {
+	  name: "Automatically Apply Injuries",
+	  hint: "",
+	  scope: "world",
+	  config: true,
+	  type: String,
+	  choices: {
+		"true": "Automatically Apply Injuries Upon Applying Damage",
+		"false": "Don't Automatically Apply Injuries"
+	  },
+	  default: "true"
+	});
+} 
+
+Hooks.once('init', async function() 
+{
+	_loadModuleSettings();
+});
+
+
 Hooks.on("updateCombat", async (combat, update, options, userId) => {
 
 	let current_token = game.combat.current.tokenId;
@@ -52,7 +77,8 @@ export function PTUAutoFight(){
 			"spd"   : 0,
 			"accuracy": 0,
 			"pct-healing": 0,
-			"pct-self-damage": 0
+			"pct-self-damage": 0,
+			"crit-range": 20
 		},
 		"Calm Mind"  :   {
 			"spatk" : 1,
@@ -341,6 +367,20 @@ export function PTUAutoFight(){
 			let extraDR = 0;
 			let extraDRSource = "";
 
+			let targetHealthCurrent = token.actor.data.data.health.value;
+			let targetHealthMax = token.actor.data.data.health.max;
+	
+			let hitPoints50Pct = targetHealthMax*0.50;
+			let hitPoints0Pct = 0;
+			let hitPointsNegative50Pct = targetHealthMax*(-0.50);
+			let hitPointsNegative100Pct = targetHealthMax*(-1.00);
+			let hitPointsNegative150Pct = targetHealthMax*(-1.50);
+			let hitPointsNegative200Pct = targetHealthMax*(-2.00);
+	
+			let massiveDamageThreshold = hitPoints50Pct+1;
+
+			let injuryCount = 0;
+
 			var flavor;
 			var postEffectNotes = "";
 			var extraDRNotes = "";
@@ -425,6 +465,54 @@ export function PTUAutoFight(){
 
 			//token.actor.modifyTokenAttribute("health", final_effective_damage, true, true)
 			token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
+
+			if(game.settings.get("PTUMoveMaster", "autoApplyInjuries") == "true")
+			{
+				if(final_effective_damage >= massiveDamageThreshold)
+				{
+					injuryCount++;
+					chatMessage(token, token.actor.name + " suffered massive damage and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints50Pct) )
+				{
+					injuryCount++;
+					chatMessage(token, token.actor.name + " was damaged to below the 50% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints0Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints0Pct) )
+				{
+					injuryCount++;
+					chatMessage(token, token.actor.name + " was damaged to below the 0% health threshold and sustains an injury! "+token.actor.name+" has *fainted*!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative50Pct) )
+				{
+					injuryCount++;
+					chatMessage(token, token.actor.name + " was damaged to below the -50% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative100Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative100Pct) )
+				{
+					injuryCount++;
+					chatMessage(token, token.actor.name + " was damaged to below the -100% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative150Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative150Pct) )
+				{
+					injuryCount++;
+					chatMessage(token, token.actor.name + " was damaged to below the -150% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative200Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative200Pct) )
+				{
+					injuryCount++;
+					chatMessage(token, token.actor.name + " was damaged to below the -200% health threshold and sustains an injury! If using death rules, "+token.actor.name+" *dies*!");
+				}
+	
+				token.actor.update({'data.health.injuries': Number(token.actor.data.data.health.injuries + injuryCount) });
+			}
+			
 		}
 		AudioHelper.play({src: SoundDirectory+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 	};
@@ -595,7 +683,7 @@ export function PTUAutoFight(){
 
 		if(currentFrequency == "EOT")
 		{
-			// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+			console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
 
 			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 			{
@@ -605,7 +693,7 @@ export function PTUAutoFight(){
 			{
 				currentCooldownLabel = EOTReadyMark;
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
+			console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
 		if(currentFrequency == "Scene")
@@ -1006,7 +1094,7 @@ export function PTUAutoFight(){
 
 		if(currentFrequency == "EOT")
 		{
-			// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+			console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
 
 			if( Number(currentRound - currentLastRoundUsed) < 2 && (currentEncounterID == currentLastEncounterUsed) )
 			{
@@ -1016,7 +1104,7 @@ export function PTUAutoFight(){
 			{
 				currentCooldownLabel = EOTReadyMark;
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
+			console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
 		if(currentFrequency == "Scene")
@@ -1661,6 +1749,15 @@ export function PTUAutoFight(){
 			let fiveStrikeCount = 0;
 			let hasSTAB = false;
 
+			let actorType1 = null;
+			let actorType2 = null;
+
+			if(actor.data.data.typing)
+			{
+				actorType1 = actor.data.data.typing[0];
+				actorType2 = actor.data.data.typing[1];
+			}
+
 			let currentHasExtraEffect = false;
 			let currentExtraEffectText = "";
 
@@ -1784,13 +1881,13 @@ export function PTUAutoFight(){
 				currentHasExtraEffect = true;
 			}
 
-			if(userHasAdaptability && (move.data.type == actor.data.data.typing[0] || move.data.type == actor.data.data.typing[1]) )
+			if(userHasAdaptability && (move.data.type == actorType1 || move.data.type == actorType2) )
 			{
 				currentExtraEffectText = currentExtraEffectText+ "<br>Adaptability applied!";
 				currentHasExtraEffect = true;
 			}
 
-			if(move.data.type == actor.data.data.typing[0] || move.data.type == actor.data.data.typing[1])
+			if(move.data.type == actorType1 || move.data.type == actorType2)
 			{
 				hasSTAB = true;
 			}
@@ -1928,6 +2025,14 @@ export function PTUAutoFight(){
 			let dbRollOriginal;
 			let technicianDBBonus = 0;
 			let STABBonus = 2;
+			let actorType1 = null;
+			let actorType2 = null;
+
+			if(actorData.typing)
+			{
+				actorType1 = actorData.typing[0];
+				actorType2 = actorData.typing[1];
+			}
 
 			if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
 			{
@@ -1954,12 +2059,12 @@ export function PTUAutoFight(){
 			    console.log("db_from_stages = " + db_from_stages );
 
 				damageBase = (
-					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					moveData.type == actorType1 || moveData.type == actorType2) ? 
 					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
 					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
 
 				damageBaseOriginal = (
-					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					moveData.type == actorType1 || moveData.type == actorType2) ? 
 					Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
 					Math.min(db + db_from_stages, 20) + technicianDBBonus;
 				
@@ -1979,12 +2084,12 @@ export function PTUAutoFight(){
 			    console.log("db_from_stages = " + db_from_stages );
 
 				damageBase = (
-					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					moveData.type == actorType1 || moveData.type == actorType2) ? 
 					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + STABBonus + technicianDBBonus : 
 					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + technicianDBBonus;
 
 				damageBaseOriginal = (
-					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					moveData.type == actorType1 || moveData.type == actorType2) ? 
 					Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
 					Math.min(db + db_from_stages, 20) + technicianDBBonus;
 				
@@ -1994,12 +2099,12 @@ export function PTUAutoFight(){
 			else
 			{
 				damageBase = (
-					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					moveData.type == actorType1 || moveData.type == actorType2) ? 
 					db*(hitCount + fiveStrikeCount) + STABBonus + technicianDBBonus : 
 					db*(hitCount + fiveStrikeCount) + technicianDBBonus;
 
 				damageBaseOriginal = (
-					moveData.type == actorData.typing[0] || moveData.type == actorData.typing[1]) ? 
+					moveData.type == actorType1 || moveData.type == actorType2) ? 
 					db + STABBonus + technicianDBBonus : 
 					db + technicianDBBonus;
 
