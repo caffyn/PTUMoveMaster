@@ -8,11 +8,7 @@
             </div>
         </div>
         
-        {{#if hasSTAB}}
-        {{#if damageRoll}}
-            <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border_Roll.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
-        {{/if}}
-        {{/if}}
+
 
         <div class="swsh-header" style="padding: 0px ! important;background-color: #b3b3b3;">
             {{#if isAbility}}
@@ -28,6 +24,8 @@
                 </div>
             {{/if}}
         </div>
+
+        
 
         {{#if isFiveStrike}}
         <div class="swsh-header" style="padding: 0px ! important;">
@@ -142,6 +140,19 @@
                         <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DamageDivider_Blend50.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
                     </div>
                 </div>
+            
+                {{#if hasSTAB}}
+                {{#if damageRoll}}
+                    <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border_Roll.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                {{/if}}
+                {{/if}}
+
+                {{#if damageRoll}}
+                    <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB{{finalDB}}.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                {{/if}}
+
+                
+
             <div class="swsh-body" style="background-color: #b3b3b3;">
                 <div class="dice-roll w-100" style="padding: 5px 0px; font-size: 10px ! important;">
                     <div class="dice-result" style="padding: 0px 0px; font-size: 10px ! important;">

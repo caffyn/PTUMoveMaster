@@ -5,7 +5,7 @@
 
 function _loadModuleSettings() {
 	game.settings.register("PTUMoveMaster", "autoApplyInjuries", {
-	  name: "Automatically Apply Injuries",
+	  name: "GM Setting: Automatically Apply Injuries",
 	  hint: "",
 	  scope: "world",
 	  config: true,
@@ -16,6 +16,19 @@ function _loadModuleSettings() {
 	  },
 	  default: "true"
 	});
+
+	game.settings.register("PTUMoveMaster", "showEffectivenessText", {
+		name: "Player Setting: Show Effectiveness as Text",
+		hint: "",
+		scope: "client",
+		config: true,
+		type: String,
+		choices: {
+		  "true": "Show Effectiveness as Text",
+		  "false": "Show Effectiveness as Color Only"
+		},
+		default: "true"
+	  });
 } 
 
 Hooks.once('init', async function() 
@@ -78,7 +91,8 @@ export function PTUAutoFight(){
 			"accuracy": 0,
 			"pct-healing": 0,
 			"pct-self-damage": 0,
-			"crit-range": 20
+			"crit-range": 20,
+			"effect-range": 20
 		},
 		"Calm Mind"  :   {
 			"spatk" : 1,
@@ -162,6 +176,9 @@ export function PTUAutoFight(){
 			"def" : 1,
 		},
 		"Howl"  :   {
+			"atk" : 1,
+		},
+		"Howl [OG]"  :   {
 			"atk" : 1,
 		},
 		"Sharpen"  :   {
@@ -285,16 +302,36 @@ export function PTUAutoFight(){
 		},
 	};
 
-	const AtWillReadyMark = "∞";
+	const ButtonHeight = 85;
+	const RangeFontSize = 14;
+	const RangeIconFontSizeOffset = (8);
+	const MoveButtonBackgroundColor = "#333333";
+	const MoveButtonTextColor = "#cccccc";
 
-	const SceneReadyMark = "✅";
-	const SceneExpendedMark = "❌";
+	const TypeIconWidth = 78;
+	const EffectivenessBorderThickness = 5;
 
-	const EOTReadyMark = "🔳";
-	const EOTCooldownMark = "⏳";
+	const TypeIconSuffix = "IC.png";
+	const CategoryIconSuffix = ".png";
 
-	const DailyReadyMark = "🔆";
-	const DailyExpendedMark = "💤";
+	// const TypeIconPath = "systems/ptu/css/images/types/";
+	// const CategoryIconPath = "systems/ptu/css/images/categories/";
+
+	const AlternateIconPath = "modules/PTUMoveMaster/images/icons/";
+
+	// const AtWillReadyMark = "∞";
+
+	// const SceneReadyMark = "✅";
+	// const SceneExpendedMark = "❌";
+
+	// const EOTReadyMark = "🔳";
+	// const EOTCooldownMark = "⏳";
+
+	// // const DailyReadyMark = "🔆";
+	// const DailyReadyMark = "<img title='Daily (Ready)' src='" + AlternateIconPath + "daily_ready" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	// // const DailyExpendedMark = "💤";
+	// const DailyExpendedMark = "<img title='Daily (Ready)' src='" + AlternateIconPath + "daily_expended" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+
 
 	const ResetEOTMark = "🔁⏳";
 	const ResetSceneMark = "🔁❌";
@@ -302,13 +339,27 @@ export function PTUAutoFight(){
 
 	const AbilityIcon = "Ability: ";
 
-	const RangeIcon = "🎯";
-	const MeleeIcon = "⚔";
-	const SelfIcon = "Self";
-	const BurstIcon = "💢";
-	const BlastIcon = "💥";
-	const ConeIcon = "🔱";
-	const LineIcon = "➡";
+
+
+	const RangeIcon = "<img title='Ranged' src='" + AlternateIconPath + "ranged" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const MeleeIcon = "<img title='Melee' src='" + AlternateIconPath + "melee" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const SelfIcon = "<img title='Self' src='" + AlternateIconPath + "self" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const BurstIcon = "<img title='Burst' src='" + AlternateIconPath + "burst" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const BlastIcon = "<img title='Blast' src='" + AlternateIconPath + "blast" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const ConeIcon = "<img title='Cone' src='" + AlternateIconPath + "cone" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const LineIcon = "<img title='Line' src='" + AlternateIconPath + "line" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const BlessingIcon = "<img title='Blessing' src='" + AlternateIconPath + "blessing" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const FriendlyIcon = "<img title='Friendly' src='" + AlternateIconPath + "friendly" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const SonicIcon = "<img title='Sonic' src='" + AlternateIconPath + "sonic" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const SocialIcon = "<img title='Social' src='" + AlternateIconPath + "social" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const InterruptIcon = "<img title='Interrupt' src='" + AlternateIconPath + "interrupt" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const ShieldIcon = "<img title='Shield' src='" + AlternateIconPath + "shield" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const TriggerIcon = "<img title='Trigger' src='" + AlternateIconPath + "trigger" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const HealingIcon = "<img title='Healing' src='" + AlternateIconPath + "healing" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const DoubleStrikeIcon = "<img title='Double Strike' src='" + AlternateIconPath + "doublestrike_icon" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+	const FiveStrikeIcon = "<img title='Five Strike' src='" + AlternateIconPath + "fivestrike_icon" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+
+
 
 	const SoundDirectory = game.settings.get("ptu", "moveSoundDirectory");
 	const JingleDirectory = "pokemon_jingles/";
@@ -327,17 +378,9 @@ export function PTUAutoFight(){
 	const heal_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
 	const damage_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
 
-	const TypeIconPath = "systems/ptu/css/images/types/";
-	const CategoryIconPath = "systems/ptu/css/images/categories/";
-
-	const AlternateIconPath = "modules/PTUMoveMaster/images/icons/";
-
 	const PhysicalIcon = "Physical.png";
 	const SpecialIcon = "Special.png";
 	const StatusIcon = "Status.png";
-
-	const TypeIconSuffix = "IC.png";
-	const CategoryIconSuffix = ".png";
 
 	const DISPOSITION_HOSTILE = -1;
 	const DISPOSITION_NEUTRAL = 0;
@@ -366,20 +409,6 @@ export function PTUAutoFight(){
 			let spdef = token.actor.data.data.stats.spdef.total
 			let extraDR = 0;
 			let extraDRSource = "";
-
-			let targetHealthCurrent = token.actor.data.data.health.value;
-			let targetHealthMax = token.actor.data.data.health.max;
-	
-			let hitPoints50Pct = targetHealthMax*0.50;
-			let hitPoints0Pct = 0;
-			let hitPointsNegative50Pct = targetHealthMax*(-0.50);
-			let hitPointsNegative100Pct = targetHealthMax*(-1.00);
-			let hitPointsNegative150Pct = targetHealthMax*(-1.50);
-			let hitPointsNegative200Pct = targetHealthMax*(-2.00);
-	
-			let massiveDamageThreshold = hitPoints50Pct+1;
-
-			let injuryCount = 0;
 
 			var flavor;
 			var postEffectNotes = "";
@@ -463,55 +492,10 @@ export function PTUAutoFight(){
 
 			chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
-			//token.actor.modifyTokenAttribute("health", final_effective_damage, true, true)
-			token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
+			// token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
+			token.actor.modifyTokenAttribute("health", (-final_effective_damage), true, true);
 
-			if(game.settings.get("PTUMoveMaster", "autoApplyInjuries") == "true")
-			{
-				if(final_effective_damage >= massiveDamageThreshold)
-				{
-					injuryCount++;
-					chatMessage(token, token.actor.name + " suffered massive damage and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints50Pct) )
-				{
-					injuryCount++;
-					chatMessage(token, token.actor.name + " was damaged to below the 50% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints0Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints0Pct) )
-				{
-					injuryCount++;
-					chatMessage(token, token.actor.name + " was damaged to below the 0% health threshold and sustains an injury! "+token.actor.name+" has *fainted*!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative50Pct) )
-				{
-					injuryCount++;
-					chatMessage(token, token.actor.name + " was damaged to below the -50% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative100Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative100Pct) )
-				{
-					injuryCount++;
-					chatMessage(token, token.actor.name + " was damaged to below the -100% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative150Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative150Pct) )
-				{
-					injuryCount++;
-					chatMessage(token, token.actor.name + " was damaged to below the -150% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative200Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative200Pct) )
-				{
-					injuryCount++;
-					chatMessage(token, token.actor.name + " was damaged to below the -200% health threshold and sustains an injury! If using death rules, "+token.actor.name+" *dies*!");
-				}
-	
-				token.actor.update({'data.health.injuries': Number(token.actor.data.data.health.injuries + injuryCount) });
-			}
+			ApplyInjuries(token.actor, final_effective_damage);
 			
 		}
 		AudioHelper.play({src: SoundDirectory+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
@@ -632,8 +616,12 @@ export function PTUAutoFight(){
 		var currentEffectivenessLabel = "";
 
 		var currentFrequency=item.data.frequency;
-
-		if(item.data.LastRoundUsed == null)
+		if(!currentFrequency)
+		{
+			currentFrequency = "";
+		}
+		
+		if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
 		{
 			for(let search_item of item_entities)
 			{
@@ -641,24 +629,12 @@ export function PTUAutoFight(){
 				{
 					console.log("updating item",search_item);
 					await search_item.update({ "data.LastRoundUsed" : -2});
+					await search_item.update({ "data.LastEncounterUsed": 0});
 				}
 			}
 		}
 
 		var currentLastRoundUsed = item.data.LastRoundUsed;
-
-		if(item.data.LastEncounterUsed == null)
-		{
-			for(let search_item of item_entities)
-			{
-				if (search_item._id == item._id)
-				{
-					await search_item.update({ "data.LastEncounterUsed": 0});
-				}
-			}
-			// item.update({ "data.LastEncounterUsed": Number(0)});
-		}
-
 		var currentLastEncounterUsed = item.data.LastEncounterUsed;
 
 		if(item.data.UseCount == null)
@@ -670,144 +646,130 @@ export function PTUAutoFight(){
 					await search_item.update({ "data.UseCount": 0});
 				}
 			}
-			// item.update({ "data.UseCount": Number(0)});
 		}
 
 		var currentUseCount = item.data.UseCount;
+		var cooldownFileSuffix = "";
 
+		if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
+			{
+				cooldownFileSuffix = "_CD"
+			}
 
 		if(currentFrequency == "At-Will" || currentFrequency == "")
 		{
-			currentCooldownLabel = AtWillReadyMark;
+			currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 		}
 
-		if(currentFrequency == "EOT")
+		else if(currentFrequency == "EOT")
 		{
 			console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
 
 			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 			{
-				currentCooldownLabel = EOTCooldownMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = EOTReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Scene")
+		else if(currentFrequency == "Scene")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 1 )
 			{
-				currentCooldownLabel = SceneExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Scene x2")
+		else if(currentFrequency == "Scene x2")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 2 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = SceneReadyMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Scene x3")
+		else if(currentFrequency == "Scene x3")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 3 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneExpendedMark+SceneExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 2 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneExpendedMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneReadyMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = SceneReadyMark+SceneReadyMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Daily")
+		else if(currentFrequency == "Daily")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 1 )
 			{
-				currentCooldownLabel = DailyExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Daily x2")
+		else if(currentFrequency == "Daily x2")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 2 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = DailyReadyMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Daily x3")
+		else if(currentFrequency == "Daily x3")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 3 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyExpendedMark+DailyExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 2 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyExpendedMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyReadyMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = DailyReadyMark+DailyReadyMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
 		if(currentlabel == ""){
@@ -817,6 +779,7 @@ export function PTUAutoFight(){
 		var currentCategory=item.data.category;
 		var effectivenessBackgroundColor = "darkgrey"
 		var effectivenessTextColor = "black";
+		var effectivenessText = "";
 		if(currenttype=="move" && (currentCategory == "Status"))
 		{
 			if( ShowTargetTypeEffectivenessIfKnown && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
@@ -826,11 +789,11 @@ export function PTUAutoFight(){
 					currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
 					if (effectiveness[item.data.type] == 0.5)
 					{
-						effectivenessBackgroundColor = "pink";
+						effectivenessBackgroundColor = "#cc6666";
 					}
 					else if (effectiveness[item.data.type] == 1)
 					{
-						effectivenessBackgroundColor = "lightgrey";
+						effectivenessBackgroundColor = "white";
 						effectivenessTextColor = "black";
 					}
 					else if (effectiveness[item.data.type] == 0.25)
@@ -850,7 +813,7 @@ export function PTUAutoFight(){
 					}
 					else if (effectiveness[item.data.type] == 1.5)
 					{
-						effectivenessBackgroundColor = "lightblue";
+						effectivenessBackgroundColor = "#6699cc";//"#3399ff";
 						effectivenessTextColor = "black";
 					}
 					else if (effectiveness[item.data.type] > 1.5)
@@ -858,14 +821,18 @@ export function PTUAutoFight(){
 						effectivenessBackgroundColor = "blue";
 						effectivenessTextColor = "white";
 					}
+					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
+					{
+						effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
+					}
 				}
 			}
 
-			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
+			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
 			{
 				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
-				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
+				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			}
 
 			let currentMoveRange = item.data.range;
@@ -874,32 +841,41 @@ export function PTUAutoFight(){
 
 			if (currentMoveRange != "")
 			{
-				// console.log("currentMoveRange"+currentMoveRange);
-				// console.log(currentMoveRange.slice( 0, currentMoveRange.search(",")));
-
-				if(currentMoveRange.search("Self") > -1)
+				if(currentMoveRange.search("See Effect") > -1)
 				{
-					currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+4);
+					currentMoveRangeIcon = currentMoveRange;
+				}
+				else if(currentMoveRange.search("Blessing") > -1)
+				{
+					currentMoveRangeIcon = BlessingIcon + currentMoveRange.slice(currentMoveRange.search("Blessing")+9).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Self") > -1)
+				{
+					currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+5).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Burst") > -1)
 				{
-					currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6);
+					console.log("currentMoveRange = "+currentMoveRange);
+					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
+					currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
+					console.log("currentMoveRange = "+currentMoveRange);
+					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
 				}
 				else if(currentMoveRange.search("Cone") > -1)
 				{
-					currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5);
+					currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Line") > -1)
 				{
-					currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5);
+					currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Close Blast") > -1)
 				{
-					currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9);
+					currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Ranged Blast") > -1)
 				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13);
+					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Melee") > -1)
 				{
@@ -907,13 +883,95 @@ export function PTUAutoFight(){
 				}
 				else
 				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(","));
+					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")).replace(/[, ]+/g, " ").trim();
 				}
+
+				if(currentMoveRange.search("Healing") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Healing", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Healing", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + HealingIcon;
+				}
+
+				if(currentMoveRange.search("Friendly") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Friendly", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Friendly", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FriendlyIcon;
+				}
+
+				if(currentMoveRange.search("Sonic") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Sonic", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Sonic", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + SonicIcon;
+				}
+
+				if(currentMoveRange.search("Interrupt") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Interrupt", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Interrupt", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + InterruptIcon;
+				}
+				
+				if(currentMoveRange.search("Shield") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Shield", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Shield", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + ShieldIcon;
+				}
+
+				if(currentMoveRange.search("Trigger") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Trigger", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Trigger", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + TriggerIcon;
+				}
+
+				if(currentMoveRange.search("Social") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Social", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Social", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + SocialIcon;
+				}
+
+				if(currentMoveRange.search("Five Strike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Five Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Five Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Fivestrike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Fivestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Fivestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Double Strike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Double Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Double Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Doublestrike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Doublestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+				}
+
+				console.log("FINAL currentMoveRange = "+currentMoveRange);
+				console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
 			}
 
 
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-			buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding-left: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
+			buttons[currentid]={
+				style:"padding-left: 0px;border-right-width: 0px;border-bottom-width: 0px;border-left-width: 0px;border-top-width: 0px;margin-right: 0px;",
+				label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+ButtonHeight+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 			callback: async () => {
 				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				let diceRoll = PerformFullAttack (actor,item);
@@ -993,11 +1051,11 @@ export function PTUAutoFight(){
 								}
 								if(move_stage_changes[searched_move]["pct-healing"] != null)
 								{
-									healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+									healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 								}
 								if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 								{
-									damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+									damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 								}
 							}
 							else // Effect Range Missed
@@ -1016,11 +1074,11 @@ export function PTUAutoFight(){
 							}
 							if(move_stage_changes[searched_move]["pct-healing"] != null)
 							{
-								healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+								healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 							}
 							if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 							{
-								damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+								damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 							}
 						}
 						
@@ -1044,32 +1102,25 @@ export function PTUAutoFight(){
 		var currentEffectivenessLabel = "";
 
 		var currentFrequency=item.data.frequency;
-
-		if(item.data.LastRoundUsed == null)
+		if(!currentFrequency)
+		{
+			currentFrequency = "";
+		}
+		
+		if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
 		{
 			for(let search_item of item_entities)
 			{
 				if (search_item._id == item._id)
 				{
+					console.log("updating item",search_item);
 					await search_item.update({ "data.LastRoundUsed" : -2});
+					await search_item.update({ "data.LastEncounterUsed": 0});
 				}
 			}
 		}
 
 		var currentLastRoundUsed = item.data.LastRoundUsed;
-
-		if(item.data.LastEncounterUsed == null)
-		{
-			for(let search_item of item_entities)
-			{
-				if (search_item._id == item._id)
-				{
-					await search_item.update({ "data.LastEncounterUsed": 0});
-				}
-			}
-			// item.update({ "data.LastEncounterUsed": Number(0)});
-		}
-
 		var currentLastEncounterUsed = item.data.LastEncounterUsed;
 
 		if(item.data.UseCount == null)
@@ -1085,140 +1136,127 @@ export function PTUAutoFight(){
 		}
 
 		var currentUseCount = item.data.UseCount;
+		var cooldownFileSuffix = "";
 
+		if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
+			{
+				cooldownFileSuffix = "_CD"
+			}
 
 		if(currentFrequency == "At-Will" || currentFrequency == "")
 		{
-			currentCooldownLabel = AtWillReadyMark;
+			currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 		}
 
-		if(currentFrequency == "EOT")
+		else if(currentFrequency == "EOT")
 		{
 			console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
 
-			if( Number(currentRound - currentLastRoundUsed) < 2 && (currentEncounterID == currentLastEncounterUsed) )
+			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 			{
-				currentCooldownLabel = EOTCooldownMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = EOTReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Scene")
+		else if(currentFrequency == "Scene")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 1 )
 			{
-				currentCooldownLabel = SceneExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Scene x2")
+		else if(currentFrequency == "Scene x2")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 2 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = SceneReadyMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Scene x3")
+		else if(currentFrequency == "Scene x3")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 3 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneExpendedMark+SceneExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 2 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneExpendedMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = SceneExpendedMark+SceneReadyMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = SceneReadyMark+SceneReadyMark+SceneReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Daily")
+		else if(currentFrequency == "Daily")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 1 )
 			{
-				currentCooldownLabel = DailyExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Daily x2")
+		else if(currentFrequency == "Daily x2")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 2 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = DailyReadyMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
-		if(currentFrequency == "Daily x3")
+		else if(currentFrequency == "Daily x3")
 		{
-			// console.log(item.name + " data.UseCount = " + item.data.UseCount);
-
 			if( Number(currentUseCount) >= 3 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyExpendedMark+DailyExpendedMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 2 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyExpendedMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else if( Number(currentUseCount) == 1 )
 			{
-				currentCooldownLabel = DailyExpendedMark+DailyReadyMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
 			else
 			{
-				currentCooldownLabel = DailyReadyMark+DailyReadyMark+DailyReadyMark;
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 			}
-			// console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 		}
 
 		if(currentlabel == ""){
@@ -1228,6 +1266,7 @@ export function PTUAutoFight(){
 		var currentCategory = item.data.category;
 		var effectivenessBackgroundColor = "darkgrey"
 		var effectivenessTextColor = "black";
+		var effectivenessText = "";
 		if(currenttype=="move" && (currentCategory == "Physical" || currentCategory == "Special"))
 		{
 			if( ShowTargetTypeEffectivenessIfKnown && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
@@ -1237,11 +1276,11 @@ export function PTUAutoFight(){
 					currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
 					if (effectiveness[item.data.type] == 0.5)
 					{
-						effectivenessBackgroundColor = "pink";
+						effectivenessBackgroundColor = "#cc6666";
 					}
 					else if (effectiveness[item.data.type] == 1)
 					{
-						effectivenessBackgroundColor = "lightgrey";
+						effectivenessBackgroundColor = "white";
 						effectivenessTextColor = "black";
 					}
 					else if (effectiveness[item.data.type] == 0.25)
@@ -1261,7 +1300,7 @@ export function PTUAutoFight(){
 					}
 					else if (effectiveness[item.data.type] == 1.5)
 					{
-						effectivenessBackgroundColor = "lightblue";
+						effectivenessBackgroundColor = "#6699cc";//"#3399ff";
 						effectivenessTextColor = "black";
 					}
 					else if (effectiveness[item.data.type] > 1.5)
@@ -1269,14 +1308,18 @@ export function PTUAutoFight(){
 						effectivenessBackgroundColor = "blue";
 						effectivenessTextColor = "white";
 					}
+					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
+					{
+						effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
+					}
 				}
 			}
 
-			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
+			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
 			{
 				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
-				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' width=80px height=auto></img width=80px height=auto></div>";
+				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			}
 
 			let currentMoveRange = item.data.range;
@@ -1288,32 +1331,41 @@ export function PTUAutoFight(){
 
 			if (currentMoveRange != "")
 			{
-				// console.log("currentMoveRange"+currentMoveRange);
-				// console.log(currentMoveRange.slice( 0, currentMoveRange.search(",")));
-
-				if(currentMoveRange.search("Self") > -1)
+				if(currentMoveRange.search("See Effect") > -1)
 				{
-					currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+4);
+					currentMoveRangeIcon = currentMoveRange;
+				}
+				else if(currentMoveRange.search("Blessing") > -1)
+				{
+					currentMoveRangeIcon = BlessingIcon + currentMoveRange.slice(currentMoveRange.search("Blessing")+9).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Self") > -1)
+				{
+					currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+5).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Burst") > -1)
 				{
-					currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6);
+					console.log("currentMoveRange = "+currentMoveRange);
+					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
+					currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
+					console.log("currentMoveRange = "+currentMoveRange);
+					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
 				}
 				else if(currentMoveRange.search("Cone") > -1)
 				{
-					currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5);
+					currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Line") > -1)
 				{
-					currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5);
+					currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Close Blast") > -1)
 				{
-					currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9);
+					currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Ranged Blast") > -1)
 				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13);
+					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13).replace(/[, ]+/g, " ").trim();
 				}
 				else if(currentMoveRange.search("Melee") > -1)
 				{
@@ -1321,8 +1373,88 @@ export function PTUAutoFight(){
 				}
 				else
 				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(","));
+					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")).replace(/[, ]+/g, " ").trim();
 				}
+
+				if(currentMoveRange.search("Healing") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Healing", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Healing", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + HealingIcon;
+				}
+
+				if(currentMoveRange.search("Friendly") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Friendly", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Friendly", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FriendlyIcon;
+				}
+
+				if(currentMoveRange.search("Sonic") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Sonic", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Sonic", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + SonicIcon;
+				}
+
+				if(currentMoveRange.search("Interrupt") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Interrupt", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Interrupt", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + InterruptIcon;
+				}
+				
+				if(currentMoveRange.search("Shield") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Shield", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Shield", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + ShieldIcon;
+				}
+
+				if(currentMoveRange.search("Trigger") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Trigger", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Trigger", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + TriggerIcon;
+				}
+
+				if(currentMoveRange.search("Social") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Social", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Social", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + SocialIcon;
+				}
+
+				if(currentMoveRange.search("Five Strike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Five Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Five Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Fivestrike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Fivestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Fivestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Double Strike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Double Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Double Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Doublestrike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Doublestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+				}
+
+				console.log("FINAL currentMoveRange = "+currentMoveRange);
+				console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
 			}
 
 			if(currentMoveRange.search("Five Strike") > -1)
@@ -1338,20 +1470,170 @@ export function PTUAutoFight(){
 			}
 
 			let STABBorderImage = "";
+			let DBBorderImage = "";
+			let finalDB = 0;
+			let actorData = actor.data.data;
+			let moveData = item.data;
+
+			let isFiveStrike = false;
+			let isDoubleStrike = false;
+			let userHasTechnician = false;
+			let userHasAdaptability = false;
+			let fiveStrikeCount = 0;
+			let hasSTAB = false;
+			let hitCount = 1;
+
+			let actorType1 = null;
+			let actorType2 = null;
+
+			if(actor.data.data.typing)
+			{
+				actorType1 = actor.data.data.typing[0];
+				actorType2 = actor.data.data.typing[1];
+			}
+
+			let currentHasExtraEffect = false;
+			let currentExtraEffectText = "";
+
+			for(let search_item of actor.items)
+			{
+				// console.log(search_item.name);
+				if(search_item.name == "Technician")
+				{
+					userHasTechnician = true;
+				}
+				if(search_item.name == "Adaptability")
+				{
+					userHasAdaptability = true;
+				}
+			}
+
+			if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
+			{
+				let db = parseInt(moveData.damageBase);
+				let damageBase;
+				let damageBaseOriginal;
+				let dbRoll;
+				let dbRollOriginal;
+				let technicianDBBonus = 0;
+				let STABBonus = 2;
+				let actorType1 = null;
+				let actorType2 = null;
+	
+				if(actorData.typing)
+				{
+					actorType1 = actorData.typing[0];
+					actorType2 = actorData.typing[1];
+				}
+	
+				if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
+				{
+					console.log("DEBUG: TECHNICIAN APPLIES");
+					technicianDBBonus = 2;
+				}
+	
+				if(userHasAdaptability)
+				{
+					console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
+					STABBonus = 3;
+				}
+
+				if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
+				{
+					console.log("DEBUG: STORED POWER ROLLED!")
+					let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
+					let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
+					let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
+					let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
+					let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
+
+					let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
+					console.log("db_from_stages = " + db_from_stages );
+
+					damageBase = (
+						moveData.type == actorType1 || moveData.type == actorType2) ? 
+						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
+
+					damageBaseOriginal = (
+						moveData.type == actorType1 || moveData.type == actorType2) ? 
+						Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+						Math.min(db + db_from_stages, 20) + technicianDBBonus;
+					
+					dbRoll = game.ptu.DbData[damageBase];
+					dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+				}
+				else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
+				{
+					console.log("DEBUG: PUNISHMENT ROLLED!")
+					let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
+					let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
+					let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
+					let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
+					let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
+
+					let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
+					console.log("db_from_stages = " + db_from_stages );
+
+					damageBase = (
+						moveData.type == actorType1 || moveData.type == actorType2) ? 
+						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + STABBonus + technicianDBBonus : 
+						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + technicianDBBonus;
+
+					damageBaseOriginal = (
+						moveData.type == actorType1 || moveData.type == actorType2) ? 
+						Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+						Math.min(db + db_from_stages, 20) + technicianDBBonus;
+					
+					dbRoll = game.ptu.DbData[damageBase];
+					dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+				}
+				else
+				{
+					damageBase = (
+						moveData.type == actorType1 || moveData.type == actorType2) ? 
+						db*(hitCount + fiveStrikeCount) + STABBonus + technicianDBBonus : 
+						db*(hitCount + fiveStrikeCount) + technicianDBBonus;
+
+					damageBaseOriginal = (
+						moveData.type == actorType1 || moveData.type == actorType2) ? 
+						db + STABBonus + technicianDBBonus : 
+						db + technicianDBBonus;
+
+					console.log("DEBUG: db = " + db);
+					console.log("DEBUG: STABBonus = " + STABBonus);
+					console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
+
+					dbRoll = game.ptu.DbData[damageBase];
+					dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+				}
+
+				console.log("damageBase = " + damageBase);
+				console.log("damageBaseOriginal = " + damageBaseOriginal);
+				finalDB = damageBase;
+
+				DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+finalDB+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+			}
+			
+			// if(moveData.damageBase)
+			// {
+			// 	DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+damageBase+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+			// }
 
 			if(actor.data.data.typing)
 			{
 				if(item.data.type == actor.data.data.typing[0] || item.data.type == actor.data.data.typing[1])
 				{
-					STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+					STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: 1px; padding: 0px ! important;"></img></span></div>';
 				}
 			}
 
 			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-			buttons[currentid]={label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
+			buttons[currentid]={label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight+3)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+				//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 			callback: async () => {
 				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-				let diceRoll = PerformFullAttack (actor,item);
+				let diceRoll = PerformFullAttack (actor,item,finalDB);
 				if(game.combat == null)
 				{
 					var currentRound = 0;
@@ -1430,11 +1712,11 @@ export function PTUAutoFight(){
 								}
 								if(move_stage_changes[searched_move]["pct-healing"] != null)
 								{
-									healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+									healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 								}
 								if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 								{
-									damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+									damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 								}
 							}
 							else // Effect Range Missed
@@ -1453,11 +1735,11 @@ export function PTUAutoFight(){
 							}
 							if(move_stage_changes[searched_move]["pct-healing"] != null)
 							{
-								healActor(actor,move_stage_changes[searched_move]["pct-healing"]);
+								healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 							}
 							if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 							{
-								damageActor(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+								damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 							}
 						}
 						
@@ -1652,7 +1934,7 @@ export function PTUAutoFight(){
 		//   <div>Whisper to player?<input name="whisper" type="checkbox"/></div>
 		//   <div">Player name:<select name="player">${dialogOptions}</select></div>
 		//   `,
-		  content: "<center><div><h1>Use A Move!</h1></div><div style='font-family:Modesto Condensed;font-size:20px'>"+AtWillReadyMark+"At-Will / "+EOTReadyMark+"EOT / "+SceneReadyMark+"Scene / "+DailyReadyMark+"Daily</div><div style='font-family:Modesto Condensed;font-size:20px'>"+MeleeIcon+"Melee / "+RangeIcon+"Ranged / "+BurstIcon+"Burst / "+ConeIcon+"Cone / "+LineIcon+"Line / "+BlastIcon+"Blast</div><div style='font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2><div><center>",
+		  content: "<center><div><h1>Use A Move!</h1></div><div style='font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2><div><center>",
 		  buttons: buttons
 		});
 		
@@ -1712,22 +1994,28 @@ export function PTUAutoFight(){
 			chatMessage(actor, actor.name + ' '+ stat +' Stage +'+ change +'!');
 		}
 
-		function healActor(actor,pct_healing)
+		function healActorPercent(actor,pct_healing)
 		{
 			AudioHelper.play({src: SoundDirectory+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
-			let new_health = Math.min( (actor.data.data.health.value + Number(pct_healing*actor.data.data.health.max) ), actor.data.data.health.max);
-			actor.update({'data.health.value': Number(new_health) });
+			// let new_health = Math.min( (actor.data.data.health.value + Number(pct_healing*actor.data.data.health.max) ), actor.data.data.health.max);
+			// actor.update({'data.health.value': Number(new_health) });
+			actor.modifyTokenAttribute("health", (Math.floor(pct_healing*actor.data.data.health.max)), true, true);
 			chatMessage(actor, actor.name + ' healed '+ pct_healing*100 +'% of their max hit points!');
 		}
 
-		function damageActor(actor,pct_damage)
+		function damageActorPercent(actor,pct_damage)
 		{
 			AudioHelper.play({src: SoundDirectory+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
-			let new_health = Math.min( (actor.data.data.health.value - Number(pct_damage*actor.data.data.health.max) ), actor.data.data.health.max);
-			actor.update({'data.health.value': Number(new_health) });
+			// let new_health = Math.min( (actor.data.data.health.value - Number(pct_damage*actor.data.data.health.max) ), actor.data.data.health.max);
+			// actor.update({'data.health.value': Number(new_health) });
+
+			let finalDamage = (Math.floor(pct_damage*actor.data.data.health.max));
+
+			actor.modifyTokenAttribute("health", -finalDamage, true, true);
 			chatMessage(actor, actor.name + ' took damage equal to '+ pct_damage*100 +'% of their max hit points!');
+			ApplyInjuries(actor, finalDamage);
 		}
 
 		function CalculateAcRoll (moveData, actorData)   {
@@ -1740,7 +2028,7 @@ export function PTUAutoFight(){
 
 
 
-		function PerformFullAttack (actor,move) 
+		function PerformFullAttack (actor,move,finalDB) 
 		{
 			let isFiveStrike = false;
 			let isDoubleStrike = false;
@@ -1751,6 +2039,9 @@ export function PTUAutoFight(){
 
 			let actorType1 = null;
 			let actorType2 = null;
+
+			let actorInjuries = actor.data.data.health.injuries;
+			console.log("actorInjuries = "+actorInjuries);
 
 			if(actor.data.data.typing)
 			{
@@ -1912,10 +2203,11 @@ export function PTUAutoFight(){
 				isFiveStrike: isFiveStrike,
 				fiveStrikeHits: (fiveStrikeCount+1),
 				isDoubleStrike: isDoubleStrike,
-				hasSTAB: hasSTAB
+				hasSTAB: hasSTAB,
+				finalDB: finalDB,
 			}).then(data => console.log(data));
 
-			var moveSoundFile = (move.data.name + ".mp3");
+			var moveSoundFile = ((move.data.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
 
 			if(move.data.name.toString().match(/Hidden Power/) != null)
 			{
@@ -1938,6 +2230,14 @@ export function PTUAutoFight(){
 			moveSoundFile.replace(/ /g,"%20");
 			AudioHelper.play({src: SoundDirectory+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 			console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
+
+			if(actorInjuries >=5)
+			{
+				chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
+				actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
+				ApplyInjuries(actor, actorInjuries);
+			}
+
 			return diceResult;
 		};
 
@@ -2189,6 +2489,77 @@ export function PTUAutoFight(){
 
 		return ChatMessage.create(messageData, {});
 	};
+
+	async function ApplyInjuries(target, final_effective_damage)
+	{
+		let targetHealthCurrent = target.data.data.health.value;
+		let targetHealthMax = target.data.data.health.total;
+		
+		console.log("targetHealthCurrent" + targetHealthCurrent);
+		console.log("targetHealthMax" + targetHealthMax);
+
+		let hitPoints50Pct = targetHealthMax*0.50;
+		let hitPoints0Pct = 0;
+		let hitPointsNegative50Pct = targetHealthMax*(-0.50);
+		let hitPointsNegative100Pct = targetHealthMax*(-1.00);
+		let hitPointsNegative150Pct = targetHealthMax*(-1.50);
+		let hitPointsNegative200Pct = targetHealthMax*(-2.00);
+
+		let massiveDamageThreshold = hitPoints50Pct+1;
+
+		console.log("final_effective_damage" + final_effective_damage);
+		console.log("hitPoints50Pct" + hitPoints50Pct);
+		console.log("massiveDamageThreshold" + massiveDamageThreshold);
+
+		let injuryCount = 0;
+
+		if(game.settings.get("PTUMoveMaster", "autoApplyInjuries") == "true")
+			{
+				if(final_effective_damage >= massiveDamageThreshold)
+				{
+					injuryCount++;
+					chatMessage(target, target.name + " suffered massive damage and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints50Pct) )
+				{
+					injuryCount++;
+					chatMessage(target, target.name + " was damaged to below the 50% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints0Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints0Pct) )
+				{
+					injuryCount++;
+					chatMessage(target, target.name + " was damaged to below the 0% health threshold and sustains an injury! "+target.name+" has *fainted*!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative50Pct) )
+				{
+					injuryCount++;
+					chatMessage(target, target.name + " was damaged to below the -50% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative100Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative100Pct) )
+				{
+					injuryCount++;
+					chatMessage(target, target.name + " was damaged to below the -100% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative150Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative150Pct) )
+				{
+					injuryCount++;
+					chatMessage(target, target.name + " was damaged to below the -150% health threshold and sustains an injury!");
+				}
+	
+				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative200Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative200Pct) )
+				{
+					injuryCount++;
+					chatMessage(target, target.name + " was damaged to below the -200% health threshold and sustains an injury! If using death rules, "+target.name+" *dies*!");
+				}
+	
+				target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
+			}
+	}
 
 	return {
 		ChatWindow:ChatWindow,
