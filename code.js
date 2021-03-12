@@ -1863,7 +1863,12 @@ export function PTUAutoFight(){
 			AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			for(let item of items)
 			{
-				if(item.data.frequency.search("EOT") > -1 || item.data.frequency.search("Scene") > -1 || item.data.frequency.search("Daily") > -1)
+				let searched_frequency = item.data.frequency;
+				if(!searched_frequency)
+				{
+					searched_frequency = "";
+				}
+				if(searched_frequency.search("EOT") > -1 || searched_frequency.search("Scene") > -1 || searched_frequency.search("Daily") > -1)
 				{
 					for(let search_item of item_entities)
 					{
