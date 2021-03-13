@@ -1,4 +1,6 @@
 
+import { MoveMasterBonusDamageOptions } from './MoveMasterBonusDamageForm.js'
+
 /* -------------------------------------------- */
 /*  Module Setting Initialization               */
 /* -------------------------------------------- */
@@ -34,6 +36,25 @@ function _loadModuleSettings() {
 Hooks.once('init', async function() 
 {
 	_loadModuleSettings();
+	game.PTUMoveMaster = {
+		PTUAutoFight,
+		RollDamageMove,
+		MoveMasterBonusDamageOptions,
+		sendMoveMessage,
+		chatMessage,
+		adjustActorStage,
+		healActorPercent,
+		damageActorPercent,
+		CalculateAcRoll,
+		PerformFullAttack,
+		PerformStruggleAttack,
+		GetDiceResult,
+		CalculateDmgRoll,
+		sendMoveRollMessage,
+		ApplyInjuries,
+		GetSoundDirectory
+
+	};
 });
 
 
@@ -72,9 +93,11 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 // 	})
 // };
 
-export function PTUAutoFight(){
 
-	var UseAlternateStyling = true;
+
+
+
+var UseAlternateStyling = true;
 
 	var ShowTargetTypeEffectivenessIfKnown = true;
 
@@ -361,7 +384,7 @@ export function PTUAutoFight(){
 
 
 
-	const SoundDirectory = game.settings.get("ptu", "moveSoundDirectory");
+
 	const JingleDirectory = "pokemon_jingles/";
 	const NameVoiceLinesDirectory = "pokemon_names/";
 
@@ -393,6 +416,12 @@ export function PTUAutoFight(){
 	FULL_ATTACK: 'full-attack'
 	};
 
+
+
+
+
+
+export function PTUAutoFight(){
 
 	async function ApplyDamage(event)
 	{
@@ -498,7 +527,7 @@ export function PTUAutoFight(){
 			ApplyInjuries(token.actor, final_effective_damage);
 			
 		}
-		AudioHelper.play({src: SoundDirectory+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 	};
 
 
@@ -517,7 +546,7 @@ export function PTUAutoFight(){
 
 	async function ChatWindow(actor){
 
-		AudioHelper.play({src: SoundDirectory+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 
 		let target = Array.from(game.user.targets)[0];
 		let targetTypingText = "";
@@ -973,7 +1002,13 @@ export function PTUAutoFight(){
 				style:"padding-left: 0px;border-right-width: 0px;border-bottom-width: 0px;border-left-width: 0px;border-top-width: 0px;margin-right: 0px;",
 				label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+ButtonHeight+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 			callback: async () => {
-				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				let key_shift = keyboard.isDown("Shift");
+				if (key_shift) 
+				{
+					console.log("KEYBOARD SHIFT IS DOWN!");
+				}
+
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				let diceRoll = PerformFullAttack (actor,item);
 				if(game.combat == null)
 				{
@@ -986,6 +1021,8 @@ export function PTUAutoFight(){
 					var currentEncounterID = game.combat.data._id;
 				}
 
+				console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
+				console.log(item);
 				if(item.data.UseCount == null)
 				{
 					for(let search_item of item_entities)
@@ -993,6 +1030,7 @@ export function PTUAutoFight(){
 						if (search_item._id == item._id)
 						{
 							await search_item.update({ "data.UseCount": 0});
+							console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
 						}
 					}
 					// item.update({ "data.UseCount": Number(0)});
@@ -1632,119 +1670,17 @@ export function PTUAutoFight(){
 			buttons[currentid]={label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight+3)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 				//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 			callback: async () => {
-				AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-				let diceRoll = PerformFullAttack (actor,item,finalDB);
-				if(game.combat == null)
+				let key_shift = keyboard.isDown("Shift");
+				if (key_shift) 
 				{
-					var currentRound = 0;
-					var currentEncounterID = 0;
+					console.log("KEYBOARD SHIFT IS DOWN!");
+					rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
 				}
 				else
 				{
-					var currentRound = game.combat.round;
-					var currentEncounterID = game.combat.data._id;
+					game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
 				}
-
-				if(item.data.UseCount == null)
-				{
-					for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.UseCount": 0});
-						}
-					}
-					// item.update({ "data.UseCount": Number(0)});
-				}
-
-				if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3" || item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
-				{
-					for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
-							console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
-						}
-					}
-					// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
-				}
-
-				for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
-
-							if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
-							{
-								let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
-								let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-								console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
-								await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
-							}
-						}
-					}
-				// item.update({ "data.LastRoundUsed": currentRound});
-				// item.update({ "data.LastEncounterUsed": currentEncounterID});
-				// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
-				console.log("search debug",move_stage_changes);
-
-				for(let searched_move in move_stage_changes)
-				{
-					if(searched_move == item.name)
-					{
-						if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
-						{
-							let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
-							console.log("EFFECT THRESHOLD"+effectThreshold);
-							console.log("DICE ROLL"+diceRoll);
-							if(diceRoll >= effectThreshold) // Effect Range Hit
-							{
-								console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
-								
-								for (let searched_stat of stats)
-								{
-									if (move_stage_changes[searched_move][searched_stat] != null)
-									{
-										adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
-									}
-								}
-								if(move_stage_changes[searched_move]["pct-healing"] != null)
-								{
-									healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
-								}
-								if(move_stage_changes[searched_move]["pct-self-damage"] != null)
-								{
-									damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
-								}
-							}
-							else // Effect Range Missed
-							{
-								console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
-							}
-						}
-						else // No Effect Range
-						{
-							for (let searched_stat of stats)
-							{
-								if (move_stage_changes[searched_move][searched_stat] != null)
-								{
-									adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
-								}
-							}
-							if(move_stage_changes[searched_move]["pct-healing"] != null)
-							{
-								healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
-							}
-							if(move_stage_changes[searched_move]["pct-self-damage"] != null)
-							{
-								damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
-							}
-						}
-						
-					}
-				}
+				
 
 			}
 
@@ -1817,7 +1753,7 @@ export function PTUAutoFight(){
 			respdata['category']='details';
 			buttons[currentid]={label: "<center><div style='background-color:gray;color:black;border:2px solid darkgray;width:333px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+AbilityIcon+currentlabel+"</div></center>",
 				callback: async () => {
-					AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 
 					
@@ -1860,7 +1796,7 @@ export function PTUAutoFight(){
 
 	buttons["resetEOT"] = {label: ResetEOTMark,
 		callback: async () => {
-			AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			for(let item of items)
 			{
 				let searched_frequency = item.data.frequency;
@@ -1881,12 +1817,12 @@ export function PTUAutoFight(){
 				}
 			}
 			chatMessage(actor, (actor.name + " refreshes their EOT-frequency moves!"))
-			AudioHelper.play({src: SoundDirectory+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 		  }};
 
 	buttons["resetScene"] = {label: ResetSceneMark,
 		callback: async () => {
-			AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			for(let item of items)
 			{
 				if(item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
@@ -1902,12 +1838,12 @@ export function PTUAutoFight(){
 				}
 			}
 			chatMessage(actor, (actor.name + " refreshes their Scene-frequency moves!"))
-			AudioHelper.play({src: SoundDirectory+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 		  }};
 
 	buttons["resetDaily"] = {label: ResetDailyMark,
 	callback: async () => {
-			AudioHelper.play({src: SoundDirectory+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			for(let item of items)
 			{
 				if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3")
@@ -1923,7 +1859,7 @@ export function PTUAutoFight(){
 				}
 			}
 			chatMessage(actor, (actor.name + " refreshes their Daily-frequency moves!"))
-				AudioHelper.play({src: SoundDirectory+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 			}};
 
 
@@ -1947,623 +1883,18 @@ export function PTUAutoFight(){
 		};
 
 
-		async function sendMoveMessage(messageData = {}) {
-		console.log("send debug",messageData);
-			messageData = mergeObject({
-				user: game.user._id,
-				templateType: MoveMessageTypes.DAMAGE,
-				verboseChatInfo: game.settings.get("ptu", "verboseChatInfo") ?? false
-			}, messageData);
-
-			if(!messageData.move) {
-				console.error("Can't display move chat message without move data.")
-				return;
-			}
-		console.log("alt path");
-			messageData.content = await renderTemplate('modules/PTUMoveMaster/move-combined.hbs', messageData)
-
-			return ChatMessage.create(messageData, {});
-		};
-
-		function chatMessage(token, messageContent) {
-			// create the message
-			if (messageContent !== '') {
-			    let chatData = {
-				user: game.user._id,
-				speaker: ChatMessage.getSpeaker(token),
-				content: messageContent,
-			    };
-			    ChatMessage.create(chatData, {});
-			}
-		      }
-
-		const CritOptions = {
-			CRIT_MISS: 'miss',
-			NORMAL: 'normal',
-			CRIT_HIT: 'hit'
-		};
-
-		function adjustActorStage(actor,stat, change)
-		{
-			if(change > 0)
-			{
-				AudioHelper.play({src: SoundDirectory+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-			}
-			else
-			{
-				AudioHelper.play({src: SoundDirectory+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-			}
-
-			let new_stage = eval("Math.max(Math.min((actor.data.data.stats."+stat+".stage + change), 6), -6)");
-			eval("actor.update({'data.stats."+stat+".stage': Number("+ new_stage +") })");
-			chatMessage(actor, actor.name + ' '+ stat +' Stage +'+ change +'!');
-		}
-
-		function healActorPercent(actor,pct_healing)
-		{
-			AudioHelper.play({src: SoundDirectory+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-
-			// let new_health = Math.min( (actor.data.data.health.value + Number(pct_healing*actor.data.data.health.max) ), actor.data.data.health.max);
-			// actor.update({'data.health.value': Number(new_health) });
-			actor.modifyTokenAttribute("health", (Math.floor(pct_healing*actor.data.data.health.max)), true, true);
-			chatMessage(actor, actor.name + ' healed '+ pct_healing*100 +'% of their max hit points!');
-		}
-
-		function damageActorPercent(actor,pct_damage)
-		{
-			AudioHelper.play({src: SoundDirectory+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-
-			// let new_health = Math.min( (actor.data.data.health.value - Number(pct_damage*actor.data.data.health.max) ), actor.data.data.health.max);
-			// actor.update({'data.health.value': Number(new_health) });
-
-			let finalDamage = (Math.floor(pct_damage*actor.data.data.health.max));
-
-			actor.modifyTokenAttribute("health", -finalDamage, true, true);
-			chatMessage(actor, actor.name + ' took damage equal to '+ pct_damage*100 +'% of their max hit points!');
-			ApplyInjuries(actor, finalDamage);
-		}
-
-		function CalculateAcRoll (moveData, actorData)   {
-			return new Roll('1d20-@ac+@acBonus', {
-				ac: (parseInt(moveData.ac) || 0),
-				acBonus: (parseInt(actorData.modifiers.acBonus) || 0)
-			})
-		};
-
-
-
-
-		function PerformFullAttack (actor,move,finalDB) 
-		{
-			let isFiveStrike = false;
-			let isDoubleStrike = false;
-			let userHasTechnician = false;
-			let userHasAdaptability = false;
-			let fiveStrikeCount = 0;
-			let hasSTAB = false;
-
-			let actorType1 = null;
-			let actorType2 = null;
-
-			let actorInjuries = actor.data.data.health.injuries;
-			console.log("actorInjuries = "+actorInjuries);
-
-			if(actor.data.data.typing)
-			{
-				actorType1 = actor.data.data.typing[0];
-				actorType2 = actor.data.data.typing[1];
-			}
-
-			let currentHasExtraEffect = false;
-			let currentExtraEffectText = "";
-
-			for(let search_item of actor.items)
-			{
-				// console.log(search_item.name);
-				if(search_item.name == "Technician")
-				{
-					userHasTechnician = true;
-				}
-				if(search_item.name == "Adaptability")
-				{
-					userHasAdaptability = true;
-				}
-			}
-
-			if(move.data.range.search("Five Strike") > -1)
-			{
-				isFiveStrike = true;
-				// console.log("DEBUG: ROLLING FIVE STRIKE");
-				let fiveStrikeD8 = Math.floor(Math.random() * (8 - 1 + 1)) + 1;
-				// console.log("DEBUG: FIVE STRIKE D8 = " + fiveStrikeD8);
-				let fiveStrikeHitsDictionary = {
-					1: 1,
-					2: 2,
-					3: 2,
-					4: 3,
-					5: 3,
-					6: 3,
-					7: 4,
-					8: 5
-				}
-				let fiveStrikeHits = fiveStrikeHitsDictionary[fiveStrikeD8];
-				// console.log("DEBUG: FIVE STRIKE HITS = " + fiveStrikeHits);
-				fiveStrikeCount = fiveStrikeHits-1;
-			}
-			if( (move.data.range.search("Doublestrike") > -1) || (move.data.range.search("Double Strike") > -1) )
-			{
-				isDoubleStrike = true;
-				console.log("DEBUG: ROLLING DOUBLE STRIKE");
-			}
-
-			let acRoll = CalculateAcRoll(move.data, actor.data.data);
-			let diceResult = GetDiceResult(acRoll);
-
-			let acRoll2 = CalculateAcRoll(move.data, actor.data.data);
-			let diceResult2 = GetDiceResult(acRoll2);
-
-			let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
-			let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
-
-			// console.log("DEBUG: isDoubleStrike = " + isDoubleStrike);
-			let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0);
-			if(damageRoll) damageRoll.roll();
-			let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0);
-			if(!move.data.name)
-			{
-				move.data.name=move.name;
-			}
-			if(critDamageRoll)
-			{
-				critDamageRoll.roll();
-			}
-			if(damageRoll && damageRoll._total)
-			{
-				game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
-			}
-
-			let damageRollTwoHits = CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 0);
-			if(damageRollTwoHits)
-			{
-				damageRollTwoHits.roll();
-			}
-
-			let critDamageRollOneHitOneCrit = CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 1);
-			if(critDamageRollOneHitOneCrit)
-			{
-				critDamageRollOneHitOneCrit.roll();
-			}
-
-			let critDamageRollTwoCrits = CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 2);
-			if(critDamageRollTwoCrits)
-			{
-				critDamageRollTwoCrits.roll();
-			}
-
-			let isUntyped = false;
-			if(move.data.type == "Untyped" || move.data.type == "" || move.data.type == null)
-			{
-				isUntyped = true;
-			}
-
-			let typeStrategist = [];
-			for(let item of actor.data.items) // START Ability Check Loop
-			{
-				if(item.name.search("Type Strategist \\(") > -1)
-				{
-					typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-					// console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-					// console.log(typeStrategist);
-					// console.log(typeStrategist.length);
-				}
-			} // END Ability Check Loop
-
-			if( (typeStrategist.length > 0) && (typeStrategist.indexOf(move.data.type) > -1) )
-			{
-				// console.log("DEBUG: PerformFullAttack function TypeStrategist trigger!")
-				currentExtraEffectText = currentExtraEffectText+ "<br>Type Strategist (" + move.data.type + ") activated!";
-				currentHasExtraEffect = true;
-			}
-
-			let hasAC = true;
-			if(move.data.ac == "" || move.data.ac == "--")
-			{
-				hasAC = false;
-			}
-
-			if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (move.data.damageBase <= 6) ) )
-			{
-				currentExtraEffectText = currentExtraEffectText+ "<br>Technician applied!";
-				currentHasExtraEffect = true;
-			}
-
-			if(userHasAdaptability && (move.data.type == actorType1 || move.data.type == actorType2) )
-			{
-				currentExtraEffectText = currentExtraEffectText+ "<br>Adaptability applied!";
-				currentHasExtraEffect = true;
-			}
-
-			if(move.data.type == actorType1 || move.data.type == actorType2)
-			{
-				hasSTAB = true;
-			}
-
-			sendMoveRollMessage(acRoll, acRoll2, {
-				speaker: ChatMessage.getSpeaker({
-					actor: actor
-				}),
-				move: move.data,
-				damageRoll: damageRoll,
-				damageRollTwoHits: damageRollTwoHits,
-				critDamageRoll: critDamageRoll,
-				critDamageRollOneHitOneCrit: critDamageRollOneHitOneCrit,
-				critDamageRollTwoCrits: critDamageRollTwoCrits,
-				templateType: MoveMessageTypes.FULL_ATTACK,
-				crit: crit,
-				crit2: crit2,
-				hasAC: hasAC,
-				hasExtraEffect: currentHasExtraEffect,
-				extraEffectText: currentExtraEffectText,
-				isUntyped: isUntyped,
-				isFiveStrike: isFiveStrike,
-				fiveStrikeHits: (fiveStrikeCount+1),
-				isDoubleStrike: isDoubleStrike,
-				hasSTAB: hasSTAB,
-				finalDB: finalDB,
-			}).then(data => console.log(data));
-
-			var moveSoundFile = ((move.data.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
-
-			if(move.data.name.toString().match(/Hidden Power/) != null)
-			{
-				moveSoundFile = ("Hidden Power" + ".mp3");
-			}
-
-			if(move.data.name.toString().match(/Pin Missile/) != null)
-			{
-				if((fiveStrikeCount+1) <= 1)
-				{
-					moveSoundFile = ("Pin Missile 1hit" + ".mp3");
-				}
-				else if((fiveStrikeCount+1) > 1)
-				{
-					moveSoundFile = ("Pin Missile 2hits" + ".mp3");
-				}
-				
-			}
-
-			moveSoundFile.replace(/ /g,"%20");
-			AudioHelper.play({src: SoundDirectory+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
-			console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
-
-			if(actorInjuries >=5)
-			{
-				chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
-				actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
-				ApplyInjuries(actor, actorInjuries);
-			}
-
-			return diceResult;
-		};
-
-	function PerformStruggleAttack (move) // TODO: Implement Struggles
-	{
-		let acRoll = CalculateAcRoll(move.data, actor.data.data);
-		let diceResult = GetDiceResult(acRoll);
-
-		let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
-		let damageRoll = CalculateDmgRoll(move.data, actor.data.data, 'normal');
-
-		if(damageRoll) damageRoll.roll();
-		let critDamageRoll = CalculateDmgRoll(move.data, actor.data.data, 'hit');
-
-		if(!move.data.name)
-		{
-			move.data.name=move.name;
-		}
-		if(critDamageRoll) critDamageRoll.roll();
-		if(damageRoll && damageRoll._total)
-		{
-			game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
-		}
-
-		sendMoveRollMessage(acRoll, {
-			speaker: ChatMessage.getSpeaker({
-				actor: actor
-			}),
-			move: move.data,
-			damageRoll: damageRoll,
-			critDamageRoll: critDamageRoll,
-			templateType: MoveMessageTypes.FULL_ATTACK,
-			crit: crit
-		}).then(data => console.log(data));
-
-		var moveSoundFile = (move.data.name + ".mp3");
-
-		if(move.data.name.toString().match(/Hidden Power/) != null)
-		{
-			moveSoundFile = ("Hidden Power" + ".mp3");
-		}
-
-		moveSoundFile.replace(/ /g,"%20");
-
-		AudioHelper.play({src: SoundDirectory+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
-		console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
-
-	};
-
-
-	function GetDiceResult(roll)
-	{
-		if (!roll._rolled)
-		{
-			roll.evaluate();
-		}
-
-		let diceResult = -2;
-		try 
-		{
-			diceResult = roll.terms[0].results[0].result;
-		}
-		catch (err) 
-		{
-			console.log("Old system detected, using deprecated rolling...")
-			diceResult = roll.parts[0].results[0];
-		}
-		return diceResult;
-	};
-
-
-	function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, hitCount, critCount) 
-	{
-		console.log("DEBUG: fiveStrikeCount = " + fiveStrikeCount)
-		console.log("DEBUG: hitCount = " + hitCount)
-		// console.log("DEBUG: final DB = " + (parseInt(moveData.damageBase)*fiveStrikeCount))
-		if (moveData.category === "Status") return;
-
-		if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
-		{
-			let db = parseInt(moveData.damageBase);
-			let damageBase;
-			let damageBaseOriginal;
-		    let dbRoll;
-			let dbRollOriginal;
-			let technicianDBBonus = 0;
-			let STABBonus = 2;
-			let actorType1 = null;
-			let actorType2 = null;
-
-			if(actorData.typing)
-			{
-				actorType1 = actorData.typing[0];
-				actorType2 = actorData.typing[1];
-			}
-
-			if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
-			{
-				console.log("DEBUG: TECHNICIAN APPLIES");
-				technicianDBBonus = 2;
-			}
-
-			if(userHasAdaptability)
-			{
-				console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
-				STABBonus = 3;
-			}
-
-			if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
-			{
-				console.log("DEBUG: STORED POWER ROLLED!")
-			    let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
-			    let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
-			    let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
-			    let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
-			    let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
-
-			    let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
-			    console.log("db_from_stages = " + db_from_stages );
-
-				damageBase = (
-					moveData.type == actorType1 || moveData.type == actorType2) ? 
-					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
-					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
-
-				damageBaseOriginal = (
-					moveData.type == actorType1 || moveData.type == actorType2) ? 
-					Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
-					Math.min(db + db_from_stages, 20) + technicianDBBonus;
-				
-			    dbRoll = game.ptu.DbData[damageBase];
-				dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
-			}
-			else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
-			{
-				console.log("DEBUG: STORED POWER ROLLED!")
-			    let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
-			    let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
-			    let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
-			    let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
-			    let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
-
-			    let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
-			    console.log("db_from_stages = " + db_from_stages );
-
-				damageBase = (
-					moveData.type == actorType1 || moveData.type == actorType2) ? 
-					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + STABBonus + technicianDBBonus : 
-					Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + technicianDBBonus;
-
-				damageBaseOriginal = (
-					moveData.type == actorType1 || moveData.type == actorType2) ? 
-					Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
-					Math.min(db + db_from_stages, 20) + technicianDBBonus;
-				
-			    dbRoll = game.ptu.DbData[damageBase];
-				dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
-			}
-			else
-			{
-				damageBase = (
-					moveData.type == actorType1 || moveData.type == actorType2) ? 
-					db*(hitCount + fiveStrikeCount) + STABBonus + technicianDBBonus : 
-					db*(hitCount + fiveStrikeCount) + technicianDBBonus;
-
-				damageBaseOriginal = (
-					moveData.type == actorType1 || moveData.type == actorType2) ? 
-					db + STABBonus + technicianDBBonus : 
-					db + technicianDBBonus;
-
-				console.log("DEBUG: db = " + db);
-				console.log("DEBUG: STABBonus = " + STABBonus);
-				console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
-
-				dbRoll = game.ptu.DbData[damageBase];
-				dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
-			}
-
-			console.log("damageBase = " + damageBase);
-			console.log("damageBaseOriginal = " + damageBaseOriginal);
-
-			let bonus = Math.max(moveData.category === "Physical" ? actorData.stats.atk.total : actorData.stats.spatk.total, 0);
-			let rollString = '@roll+@bonus';
-			let rollStringCrit = '@roll+@roll+@bonus';
-			if(isDoubleStrike)
-			{
-				// console.log("DEBUG: IS DOUBLE STRIKE DB CALC!");
-				if(critCount == 1)
-				{
-					rollStringCrit = '@roll+@originalRoll+@bonus';
-				}
-				else if(critCount == 2)
-				{
-					rollStringCrit = '@roll+@originalRoll+@originalRoll+@bonus';
-				}
-			}
-
-			if (!dbRoll)
-			{
-				return;
-			}
-			console.log("DEBUG: DB ROLL: " + dbRoll);
-			console.log("DEBUG: DB ROLL ORIGINAL: " + dbRollOriginal);
-			return new Roll(isCrit == CritOptions.CRIT_HIT ? rollStringCrit : rollString, {
-				roll: dbRoll,
-				originalRoll: dbRollOriginal,
-				bonus: bonus
-			})
-		}
-		let dbRoll = game.ptu.DbData[moveData.damageBase];
-		if (!dbRoll) 
-		{
-			return;
-		}
-		return new Roll('@roll', {
-			roll: dbRoll
-		})
-	};
-
-	async function sendMoveRollMessage(rollData, rollData2, messageData = {})
-	{
-		if (!rollData._rolled) 
-		{
-			rollData.evaluate();
-		}
-
-		if (!rollData2._rolled) 
-		{
-			rollData2.evaluate();
-		}
-
-		messageData = mergeObject({
-			user: game.user._id,
-			roll: rollData,
-			roll2: rollData2,
-			sound: CONFIG.sounds.dice,
-			templateType: MoveMessageTypes.DAMAGE,
-			verboseChatInfo: game.settings.get("ptu", "verboseChatInfo") ?? false
-		}, messageData);
-
-
-		if(!messageData.move) 
-		{
-			console.error("Can't display move chat message without move data.")
-			return;
-		}
-
-		messageData.content = await renderTemplate('modules/PTUMoveMaster/move-combined.hbs', messageData)
-
-		return ChatMessage.create(messageData, {});
-	};
-
-	async function ApplyInjuries(target, final_effective_damage)
-	{
-		let targetHealthCurrent = target.data.data.health.value;
-		let targetHealthMax = target.data.data.health.total;
 		
-		console.log("targetHealthCurrent" + targetHealthCurrent);
-		console.log("targetHealthMax" + targetHealthMax);
 
-		let hitPoints50Pct = targetHealthMax*0.50;
-		let hitPoints0Pct = 0;
-		let hitPointsNegative50Pct = targetHealthMax*(-0.50);
-		let hitPointsNegative100Pct = targetHealthMax*(-1.00);
-		let hitPointsNegative150Pct = targetHealthMax*(-1.50);
-		let hitPointsNegative200Pct = targetHealthMax*(-2.00);
+	
 
-		let massiveDamageThreshold = hitPoints50Pct+1;
+	async function rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist)
+	{
+		// var bonusDamage = 0; // TODO: Implement this; popup form to type into, etc.
 
-		console.log("final_effective_damage" + final_effective_damage);
-		console.log("hitPoints50Pct" + hitPoints50Pct);
-		console.log("massiveDamageThreshold" + massiveDamageThreshold);
+		let form = new game.PTUMoveMaster.MoveMasterBonusDamageOptions({actor , item, finalDB, typeStrategist}, {"submitOnChange": false, "submitOnClose": true});
+        form.render(true);
 
-		let injuryCount = 0;
-
-		if(game.settings.get("PTUMoveMaster", "autoApplyInjuries") == "true")
-			{
-				if(final_effective_damage >= massiveDamageThreshold)
-				{
-					injuryCount++;
-					chatMessage(target, target.name + " suffered massive damage and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints50Pct) )
-				{
-					injuryCount++;
-					chatMessage(target, target.name + " was damaged to below the 50% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints0Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints0Pct) )
-				{
-					injuryCount++;
-					chatMessage(target, target.name + " was damaged to below the 0% health threshold and sustains an injury! "+target.name+" has *fainted*!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative50Pct) )
-				{
-					injuryCount++;
-					chatMessage(target, target.name + " was damaged to below the -50% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative100Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative100Pct) )
-				{
-					injuryCount++;
-					chatMessage(target, target.name + " was damaged to below the -100% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative150Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative150Pct) )
-				{
-					injuryCount++;
-					chatMessage(target, target.name + " was damaged to below the -150% health threshold and sustains an injury!");
-				}
-	
-				if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative200Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative200Pct) )
-				{
-					injuryCount++;
-					chatMessage(target, target.name + " was damaged to below the -200% health threshold and sustains an injury! If using death rules, "+target.name+" *dies*!");
-				}
-	
-				target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
-			}
+		// new game.ptu.PTUDexDragOptions(update, {"submitOnChange": false, "submitOnClose": true}).render(true);
 	}
 
 	return {
@@ -2571,3 +1902,752 @@ export function PTUAutoFight(){
 		ApplyDamage:ApplyDamage
 	}
 };
+
+export function GetSoundDirectory()
+{
+	return game.settings.get("ptu", "moveSoundDirectory");
+}
+
+export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonusDamage)
+	{
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+
+		var item_entities=actor.items;
+		let diceRoll = game.PTUMoveMaster.PerformFullAttack (actor,item,finalDB, bonusDamage);
+		if(game.combat == null)
+		{
+			var currentRound = 0;
+			var currentEncounterID = 0;
+		}
+		else
+		{
+			var currentRound = game.combat.round;
+			var currentEncounterID = game.combat.data._id;
+		}
+
+		console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
+		console.log(item);
+		if(item.data.UseCount == null)
+		{
+			for(let search_item of item_entities)
+			{
+				if (search_item._id == item._id)
+				{
+					await search_item.update({ "data.UseCount": 0});
+					console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
+				}
+			}
+			// item.update({ "data.UseCount": Number(0)});
+		}
+
+		if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3" || item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
+		{
+			for(let search_item of item_entities)
+			{
+				if (search_item._id == item._id)
+				{
+					await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+					console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
+				}
+			}
+			// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+		}
+
+		for(let search_item of item_entities)
+			{
+				if (search_item._id == item._id)
+				{
+					await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+
+					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
+					{
+						let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
+						let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
+						console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
+					}
+				}
+			}
+		// item.update({ "data.LastRoundUsed": currentRound});
+		// item.update({ "data.LastEncounterUsed": currentEncounterID});
+		// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+		// console.log("search debug",move_stage_changes);
+
+		for(let searched_move in move_stage_changes)
+		{
+			if(searched_move == item.name)
+			{
+				if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
+				{
+					let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+					console.log("EFFECT THRESHOLD"+effectThreshold);
+					console.log("DICE ROLL"+diceRoll);
+					if(diceRoll >= effectThreshold) // Effect Range Hit
+					{
+						console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
+						
+						for (let searched_stat of stats)
+						{
+							if (move_stage_changes[searched_move][searched_stat] != null)
+							{
+								game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+							}
+						}
+						if(move_stage_changes[searched_move]["pct-healing"] != null)
+						{
+							game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+						}
+						if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+						{
+							game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+						}
+					}
+					else // Effect Range Missed
+					{
+						console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
+					}
+				}
+				else // No Effect Range
+				{
+					for (let searched_stat of stats)
+					{
+						if (move_stage_changes[searched_move][searched_stat] != null)
+						{
+							game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+						}
+					}
+					if(move_stage_changes[searched_move]["pct-healing"] != null)
+					{
+						game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+					}
+					if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+					{
+						game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+					}
+				}
+				
+			}
+		}
+	}
+
+
+export async function sendMoveMessage(messageData = {}) 
+{
+	console.log("send debug",messageData);
+		messageData = mergeObject({
+			user: game.user._id,
+			templateType: MoveMessageTypes.DAMAGE,
+			verboseChatInfo: game.settings.get("ptu", "verboseChatInfo") ?? false
+		}, messageData);
+
+		if(!messageData.move) {
+			console.error("Can't display move chat message without move data.")
+			return;
+		}
+	console.log("alt path");
+		messageData.content = await renderTemplate('modules/PTUMoveMaster/move-combined.hbs', messageData)
+
+		return ChatMessage.create(messageData, {});
+};
+
+export function chatMessage(token, messageContent) 
+{
+	// create the message
+	if (messageContent !== '') {
+		let chatData = {
+		user: game.user._id,
+		speaker: ChatMessage.getSpeaker(token),
+		content: messageContent,
+		};
+		ChatMessage.create(chatData, {});
+	}
+}
+
+export const CritOptions = {
+	CRIT_MISS: 'miss',
+	NORMAL: 'normal',
+	CRIT_HIT: 'hit'
+};
+
+export function adjustActorStage(actor,stat, change)
+{
+	if(change > 0)
+	{
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	}
+	else
+	{
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	}
+
+	let new_stage = eval("Math.max(Math.min((actor.data.data.stats."+stat+".stage + change), 6), -6)");
+	eval("actor.update({'data.stats."+stat+".stage': Number("+ new_stage +") })");
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' '+ stat +' Stage +'+ change +'!');
+}
+
+export function healActorPercent(actor,pct_healing)
+{
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	// let new_health = Math.min( (actor.data.data.health.value + Number(pct_healing*actor.data.data.health.max) ), actor.data.data.health.max);
+	// actor.update({'data.health.value': Number(new_health) });
+	actor.modifyTokenAttribute("health", (Math.floor(pct_healing*actor.data.data.health.max)), true, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed '+ pct_healing*100 +'% of their max hit points!');
+}
+
+export function damageActorPercent(actor,pct_damage)
+{
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	// let new_health = Math.min( (actor.data.data.health.value - Number(pct_damage*actor.data.data.health.max) ), actor.data.data.health.max);
+	// actor.update({'data.health.value': Number(new_health) });
+
+	let finalDamage = (Math.floor(pct_damage*actor.data.data.health.max));
+
+	actor.modifyTokenAttribute("health", -finalDamage, true, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took damage equal to '+ pct_damage*100 +'% of their max hit points!');
+	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
+}
+
+export function CalculateAcRoll (moveData, actorData)   {
+	return new Roll('1d20-@ac+@acBonus', {
+		ac: (parseInt(moveData.ac) || 0),
+		acBonus: (parseInt(actorData.modifiers.acBonus) || 0)
+	})
+};
+
+
+
+
+export function PerformFullAttack (actor, move, finalDB, bonusDamage) 
+{
+	let isFiveStrike = false;
+	let isDoubleStrike = false;
+	let userHasTechnician = false;
+	let userHasAdaptability = false;
+	let fiveStrikeCount = 0;
+	let hasSTAB = false;
+
+	let actorType1 = null;
+	let actorType2 = null;
+
+	let actorInjuries = actor.data.data.health.injuries;
+	console.log("actorInjuries = "+actorInjuries);
+
+	if(actor.data.data.typing)
+	{
+		actorType1 = actor.data.data.typing[0];
+		actorType2 = actor.data.data.typing[1];
+	}
+
+	let currentHasExtraEffect = false;
+	let currentExtraEffectText = "";
+
+	for(let search_item of actor.items)
+	{
+		// console.log(search_item.name);
+		if(search_item.name == "Technician")
+		{
+			userHasTechnician = true;
+		}
+		if(search_item.name == "Adaptability")
+		{
+			userHasAdaptability = true;
+		}
+	}
+
+	if(move.data.range.search("Five Strike") > -1)
+	{
+		isFiveStrike = true;
+		// console.log("DEBUG: ROLLING FIVE STRIKE");
+		let fiveStrikeD8 = Math.floor(Math.random() * (8 - 1 + 1)) + 1;
+		// console.log("DEBUG: FIVE STRIKE D8 = " + fiveStrikeD8);
+		let fiveStrikeHitsDictionary = {
+			1: 1,
+			2: 2,
+			3: 2,
+			4: 3,
+			5: 3,
+			6: 3,
+			7: 4,
+			8: 5
+		}
+		let fiveStrikeHits = fiveStrikeHitsDictionary[fiveStrikeD8];
+		// console.log("DEBUG: FIVE STRIKE HITS = " + fiveStrikeHits);
+		fiveStrikeCount = fiveStrikeHits-1;
+	}
+	if( (move.data.range.search("Doublestrike") > -1) || (move.data.range.search("Double Strike") > -1) )
+	{
+		isDoubleStrike = true;
+		console.log("DEBUG: ROLLING DOUBLE STRIKE");
+	}
+
+	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move.data, actor.data.data);
+	let diceResult = game.PTUMoveMaster.GetDiceResult(acRoll);
+
+	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move.data, actor.data.data);
+	let diceResult2 = game.PTUMoveMaster.GetDiceResult(acRoll2);
+
+	let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
+	let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
+
+	// console.log("DEBUG: isDoubleStrike = " + isDoubleStrike);
+	let damageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
+	if(damageRoll) damageRoll.roll();
+	let critDamageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
+	if(!move.data.name)
+	{
+		move.data.name=move.name;
+	}
+	if(critDamageRoll)
+	{
+		critDamageRoll.roll();
+	}
+	if(damageRoll && damageRoll._total)
+	{
+		game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
+	}
+
+	let damageRollTwoHits = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 0, bonusDamage);
+	if(damageRollTwoHits)
+	{
+		damageRollTwoHits.roll();
+	}
+
+	let critDamageRollOneHitOneCrit = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 1, bonusDamage);
+	if(critDamageRollOneHitOneCrit)
+	{
+		critDamageRollOneHitOneCrit.roll();
+	}
+
+	let critDamageRollTwoCrits = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 2, bonusDamage);
+	if(critDamageRollTwoCrits)
+	{
+		critDamageRollTwoCrits.roll();
+	}
+
+	let isUntyped = false;
+	if(move.data.type == "Untyped" || move.data.type == "" || move.data.type == null)
+	{
+		isUntyped = true;
+	}
+
+	let typeStrategist = [];
+	for(let item of actor.data.items) // START Ability Check Loop
+	{
+		if(item.name.search("Type Strategist \\(") > -1)
+		{
+			typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+			// console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+			// console.log(typeStrategist);
+			// console.log(typeStrategist.length);
+		}
+	} // END Ability Check Loop
+
+	if( (typeStrategist.length > 0) && (typeStrategist.indexOf(move.data.type) > -1) )
+	{
+		// console.log("DEBUG: PerformFullAttack function TypeStrategist trigger!")
+		currentExtraEffectText = currentExtraEffectText+ "<br>Type Strategist (" + move.data.type + ") activated!";
+		currentHasExtraEffect = true;
+	}
+
+	let hasAC = true;
+	if(move.data.ac == "" || move.data.ac == "--")
+	{
+		hasAC = false;
+	}
+
+	if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (move.data.damageBase <= 6) ) )
+	{
+		currentExtraEffectText = currentExtraEffectText+ "<br>Technician applied!";
+		currentHasExtraEffect = true;
+	}
+
+	if(userHasAdaptability && (move.data.type == actorType1 || move.data.type == actorType2) )
+	{
+		currentExtraEffectText = currentExtraEffectText+ "<br>Adaptability applied!";
+		currentHasExtraEffect = true;
+	}
+
+	if(move.data.type == actorType1 || move.data.type == actorType2)
+	{
+		hasSTAB = true;
+	}
+
+	game.PTUMoveMaster.sendMoveRollMessage(acRoll, acRoll2, {
+		speaker: ChatMessage.getSpeaker({
+			actor: actor
+		}),
+		move: move.data,
+		damageRoll: damageRoll,
+		damageRollTwoHits: damageRollTwoHits,
+		critDamageRoll: critDamageRoll,
+		critDamageRollOneHitOneCrit: critDamageRollOneHitOneCrit,
+		critDamageRollTwoCrits: critDamageRollTwoCrits,
+		templateType: MoveMessageTypes.FULL_ATTACK,
+		crit: crit,
+		crit2: crit2,
+		hasAC: hasAC,
+		hasExtraEffect: currentHasExtraEffect,
+		extraEffectText: currentExtraEffectText,
+		isUntyped: isUntyped,
+		isFiveStrike: isFiveStrike,
+		fiveStrikeHits: (fiveStrikeCount+1),
+		isDoubleStrike: isDoubleStrike,
+		hasSTAB: hasSTAB,
+		finalDB: finalDB,
+	}).then(data => console.log(data));
+
+	var moveSoundFile = ((move.data.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
+
+	if(move.data.name.toString().match(/Hidden Power/) != null)
+	{
+		moveSoundFile = ("Hidden Power" + ".mp3");
+	}
+
+	if(move.data.name.toString().match(/Pin Missile/) != null)
+	{
+		if((fiveStrikeCount+1) <= 1)
+		{
+			moveSoundFile = ("Pin Missile 1hit" + ".mp3");
+		}
+		else if((fiveStrikeCount+1) > 1)
+		{
+			moveSoundFile = ("Pin Missile 2hits" + ".mp3");
+		}
+		
+	}
+
+	moveSoundFile.replace(/ /g,"%20");
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+	console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
+
+	if(actorInjuries >=5)
+	{
+		game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
+		actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
+		game.PTUMoveMaster.ApplyInjuries(actor, actorInjuries);
+	}
+
+	return diceResult;
+};
+
+export function PerformStruggleAttack (move) // TODO: Implement Struggles
+{
+	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move.data, actor.data.data);
+	let diceResult = game.PTUMoveMaster.GetDiceResult(acRoll);
+
+	let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
+	let damageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'normal');
+
+	if(damageRoll) damageRoll.roll();
+	let critDamageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit');
+
+	if(!move.data.name)
+	{
+		move.data.name=move.name;
+	}
+	if(critDamageRoll) critDamageRoll.roll();
+	if(damageRoll && damageRoll._total)
+	{
+		game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
+	}
+
+	game.PTUMoveMaster.sendMoveRollMessage(acRoll, {
+		speaker: ChatMessage.getSpeaker({
+			actor: actor
+		}),
+		move: move.data,
+		damageRoll: damageRoll,
+		critDamageRoll: critDamageRoll,
+		templateType: MoveMessageTypes.FULL_ATTACK,
+		crit: crit
+	}).then(data => console.log(data));
+
+	var moveSoundFile = (move.data.name + ".mp3");
+
+	if(move.data.name.toString().match(/Hidden Power/) != null)
+	{
+		moveSoundFile = ("Hidden Power" + ".mp3");
+	}
+
+	moveSoundFile.replace(/ /g,"%20");
+
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+	console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
+
+};
+
+
+export function GetDiceResult(roll)
+{
+	if (!roll._rolled)
+	{
+		roll.evaluate();
+	}
+
+	let diceResult = -2;
+	try 
+	{
+		diceResult = roll.terms[0].results[0].result;
+	}
+	catch (err) 
+	{
+		console.log("Old system detected, using deprecated rolling...")
+		diceResult = roll.parts[0].results[0];
+	}
+	return diceResult;
+};
+
+
+export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, hitCount, critCount, bonusDamage) 
+{
+	console.log("DEBUG: fiveStrikeCount = " + fiveStrikeCount)
+	console.log("DEBUG: hitCount = " + hitCount)
+	// console.log("DEBUG: final DB = " + (parseInt(moveData.damageBase)*fiveStrikeCount))
+	if (moveData.category === "Status") return;
+
+	if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
+	{
+		let db = parseInt(moveData.damageBase);
+		let damageBase;
+		let damageBaseOriginal;
+		let dbRoll;
+		let dbRollOriginal;
+		let technicianDBBonus = 0;
+		let STABBonus = 2;
+		let actorType1 = null;
+		let actorType2 = null;
+
+		if(actorData.typing)
+		{
+			actorType1 = actorData.typing[0];
+			actorType2 = actorData.typing[1];
+		}
+
+		if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
+		{
+			console.log("DEBUG: TECHNICIAN APPLIES");
+			technicianDBBonus = 2;
+		}
+
+		if(userHasAdaptability)
+		{
+			console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
+			STABBonus = 3;
+		}
+
+		if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
+		{
+			console.log("DEBUG: STORED POWER ROLLED!")
+			let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
+			let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
+			let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
+			let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
+			let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
+
+			let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
+			console.log("db_from_stages = " + db_from_stages );
+
+			damageBase = (
+				moveData.type == actorType1 || moveData.type == actorType2) ? 
+				Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+				Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
+
+			damageBaseOriginal = (
+				moveData.type == actorType1 || moveData.type == actorType2) ? 
+				Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+				Math.min(db + db_from_stages, 20) + technicianDBBonus;
+			
+			dbRoll = game.ptu.DbData[damageBase];
+			dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+		}
+		else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
+		{
+			console.log("DEBUG: STORED POWER ROLLED!")
+			let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
+			let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
+			let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
+			let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
+			let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
+
+			let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
+			console.log("db_from_stages = " + db_from_stages );
+
+			damageBase = (
+				moveData.type == actorType1 || moveData.type == actorType2) ? 
+				Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + STABBonus + technicianDBBonus : 
+				Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + technicianDBBonus;
+
+			damageBaseOriginal = (
+				moveData.type == actorType1 || moveData.type == actorType2) ? 
+				Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+				Math.min(db + db_from_stages, 20) + technicianDBBonus;
+			
+			dbRoll = game.ptu.DbData[damageBase];
+			dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+		}
+		else
+		{
+			damageBase = (
+				moveData.type == actorType1 || moveData.type == actorType2) ? 
+				db*(hitCount + fiveStrikeCount) + STABBonus + technicianDBBonus : 
+				db*(hitCount + fiveStrikeCount) + technicianDBBonus;
+
+			damageBaseOriginal = (
+				moveData.type == actorType1 || moveData.type == actorType2) ? 
+				db + STABBonus + technicianDBBonus : 
+				db + technicianDBBonus;
+
+			console.log("DEBUG: db = " + db);
+			console.log("DEBUG: STABBonus = " + STABBonus);
+			console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
+
+			dbRoll = game.ptu.DbData[damageBase];
+			dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+		}
+
+		console.log("damageBase = " + damageBase);
+		console.log("damageBaseOriginal = " + damageBaseOriginal);
+
+		let bonus = Math.max(moveData.category === "Physical" ? actorData.stats.atk.total : actorData.stats.spatk.total, 0)+bonusDamage;
+		let rollString = '@roll+@bonus';
+		let rollStringCrit = '@roll+@roll+@bonus';
+		if(isDoubleStrike)
+		{
+			// console.log("DEBUG: IS DOUBLE STRIKE DB CALC!");
+			if(critCount == 1)
+			{
+				rollStringCrit = '@roll+@originalRoll+@bonus';
+			}
+			else if(critCount == 2)
+			{
+				rollStringCrit = '@roll+@originalRoll+@originalRoll+@bonus';
+			}
+		}
+
+		if (!dbRoll)
+		{
+			return;
+		}
+		console.log("DEBUG: DB ROLL: " + dbRoll);
+		console.log("DEBUG: DB ROLL ORIGINAL: " + dbRollOriginal);
+		return new Roll(isCrit == CritOptions.CRIT_HIT ? rollStringCrit : rollString, {
+			roll: dbRoll,
+			originalRoll: dbRollOriginal,
+			bonus: bonus
+		})
+	}
+	let dbRoll = game.ptu.DbData[moveData.damageBase];
+	if (!dbRoll) 
+	{
+		return;
+	}
+	return new Roll('@roll', {
+		roll: dbRoll
+	})
+};
+
+export async function sendMoveRollMessage(rollData, rollData2, messageData = {})
+{
+	if (!rollData._rolled) 
+	{
+		rollData.evaluate();
+	}
+
+	if (!rollData2._rolled) 
+	{
+		rollData2.evaluate();
+	}
+
+	messageData = mergeObject({
+		user: game.user._id,
+		roll: rollData,
+		roll2: rollData2,
+		sound: CONFIG.sounds.dice,
+		templateType: MoveMessageTypes.DAMAGE,
+		verboseChatInfo: game.settings.get("ptu", "verboseChatInfo") ?? false
+	}, messageData);
+
+
+	if(!messageData.move) 
+	{
+		console.error("Can't display move chat message without move data.")
+		return;
+	}
+
+	messageData.content = await renderTemplate('modules/PTUMoveMaster/move-combined.hbs', messageData)
+
+	return ChatMessage.create(messageData, {});
+};
+
+export async function ApplyInjuries(target, final_effective_damage)
+{
+	let targetHealthCurrent = target.data.data.health.value;
+	let targetHealthMax = target.data.data.health.total;
+	
+	console.log("targetHealthCurrent" + targetHealthCurrent);
+	console.log("targetHealthMax" + targetHealthMax);
+
+	let hitPoints50Pct = targetHealthMax*0.50;
+	let hitPoints0Pct = 0;
+	let hitPointsNegative50Pct = targetHealthMax*(-0.50);
+	let hitPointsNegative100Pct = targetHealthMax*(-1.00);
+	let hitPointsNegative150Pct = targetHealthMax*(-1.50);
+	let hitPointsNegative200Pct = targetHealthMax*(-2.00);
+
+	let massiveDamageThreshold = hitPoints50Pct+1;
+
+	console.log("final_effective_damage" + final_effective_damage);
+	console.log("hitPoints50Pct" + hitPoints50Pct);
+	console.log("massiveDamageThreshold" + massiveDamageThreshold);
+
+	let injuryCount = 0;
+
+	if(game.settings.get("PTUMoveMaster", "autoApplyInjuries") == "true")
+		{
+			if(final_effective_damage >= massiveDamageThreshold)
+			{
+				injuryCount++;
+				game.PTUMoveMaster.chatMessage(target, target.name + " suffered massive damage and sustains an injury!");
+			}
+
+			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints50Pct) )
+			{
+				injuryCount++;
+				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the 50% health threshold and sustains an injury!");
+			}
+
+			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints0Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints0Pct) )
+			{
+				injuryCount++;
+				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the 0% health threshold and sustains an injury! "+target.name+" has *fainted*!");
+			}
+
+			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative50Pct) )
+			{
+				injuryCount++;
+				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -50% health threshold and sustains an injury!");
+			}
+
+			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative100Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative100Pct) )
+			{
+				injuryCount++;
+				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -100% health threshold and sustains an injury!");
+			}
+
+			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative150Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative150Pct) )
+			{
+				injuryCount++;
+				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -150% health threshold and sustains an injury!");
+			}
+
+			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative200Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative200Pct) )
+			{
+				injuryCount++;
+				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -200% health threshold and sustains an injury! If using death rules, "+target.name+" *dies*!");
+			}
+
+			target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
+		}
+}

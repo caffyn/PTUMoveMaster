@@ -15,6 +15,8 @@ Installation instructions:
 3. Press Install Module
 4. Paste the above link into the Manifest URL field and press Install
 
+Hold Shift when clicking a move button in order to enter bonus damage (which can be negative).
+
 Module GM Settings:
 - Automatically Apply Injuries: Automatically applies Injuries when pokemon or trainers are damaged with the apply damage buttons in Move Master's roll templates. True by default.
 
