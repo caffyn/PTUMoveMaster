@@ -75,7 +75,10 @@ Hooks.on("dropCanvasData", (canvas, update) => { // If an owned Pokemon is dropp
 
 	if(actor)
 	{
-		if(actor.type = "pokemon" && (actor.data.data.owner != ""))
+		console.log(actor);
+		console.log(actor.data.type);
+		console.log(actor.data.data.owner);
+		if(actor.data.type == "pokemon" && (actor.data.data.owner != ""))
 		{
 			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.8, autoplay: true, loop: false}, true);
 		}
