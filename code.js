@@ -69,6 +69,19 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	}
 });
 
+Hooks.on("dropCanvasData", (canvas, update) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and TODO: create lightshow
+
+	let actor = game.actors.get(update.id);
+
+	if(actor)
+	{
+		if(actor.type = "pokemon" && (actor.data.data.owner != ""))
+		{
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.8, autoplay: true, loop: false}, true);
+		}
+	}
+});
+
 // Hooks.on("hoverToken", async (token, update, options, userId) => {
 
 // 	console.log(token);
@@ -122,7 +135,7 @@ var UseAlternateStyling = true;
 			"spdef" : 1
 		},
 		"Nasty Plot"  :   {
-			"spdef" : 2,
+			"spatk" : 2,
 		},
 		"Swords Dance"  :   {
 			"atk" : 2,
