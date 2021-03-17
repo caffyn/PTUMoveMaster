@@ -3513,6 +3513,25 @@ export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target
 		TargetEvolvesWithStone = true;
 	}
 
+	let speciesInfo = game.ptu.GetSpeciesData(TargetSpecies);
+
+	let evolutionData = speciesInfo.Evolution;
+
+	let myEvolution = 0;
+	let maxEvolution = 0;
+	evolutionData.forEach(j => {
+		if (j[1].toLowerCase() == TargetSpecies.toLowerCase()) 
+		{
+			myEvolution = j[0];
+		}
+		if (j[0] > maxEvolution)
+		{
+			maxEvolution = j[0];
+		}
+	});
+
+	let evolutionsLeft = maxEvolution - myEvolution;
+
 	let currentRound = 1;
 	if(game.combat)
 	{
@@ -3584,11 +3603,8 @@ export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target
 	console.log("CaptureRate = " + CaptureRate);
 
 	let PokemonHitPoints = target.data.data.health.value;
-	let PokemonMaxHitPoints = target.data.data.health.max;
-	let PokemonHealthPercent = (PokemonHitPoints/PokemonMaxHitPoints)*100;
+	let PokemonHealthPercent = target.data.data.health.percent;
 	console.log("PokemonHealthPercent = " + PokemonHealthPercent);
-
-	let PokemonShiny = target.data.data.shiny;
 
 	if (PokemonHitPoints == 1)
 	{
@@ -3614,6 +3630,14 @@ export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target
 		console.log("HP <= 75");
 		console.log("CaptureRate = " + CaptureRate);
 	}
+	else if (PokemonHealthPercent > 75)
+	{
+		CaptureRate = CaptureRate - 30;
+		console.log("HP > 75");
+		console.log("CaptureRate = " + CaptureRate);
+	}
+
+	let PokemonShiny = target.data.data.shiny;
 
 	if (PokemonShiny)
 	{
@@ -3621,9 +3645,26 @@ export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target
 		console.log("Shiny == True");
 		console.log("CaptureRate = " + CaptureRate);
 	}
-	//TODO: Factor evolutionary stages; 2 remaining stages = +10, no remaining stages, -10
 
-	//TODO: Factor legendary; legendary = -30
+	let PokemonLegendary = target.data.data.legendary;
+
+	if (PokemonLegendary)
+	{
+		CaptureRate = CaptureRate - 30;
+		console.log("Legendary == True");
+		console.log("CaptureRate = " + CaptureRate);
+	}
+
+	console.log("EvolutionsLeft == "+evolutionsLeft);
+	if(evolutionsLeft == 2)
+	{
+		CaptureRate = CaptureRate + 10;
+	}
+	else if(evolutionsLeft == 0)
+	{
+		CaptureRate = CaptureRate - 10;
+	}
+	console.log("CaptureRate = " + CaptureRate);
 
 	//TODO: Factor status afflictions; each persistent = +10, each volatile = +5, stuck = +10, slow = +5
 

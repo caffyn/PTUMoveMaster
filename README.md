@@ -14,6 +14,7 @@ Installation instructions:
 2. Return to Setup in Foundry and go to Add-on Modules tab
 3. Press Install Module
 4. Paste the above link into the Manifest URL field and press Install
+5. It is highly recommended and/or semi-required that you also install the following modules that this one relies upon to do fancy things with Pokeballs: TokenMagic FX, FXMaster, Confetti (more optional and a matter of taste than the other two).
 
 Hold Shift when clicking a move button in order to enter bonus damage (which can be negative).
 
