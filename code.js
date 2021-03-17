@@ -19,6 +19,20 @@ function _loadModuleSettings() {
 	  default: "true"
 	});
 
+	game.settings.register("PTUMoveMaster", "showEffectiveness", {
+		name: "GM Setting: Show move effectiveness on current target",
+		hint: "",
+		scope: "client",
+		config: true,
+		type: String,
+		choices: {
+		  "never": "Never",
+		  "always": "Always",
+		  "neutralOrBetter": "Only on neutral or better targets",
+		},
+		default: "neutralOrBetter"
+	  });
+
 	game.settings.register("PTUMoveMaster", "showEffectivenessText", {
 		name: "Player Setting: Show Effectiveness as Text",
 		hint: "",
@@ -31,6 +45,33 @@ function _loadModuleSettings() {
 		},
 		default: "true"
 	  });
+
+	game.settings.register("PTUMoveMaster", "alwaysDisplayTokenNames", {
+		name: "GM Setting: Always Display Token Names",
+		hint: "Always set tokens to display their name to everyone when they're dragged out.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
+
+	game.settings.register("PTUMoveMaster", "alwaysDisplayTokenHealth", {
+		name: "GM Setting: Always Display Token Health",
+		hint: "Always set tokens to display their health as a bar to everyone when they're dragged out.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
+
+	game.settings.register("PTUMoveMaster", "pokepsychologistCanReplaceCommand", {
+		name: "GM Setting: Pokepsychologist allows replacing Command with Pokemon Education for Loyalty checks.",
+		hint: "As written, Pokepsychologist is relatively worthless, and technically does not allow for one of the uses a casual reading of it might imply. This homebrew option allows trainers with Pokepsychologist to use Pokemon Education in place of Command for Loyalty checks.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: false
+	});
 } 
 
 Hooks.once('init', async function() 
@@ -52,8 +93,22 @@ Hooks.once('init', async function()
 		CalculateDmgRoll,
 		sendMoveRollMessage,
 		ApplyInjuries,
-		GetSoundDirectory
-
+		GetSoundDirectory,
+		CreatePokeballButtonList,
+		ThrowPokeball,
+		PokedexScan,
+		CreateStatusMoveButtonList,
+		CreateDamageMoveButtonList,
+		PokeballRelease,
+		SpeakPokemonName,
+		TakeStandardAction,
+		ShowPokeballMenu,
+		ShowStruggleMenu,
+		ShowManeuverMenu,
+		ShowInventoryMenu,
+		UseInventoryItem,
+		GetItemArt,
+		GetTargetTypingHeader,
 	};
 });
 
@@ -69,18 +124,310 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	}
 });
 
-Hooks.on("dropCanvasData", (canvas, update) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and TODO: create lightshow
+Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and TODO: create lightshow
+	
+	let pokeball = "Basic Ball"
+	let actor = game.actors.get(tokenData.actorId);
 
-	let actor = game.actors.get(update.id);
+	function capitalizeFirstLetter(string) {
+		return string[0].toUpperCase() + string.slice(1);
+	}
 
 	if(actor)
 	{
-		console.log(actor);
-		console.log(actor.data.type);
-		console.log(actor.data.data.owner);
+		let target_token = game.actors.get(actor._id).getActiveTokens().slice(-1)[0]; // The thrown pokemon
+		let current_token_species = capitalizeFirstLetter((actor.data.data.species).toLowerCase());
+		let current_token_nature = capitalizeFirstLetter((actor.data.data.nature.value).toLowerCase());
+
 		if(actor.data.type == "pokemon" && (actor.data.data.owner != ""))
 		{
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.8, autoplay: true, loop: false}, true);
+			let trainer_actor = game.actors.get(actor.data.data.owner);
+			let trainer_tokens = trainer_actor.getActiveTokens();
+			let actor_token = trainer_tokens[0]; // The throwing trainer
+
+			if(!actor_token)
+			{
+				game.ptu.PlayPokemonCry(current_token_species);	
+				return;
+			}
+
+			let throwRange = trainer_actor.data.data.capabilities["Throwing Range"];
+			let rangeToTarget = GetDistanceBetweenTokens(actor_token, tokenData);
+
+			if(throwRange < rangeToTarget)
+			{
+				ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
+				game.actors.get(actor._id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
+			}
+			else
+			{
+				setTimeout(() => { game.ptu.PlayPokemonCry(current_token_species); }, 2000);
+				
+				target_token.update({"scale": (0.25/target_token.data.width)});
+
+				ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+
+				let transitionType = 9;
+				let targetImagePath = "/Item_Icons/"+pokeball+".png";
+
+				let polymorphFilterId = "pokeball";
+				let pokeball_polymorph_quick_params =
+				[{
+					filterType: "polymorph",
+					filterId: polymorphFilterId,
+					type: transitionType,
+					padding: 70,
+					magnify: 1,
+					imagePath: targetImagePath,
+					animated:
+					{
+						progress:
+						{
+							active: true,
+							animType: "halfCosOscillation",
+							val1: 0,
+							val2: 100,
+							loops: 1,
+							loopDuration: 1
+						}
+					}
+				},
+
+				{
+					filterType: "transform",
+					filterId: "pokeball_bounce",
+					autoDestroy: true,
+					padding: 80,
+					animated:
+					{
+						translationY:
+						{
+							animType: "cosOscillation",
+							val1: 0,
+							val2: 0.25,
+							loops: 1,
+							loopDuration: 450
+						},
+						// translationX:
+						// {
+						// 	animType: "cosOscillation",
+						// 	val1: 0.15,
+						// 	val2: 0.12,
+						// 	loops: 1,
+						// 	loopDuration: 450
+						// },
+						scaleY:
+						{
+							animType: "cosOscillation",
+							val1: 1,
+							val2: 0.75,
+							loops: 2,
+							loopDuration: 450,
+						},
+						scaleX:
+						{
+							animType: "cosOscillation",
+							val1: 1,
+							val2: 0.75,
+							loops: 2,
+							loopDuration: 450,
+						}
+					}
+				}
+
+				];
+
+				let pokeball_polymorph_params =
+				[{
+					filterType: "polymorph",
+					filterId: polymorphFilterId,
+					type: transitionType,
+					padding: 70,
+					magnify: 1,
+					imagePath: targetImagePath,
+					animated:
+					{
+						progress:
+						{
+							active: true,
+							animType: "halfCosOscillation",
+							val1: 0,
+							val2: 100,
+							loops: 1,
+							loopDuration: 1
+						}
+					}
+				}];
+
+				target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
+
+				function castSpell(effect) {
+					canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor._id).getActiveTokens().slice(-1)[0]);//target_token);
+				}
+				
+				castSpell({
+					file:
+						"Item_Icons/"+pokeball+".webm",
+					anchor: {
+						x: -0.08,
+						y: 0.5,
+					},
+					speed: 1,
+					angle: 0,
+					scale: {
+						x: 0.5,
+						y: 0.5,
+					},
+				});
+
+				setTimeout(() => { target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
+
+				let pokeballShoop_params =
+				[
+					{
+						filterType: "transform",
+						filterId: "pokeballShoop",
+						bpRadiusPercent: 100,
+						//padding: 0,
+						autoDestroy: true,
+						animated:
+						{
+							bpStrength:
+							{
+								animType: "cosOscillation",//"cosOscillation",
+								val1: 0,
+								val2: -0.99,//-0.65,
+								loopDuration: 1500,
+								loops: 1,
+							}
+						}
+					},
+
+					{
+						filterType: "glow",
+						filterId: "pokeballShoop",
+						outerStrength: 40,
+						innerStrength: 20,
+						color: 0xFFFFFF,//0x5099DD,
+						quality: 0.5,
+						//padding: 0,
+						//zOrder: 2,
+						autoDestroy: true,
+						animated:
+						{
+							color: 
+							{
+							active: true, 
+							loopDuration: 1500, 
+							loops: 1,
+							animType: "colorOscillation", 
+							val1:0xFFFFFF,//0x5099DD, 
+							val2:0xff0000,//0x90EEFF
+							}
+						}
+					},
+
+					{
+						filterType: "adjustment",
+						filterId: "pokeballShoop",
+						saturation: 1,
+						brightness: 10,
+						contrast: 1,
+						gamma: 1,
+						red: 1,
+						green: 1,
+						blue: 1,
+						alpha: 1,
+						autoDestroy: true,
+						animated:
+						{
+							alpha: 
+							{ 
+							active: true, 
+							loopDuration: 1500, 
+							loops: 1,
+							animType: "syncCosOscillation",
+							val1: 0.35,
+							val2: 0.75 }
+						}
+					}
+				];
+
+				setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
+				setTimeout(() => {  
+
+					if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
+					{
+						if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+						{
+							target_token.update({
+								"scale": (1),
+								"bar1.attribute": "health",
+								"displayBars": 50,
+								"displayName": 50
+							});  
+						}
+						else
+						{
+							target_token.update({
+								"scale": (1),
+								"displayName": 50
+							});  
+						}
+					}
+					else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+					{
+						target_token.update({
+							"scale": (1),
+							"bar1.attribute": "health",
+							"displayBars": 50,
+						});  
+					}
+					else
+					{
+						target_token.update({"scale": (1)});
+					}
+					
+				}, 1500);
+
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			}
+		}
+		else if (actor.data.type == "pokemon")
+		{
+			if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
+			{
+				if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+				{
+					target_token.update({
+						"name": (current_token_nature+" "+current_token_species),
+						"bar1.attribute": "health",
+						"displayBars": 50,
+						"displayName": 50
+					});  
+				}
+				else
+				{
+					target_token.update({
+						"name": (current_token_nature+" "+current_token_species),
+						"displayName": 50
+					});  
+				}
+			}
+			else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+			{
+				target_token.update({
+					"name": (current_token_nature+" "+current_token_species),
+					"bar1.attribute": "health",
+					"displayBars": 50,
+				});  
+			}
+			else
+			{
+				target_token.update({"name": (current_token_nature+" "+current_token_species)});
+			}	
+			game.ptu.PlayPokemonCry(current_token_species);	
 		}
 	}
 });
@@ -111,326 +458,320 @@ Hooks.on("dropCanvasData", (canvas, update) => { // If an owned Pokemon is dropp
 
 
 
+var stats = ["atk", "def", "spatk", "spdef", "spd"];
+
+var move_stage_changes = {
+	"Blank Template"  :   {
+		"roll-trigger": 20, // If roll-trigger is included in a move's entry here, the other effects will only trigger on a natural to-hit roll of that number or higher
+		"atk"   : 0,
+		"def"   : 0,
+		"spatk" : 0,
+		"spdef" : 0,
+		"spd"   : 0,
+		"accuracy": 0,
+		"pct-healing": 0,
+		"pct-self-damage": 0,
+		"crit-range": 20,
+		"effect-range": 20
+	},
+	"Calm Mind"  :   {
+		"spatk" : 1,
+		"spdef" : 1
+	},
+	"Nasty Plot"  :   {
+		"spatk" : 2,
+	},
+	"Swords Dance"  :   {
+		"atk" : 2,
+	},
+	"Recover"  :   {
+		"pct-healing": 0.5,
+	},
+	"Defend Order"  :   {
+		"def" : 1,
+		"spdef" : 1
+	},
+	"Quiver Dance"  :   {
+		"spatk" : 1,
+		"spdef" : 1,
+		"spd" : 1
+	},
+	"Tail Glow"  :   {
+		"spatk" : 3
+	},
+	"Hone Claws"  :   {
+		"atk" : 1,
+		"accuracy" : 1 // TODO: Implement Accuracy 'stage' changing.
+	},
+	"Draco Meteor"  :   {
+		"spatk" : -2,
+	},
+	"Dragon Dance"  :   {
+		"atk" : 1,
+		"spd" : 1,
+	},
+	"Charge"  :   {
+		"spdef" : 1,
+	},
+	"Bulk Up"  :   {
+		"atk" : 1,
+		"def" : 1,
+	},
+	"Close Combat"  :   {
+		"def" : -1,
+		"spdef" : -1,
+	},
+	"Hammer Arm"  :   {
+		"spd" : -1,
+	},
+	"Superpower"  :   {
+		"atk" : -1,
+		"def" : -1,
+	},
+	"Flame Charge"  :   {
+		"spd" : 1,
+	},
+	"Overheat"  :   {
+		"spatk" : -2,
+	},
+	"Dragon Ascent"  :   {
+		"def" : -1,
+		"spdef" : -1,
+	},
+	"Cotton Guard"  :   {
+		"def" : 3,
+	},
+	"Leaf Storm"  :   {
+		"spatk" : -2,
+	},
+	"Belly Drum"  :   {
+		"atk" : 6,
+		"pct-self-damage": 0.5,
+	},
+	"Growth"  :   { // TODO: Double these gains if in Sunny Weather
+		"atk" : 1,
+		"spatk" : 1,
+	},
+	"Harden"  :   {
+		"def" : 1,
+	},
+	"Howl"  :   {
+		"atk" : 1,
+	},
+	"Howl [OG]"  :   {
+		"atk" : 1,
+	},
+	"Sharpen"  :   {
+		"atk" : 1,
+	},
+	"Shell Smash"  :   {
+		"atk" : 2,
+		"spatk" : 2,
+		"spd" : 2,
+		"def" : -1,
+		"spdef" : -1,
+	},
+	"Stockpile"  :   {
+		"def" : 1,
+		"spdef" : 1,
+	},
+	"Work Up"  :   {
+		"atk" : 1,
+		"spatk" : 1,
+	},
+	"Coil"  :   {
+		"atk" : 1,
+		"def" : 1,
+		"accuracy" : 1,
+	},
+	"Agility"  :   {
+		"spd" : 2,
+	},
+	"Amnesia"  :   {
+		"spdef" : 2,
+	},
+	"Cosmic Power"  :   {
+		"def" : 1,
+		"spdef" : 1,
+	},
+	"Meditate"  :   {
+		"atk" : 1,
+	},
+	"Psycho Boost"  :   {
+		"spatk" : -2,
+	},
+	"Rock Polish"  :   {
+		"spd" : 2,
+	},
+	"Autotomize"  :   {
+		"spd" : 2,
+		"weight" : -1, // TODO: Implement weight changes
+	},
+	"Iron Defense"  :   {
+		"def" : 2,
+	},
+	"Shift Gear"  :   {
+		"atk" : 1,
+		"spd" : 2,
+	},
+	"Heal Order"  :   {
+		"pct-healing": 0.5,
+	},
+	"Silver Wind"  :   {
+		"roll-trigger": 19,
+		"atk"   : 1,
+		"def"   : 1,
+		"spatk" : 1,
+		"spdef" : 1,
+		"spd"   : 1,
+	},
+	"Moonlight"  :   {// TODO: The healing percent varies depending on the weather
+		"pct-healing": 0.5,
+	},
+	"Roost"  :   {
+		"pct-healing": 0.5,
+	},
+	"Ominous Wind"  :   {
+		"roll-trigger": 19,
+		"atk"   : 1,
+		"def"   : 1,
+		"spatk" : 1,
+		"spdef" : 1,
+		"spd"   : 1,
+	},
+	"Synthesis"  :   {// TODO: The healing percent varies depending on the weather
+		"pct-healing": 0.5,
+	},
+	"Double-Edge"  :   {
+		"pct-self-damage": 0.33333,
+	},
+	"Morning Sun"  :   {// TODO: The healing percent varies depending on the weather
+		"pct-healing": 0.5,
+	},
+	"Slack Off"  :   {
+		"pct-healing": 0.5,
+	},
+	"Substitute"  :   {
+		"pct-self-damage": 0.25,
+	},
+	"Rest"  :   {
+		"pct-healing": 1,
+	},
+	"Ancient Power"  :   {
+		"roll-trigger": 19,
+		"atk"   : 1,
+		"def"   : 1,
+		"spatk" : 1,
+		"spdef" : 1,
+		"spd"   : 1,
+	},
+	"Head Smash"  :   {
+		"pct-self-damage": 0.33333,
+	},
+	"Metal Claw"  :   {
+		"roll-trigger": 18,
+		"atk"   : 1,
+	},
+	"Meteor Mash"  :   {
+		"roll-trigger": 15,
+		"atk"   : 1,
+	},
+	"Steel Wing"  :   {
+		"roll-trigger": 15,
+		"def"   : 1,
+	},
+};
+
+const ButtonHeight = 85;
+const RangeFontSize = 14;
+const RangeIconFontSizeOffset = (8);
+const MoveButtonBackgroundColor = "#333333";
+const MoveButtonTextColor = "#cccccc";
+
+const TypeIconWidth = 78;
+const EffectivenessBorderThickness = 5;
+
+const TypeIconSuffix = "IC.png";
+const CategoryIconSuffix = ".png";
+
+// const TypeIconPath = "systems/ptu/css/images/types/";
+// const CategoryIconPath = "systems/ptu/css/images/categories/";
+
+const AlternateIconPath = "modules/PTUMoveMaster/images/icons/";
+
+// const AtWillReadyMark = "∞";
+
+// const SceneReadyMark = "✅";
+// const SceneExpendedMark = "❌";
+
+// const EOTReadyMark = "🔳";
+// const EOTCooldownMark = "⏳";
+
+// // const DailyReadyMark = "🔆";
+// const DailyReadyMark = "<img title='Daily (Ready)' src='" + AlternateIconPath + "daily_ready" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+// // const DailyExpendedMark = "💤";
+// const DailyExpendedMark = "<img title='Daily (Ready)' src='" + AlternateIconPath + "daily_expended" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 
 
-var UseAlternateStyling = true;
+const ResetEOTMark = "🔁⏳";
+const ResetSceneMark = "🔁❌";
+const ResetDailyMark = "🔁💤";
 
-	var ShowTargetTypeEffectivenessIfKnown = true;
-
-	var stats = ["atk", "def", "spatk", "spdef", "spd"];
-
-	var move_stage_changes = {
-		"Blank Template"  :   {
-			"roll-trigger": 20, // If roll-trigger is included in a move's entry here, the other effects will only trigger on a natural to-hit roll of that number or higher
-			"atk"   : 0,
-			"def"   : 0,
-			"spatk" : 0,
-			"spdef" : 0,
-			"spd"   : 0,
-			"accuracy": 0,
-			"pct-healing": 0,
-			"pct-self-damage": 0,
-			"crit-range": 20,
-			"effect-range": 20
-		},
-		"Calm Mind"  :   {
-			"spatk" : 1,
-			"spdef" : 1
-		},
-		"Nasty Plot"  :   {
-			"spatk" : 2,
-		},
-		"Swords Dance"  :   {
-			"atk" : 2,
-		},
-		"Recover"  :   {
-			"pct-healing": 0.5,
-		},
-		"Defend Order"  :   {
-			"def" : 1,
-			"spdef" : 1
-		},
-		"Quiver Dance"  :   {
-			"spatk" : 1,
-			"spdef" : 1,
-			"spd" : 1
-		},
-		"Tail Glow"  :   {
-			"spatk" : 3
-		},
-		"Hone Claws"  :   {
-			"atk" : 1,
-			"accuracy" : 1 // TODO: Implement Accuracy 'stage' changing.
-		},
-		"Draco Meteor"  :   {
-			"spatk" : -2,
-		},
-		"Dragon Dance"  :   {
-			"atk" : 1,
-			"spd" : 1,
-		},
-		"Charge"  :   {
-			"spdef" : 1,
-		},
-		"Bulk Up"  :   {
-			"atk" : 1,
-			"def" : 1,
-		},
-		"Close Combat"  :   {
-			"def" : -1,
-			"spdef" : -1,
-		},
-		"Hammer Arm"  :   {
-			"spd" : -1,
-		},
-		"Superpower"  :   {
-			"atk" : -1,
-			"def" : -1,
-		},
-		"Flame Charge"  :   {
-			"spd" : 1,
-		},
-		"Overheat"  :   {
-			"spatk" : -2,
-		},
-		"Dragon Ascent"  :   {
-			"def" : -1,
-			"spdef" : -1,
-		},
-		"Cotton Guard"  :   {
-			"def" : 3,
-		},
-		"Leaf Storm"  :   {
-			"spatk" : -2,
-		},
-		"Belly Drum"  :   {
-			"atk" : 6,
-			"pct-self-damage": 0.5,
-		},
-		"Growth"  :   { // TODO: Double these gains if in Sunny Weather
-			"atk" : 1,
-			"spatk" : 1,
-		},
-		"Harden"  :   {
-			"def" : 1,
-		},
-		"Howl"  :   {
-			"atk" : 1,
-		},
-		"Howl [OG]"  :   {
-			"atk" : 1,
-		},
-		"Sharpen"  :   {
-			"atk" : 1,
-		},
-		"Shell Smash"  :   {
-			"atk" : 2,
-			"spatk" : 2,
-			"spd" : 2,
-			"def" : -1,
-			"spdef" : -1,
-		},
-		"Stockpile"  :   {
-			"def" : 1,
-			"spdef" : 1,
-		},
-		"Work Up"  :   {
-			"atk" : 1,
-			"spatk" : 1,
-		},
-		"Coil"  :   {
-			"atk" : 1,
-			"def" : 1,
-			"accuracy" : 1,
-		},
-		"Agility"  :   {
-			"spd" : 2,
-		},
-		"Amnesia"  :   {
-			"spdef" : 2,
-		},
-		"Cosmic Power"  :   {
-			"def" : 1,
-			"spdef" : 1,
-		},
-		"Meditate"  :   {
-			"atk" : 1,
-		},
-		"Psycho Boost"  :   {
-			"spatk" : -2,
-		},
-		"Rock Polish"  :   {
-			"spd" : 2,
-		},
-		"Autotomize"  :   {
-			"spd" : 2,
-			"weight" : -1, // TODO: Implement weight changes
-		},
-		"Iron Defense"  :   {
-			"def" : 2,
-		},
-		"Shift Gear"  :   {
-			"atk" : 1,
-			"spd" : 2,
-		},
-		"Heal Order"  :   {
-			"pct-healing": 0.5,
-		},
-		"Silver Wind"  :   {
-			"roll-trigger": 19,
-			"atk"   : 1,
-			"def"   : 1,
-			"spatk" : 1,
-			"spdef" : 1,
-			"spd"   : 1,
-		},
-		"Moonlight"  :   {// TODO: The healing percent varies depending on the weather
-			"pct-healing": 0.5,
-		},
-		"Roost"  :   {
-			"pct-healing": 0.5,
-		},
-		"Ominous Wind"  :   {
-			"roll-trigger": 19,
-			"atk"   : 1,
-			"def"   : 1,
-			"spatk" : 1,
-			"spdef" : 1,
-			"spd"   : 1,
-		},
-		"Synthesis"  :   {// TODO: The healing percent varies depending on the weather
-			"pct-healing": 0.5,
-		},
-		"Double-Edge"  :   {
-			"pct-self-damage": 0.33333,
-		},
-		"Morning Sun"  :   {// TODO: The healing percent varies depending on the weather
-			"pct-healing": 0.5,
-		},
-		"Slack Off"  :   {
-			"pct-healing": 0.5,
-		},
-		"Substitute"  :   {
-			"pct-self-damage": 0.25,
-		},
-		"Rest"  :   {
-			"pct-healing": 1,
-		},
-		"Ancient Power"  :   {
-			"roll-trigger": 19,
-			"atk"   : 1,
-			"def"   : 1,
-			"spatk" : 1,
-			"spdef" : 1,
-			"spd"   : 1,
-		},
-		"Head Smash"  :   {
-			"pct-self-damage": 0.33333,
-		},
-		"Metal Claw"  :   {
-			"roll-trigger": 18,
-			"atk"   : 1,
-		},
-		"Meteor Mash"  :   {
-			"roll-trigger": 15,
-			"atk"   : 1,
-		},
-		"Steel Wing"  :   {
-			"roll-trigger": 15,
-			"def"   : 1,
-		},
-	};
-
-	const ButtonHeight = 85;
-	const RangeFontSize = 14;
-	const RangeIconFontSizeOffset = (8);
-	const MoveButtonBackgroundColor = "#333333";
-	const MoveButtonTextColor = "#cccccc";
-
-	const TypeIconWidth = 78;
-	const EffectivenessBorderThickness = 5;
-
-	const TypeIconSuffix = "IC.png";
-	const CategoryIconSuffix = ".png";
-
-	// const TypeIconPath = "systems/ptu/css/images/types/";
-	// const CategoryIconPath = "systems/ptu/css/images/categories/";
-
-	const AlternateIconPath = "modules/PTUMoveMaster/images/icons/";
-
-	// const AtWillReadyMark = "∞";
-
-	// const SceneReadyMark = "✅";
-	// const SceneExpendedMark = "❌";
-
-	// const EOTReadyMark = "🔳";
-	// const EOTCooldownMark = "⏳";
-
-	// // const DailyReadyMark = "🔆";
-	// const DailyReadyMark = "<img title='Daily (Ready)' src='" + AlternateIconPath + "daily_ready" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	// // const DailyExpendedMark = "💤";
-	// const DailyExpendedMark = "<img title='Daily (Ready)' src='" + AlternateIconPath + "daily_expended" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-
-
-	const ResetEOTMark = "🔁⏳";
-	const ResetSceneMark = "🔁❌";
-	const ResetDailyMark = "🔁💤";
-
-	const AbilityIcon = "Ability: ";
+const AbilityIcon = "Ability: ";
 
 
 
-	const RangeIcon = "<img title='Ranged' src='" + AlternateIconPath + "ranged" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const MeleeIcon = "<img title='Melee' src='" + AlternateIconPath + "melee" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const SelfIcon = "<img title='Self' src='" + AlternateIconPath + "self" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const BurstIcon = "<img title='Burst' src='" + AlternateIconPath + "burst" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const BlastIcon = "<img title='Blast' src='" + AlternateIconPath + "blast" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const ConeIcon = "<img title='Cone' src='" + AlternateIconPath + "cone" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const LineIcon = "<img title='Line' src='" + AlternateIconPath + "line" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const BlessingIcon = "<img title='Blessing' src='" + AlternateIconPath + "blessing" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const FriendlyIcon = "<img title='Friendly' src='" + AlternateIconPath + "friendly" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const SonicIcon = "<img title='Sonic' src='" + AlternateIconPath + "sonic" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const SocialIcon = "<img title='Social' src='" + AlternateIconPath + "social" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const InterruptIcon = "<img title='Interrupt' src='" + AlternateIconPath + "interrupt" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const ShieldIcon = "<img title='Shield' src='" + AlternateIconPath + "shield" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const TriggerIcon = "<img title='Trigger' src='" + AlternateIconPath + "trigger" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const HealingIcon = "<img title='Healing' src='" + AlternateIconPath + "healing" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const DoubleStrikeIcon = "<img title='Double Strike' src='" + AlternateIconPath + "doublestrike_icon" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-	const FiveStrikeIcon = "<img title='Five Strike' src='" + AlternateIconPath + "fivestrike_icon" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const RangeIcon = "<img title='Ranged' src='" + AlternateIconPath + "ranged" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const MeleeIcon = "<img title='Melee' src='" + AlternateIconPath + "melee" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const SelfIcon = "<img title='Self' src='" + AlternateIconPath + "self" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const BurstIcon = "<img title='Burst' src='" + AlternateIconPath + "burst" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const BlastIcon = "<img title='Blast' src='" + AlternateIconPath + "blast" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const ConeIcon = "<img title='Cone' src='" + AlternateIconPath + "cone" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const LineIcon = "<img title='Line' src='" + AlternateIconPath + "line" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const BlessingIcon = "<img title='Blessing' src='" + AlternateIconPath + "blessing" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const FriendlyIcon = "<img title='Friendly' src='" + AlternateIconPath + "friendly" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const SonicIcon = "<img title='Sonic' src='" + AlternateIconPath + "sonic" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const SocialIcon = "<img title='Social' src='" + AlternateIconPath + "social" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const InterruptIcon = "<img title='Interrupt' src='" + AlternateIconPath + "interrupt" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const ShieldIcon = "<img title='Shield' src='" + AlternateIconPath + "shield" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const TriggerIcon = "<img title='Trigger' src='" + AlternateIconPath + "trigger" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const HealingIcon = "<img title='Healing' src='" + AlternateIconPath + "healing" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const DoubleStrikeIcon = "<img title='Double Strike' src='" + AlternateIconPath + "doublestrike_icon" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+const FiveStrikeIcon = "<img title='Five Strike' src='" + AlternateIconPath + "fivestrike_icon" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 
 
 
 
-	const JingleDirectory = "pokemon_jingles/";
-	const NameVoiceLinesDirectory = "pokemon_names/";
+const JingleDirectory = "pokemon_jingles/";
+const NameVoiceLinesDirectory = "pokemon_names/";
 
-	const UIButtonClickSound = "buttonclickrelease.wav";
-	const UIPopupSound = "packopen_6_A_cardflip.wav";
+const UIButtonClickSound = "buttonclickrelease.wav";
+const UIPopupSound = "packopen_6_A_cardflip.wav";
 
-	const RefreshEOTMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
-	const RefreshSceneMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
-	const RefreshDailyMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
+const RefreshEOTMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
+const RefreshSceneMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
+const RefreshDailyMovesSound = "In-Battle%20Recall%20Switch%20Flee%20Run.mp3";
 
-	const stat_up_sound_file = "Stat%20Rise%20Up.mp3";
-	const stat_zero_sound_file = "Stat%20Fall%20Down.mp3";
-	const stat_down_sound_file = "Stat%20Fall%20Down.mp3";
-	const heal_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
-	const damage_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
+const stat_up_sound_file = "Stat%20Rise%20Up.mp3";
+const stat_zero_sound_file = "Stat%20Fall%20Down.mp3";
+const stat_down_sound_file = "Stat%20Fall%20Down.mp3";
+const heal_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
+const damage_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
 
-	const PhysicalIcon = "Physical.png";
-	const SpecialIcon = "Special.png";
-	const StatusIcon = "Status.png";
+const PhysicalIcon = "Physical.png";
+const SpecialIcon = "Special.png";
+const StatusIcon = "Status.png";
 
-	const DISPOSITION_HOSTILE = -1;
-	const DISPOSITION_NEUTRAL = 0;
-	const DISPOSITION_FRIENDLY = 1;
+const DISPOSITION_HOSTILE = -1;
+const DISPOSITION_NEUTRAL = 0;
+const DISPOSITION_FRIENDLY = 1;
 
-	const MoveMessageTypes = {
+const MoveMessageTypes = {
 	DAMAGE: 'damage',
 	TO_HIT: 'to-hit',
 	DETAILS: 'details',
 	FULL_ATTACK: 'full-attack'
-	};
+};
 
 
 
@@ -489,23 +830,30 @@ export function PTUAutoFight(){
 				damageSoundFile = "Hit%20Normal%20Damage.mp3";
 			}
 
-			let effectiveness = token.actor.data.data.effectiveness.All[damage_type];
-			if (isNaN(effectiveness) || effectiveness == null)
+			let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+
+			if(token.actor.data.data.effectiveness)
 			{
-				effectiveness = 1;
+				effectiveness = token.actor.data.data.effectiveness.All;
+			}
+
+			let this_moves_effectiveness = effectiveness[damage_type];
+			if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
+			{
+				this_moves_effectiveness = 1;
 				damage_type = "Untyped";
 			}
 			if(mode=="resist")
 			{
 				flavor+="(resisted 1 step) "
-				let old_effectiveness=effectiveness;
+				let old_effectiveness=this_moves_effectiveness;
 				if(old_effectiveness > 1)
 				{
-					effectiveness=effectiveness - .5;
+					this_moves_effectiveness=this_moves_effectiveness - .5;
 				}
 				else
 				{
-					effectiveness=Number(effectiveness /2);
+					this_moves_effectiveness=Number(this_moves_effectiveness /2);
 				}
 			}
 
@@ -524,18 +872,18 @@ export function PTUAutoFight(){
 			}
 
 			var defended_damage = Number(Number(initial_damage_total) - Number(DR));
-			var final_effective_damage = Math.max(Math.floor(Number(defended_damage)*Number(effectiveness)), 0);
+			var final_effective_damage = Math.max(Math.floor(Number(defended_damage)*Number(this_moves_effectiveness)), 0);
 
 			if(mode=="flat")
 			{
 				flavor+="(flat damage) ";
 				final_effective_damage = initial_damage_total;
 				defended_damage = 0;
-				effectiveness = 1;
+				this_moves_effectiveness = 1;
 			}
 			// ui.notifications.info(flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
-			chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
+			chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + this_moves_effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
 			// token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
 			token.actor.modifyTokenAttribute("health", (-final_effective_damage), true, true);
@@ -565,58 +913,58 @@ export function PTUAutoFight(){
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 
 		let target = Array.from(game.user.targets)[0];
-		let targetTypingText = "";
-		let targetType1 = "???";
-		let targetType2 = "???";
-		let effectiveness;
-		if (ShowTargetTypeEffectivenessIfKnown && (target))
-		{
-			effectiveness = target.actor.data.data.effectiveness.All;
-			if(target.data.disposition > DISPOSITION_HOSTILE)
-			{
-				targetType1 = target.actor.data.data.typing[0];
-				targetType2 = target.actor.data.data.typing[1];
-			}
+		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target)
+		// let targetType1 = "???";
+		// let targetType2 = "???";
+		// let effectiveness;
+		// if ( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target))
+		// {
+		// 	effectiveness = target.actor.data.data.effectiveness.All;
+		// 	if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+		// 	{
+		// 		targetType1 = target.actor.data.data.typing[0];
+		// 		targetType2 = target.actor.data.data.typing[1];
+		// 	}
 
-			let tokenImage;
-			let tokenSize = 80;
+		// 	let tokenImage;
+		// 	let tokenSize = 80;
 
-			if (target.actor.token)
-			{
-				tokenImage = target.actor.token.data.img;
-			}
-			else
-			{
-				tokenImage = target.actor.data.img;
-			}
+		// 	if (target.actor.token)
+		// 	{
+		// 		tokenImage = target.actor.token.data.img;
+		// 	}
+		// 	else
+		// 	{
+		// 		tokenImage = target.actor.data.img;
+		// 	}
 
-			if(targetType2 == "null")
-			{
-				if(targetType1 == "???")
-				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div>";
-				}
-				else
-				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
-					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>).";
-				}
-			}
-			else
-			{
-				if(targetType1 == "???")
-				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+"/"+targetType2+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
-					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" ("+targetType1+"/"+targetType2+ ").";
-				}
-				else
-				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
-					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>/<img src='" + TypeIconPath+targetType2+TypeIconSuffix+ "'>).";
-				}
-			}
+		// 	if(targetType2 == "null")
+		// 	{
+		// 		if(targetType1 == "???")
+		// 		{
+		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div>";
+		// 		}
+		// 		else
+		// 		{
+		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
+		// 			// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>).";
+		// 		}
+		// 	}
+		// 	else
+		// 	{
+		// 		if(targetType1 == "???")
+		// 		{
+		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+"/"+targetType2+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
+		// 			// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" ("+targetType1+"/"+targetType2+ ").";
+		// 		}
+		// 		else
+		// 		{
+		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
+		// 			// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>/<img src='" + TypeIconPath+targetType2+TypeIconSuffix+ "'>).";
+		// 		}
+		// 	}
 
-		}
+		// }
 	var items=actor.data.items;
 	var item_entities=actor.items;
 	var i = 0;
@@ -825,11 +1173,25 @@ export function PTUAutoFight(){
 		var effectivenessBackgroundColor = "darkgrey"
 		var effectivenessTextColor = "black";
 		var effectivenessText = "";
+		let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+
+		if(!target)
+		{
+			target = game.actors.get(actor.id).getActiveTokens()[0];
+			console.log("NO TARGET, SELECTING ACTOR________________");
+			console.log(target);
+		}
+
+		if(target.actor.data.data.effectiveness)
+		{
+			effectiveness = target.actor.data.data.effectiveness.All;
+		}
+
 		if(currenttype=="move" && (currentCategory == "Status"))
 		{
-			if( ShowTargetTypeEffectivenessIfKnown && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
+			if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
 			{
-				if (target.data.disposition > DISPOSITION_HOSTILE)
+				if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
 				{
 					currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
 					if (effectiveness[item.data.type] == 0.5)
@@ -1018,6 +1380,11 @@ export function PTUAutoFight(){
 				style:"padding-left: 0px;border-right-width: 0px;border-bottom-width: 0px;border-left-width: 0px;border-top-width: 0px;margin-right: 0px;",
 				label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+ButtonHeight+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 			callback: async () => {
+				if(!ThisPokemonsTrainerCommandCheck(actor))
+				{
+					game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
+					return;
+				}
 				let key_shift = keyboard.isDown("Shift");
 				if (key_shift) 
 				{
@@ -1321,11 +1688,17 @@ export function PTUAutoFight(){
 		var effectivenessBackgroundColor = "darkgrey"
 		var effectivenessTextColor = "black";
 		var effectivenessText = "";
+		let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+
+		if(target.actor.data.data.effectiveness)
+		{
+			effectiveness = target.actor.data.data.effectiveness.All;
+		}
 		if(currenttype=="move" && (currentCategory == "Physical" || currentCategory == "Special"))
 		{
-			if( ShowTargetTypeEffectivenessIfKnown && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
+			if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
 			{
-				if (target.data.disposition > DISPOSITION_HOSTILE)
+				if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
 				{
 					currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
 					if (effectiveness[item.data.type] == 0.5)
@@ -1686,6 +2059,11 @@ export function PTUAutoFight(){
 			buttons[currentid]={label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight+3)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 				//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 			callback: async () => {
+				if(!ThisPokemonsTrainerCommandCheck(actor))
+				{
+					game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
+					return;
+				}
 				let key_shift = keyboard.isDown("Shift");
 				if (key_shift) 
 				{
@@ -1698,7 +2076,7 @@ export function PTUAutoFight(){
 				}
 				
 
-			}
+				}
 
 			}
 
@@ -1712,21 +2090,21 @@ export function PTUAutoFight(){
 	buttons["struggleMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
 		callback: () => {
 
-			//PerformStruggleAttack ("Normal", "Physical");
+			game.PTUMoveMaster.ShowStruggleMenu(actor);
 
 		  }};
 
 	buttons["maneuverMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
 	callback: () => {
 
-		//PerformStruggleAttack ("Normal", "Physical");
+		game.PTUMoveMaster.ShowManeuverMenu(actor);
 
 	}};
 
 	buttons["itemMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
 	callback: () => {
 
-		//PerformStruggleAttack ("Normal", "Physical");
+		game.PTUMoveMaster.ShowInventoryMenu(actor);
 
 	}};
 
@@ -1735,7 +2113,7 @@ export function PTUAutoFight(){
 		buttons["pokeballMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
 		callback: () => {
 	
-			//PerformStruggleAttack ("Normal", "Physical");
+			game.PTUMoveMaster.ShowPokeballMenu(actor);
 	
 		}};
 	
@@ -2147,9 +2525,6 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 	let actorType1 = null;
 	let actorType2 = null;
 
-	let actorInjuries = actor.data.data.health.injuries;
-	console.log("actorInjuries = "+actorInjuries);
-
 	if(actor.data.data.typing)
 	{
 		actorType1 = actor.data.data.typing[0];
@@ -2338,12 +2713,7 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 	console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
 
-	if(actorInjuries >=5)
-	{
-		game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
-		actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
-		game.PTUMoveMaster.ApplyInjuries(actor, actorInjuries);
-	}
+	game.PTUMoveMaster.TakeStandardAction(actor)
 
 	return diceResult;
 };
@@ -2666,4 +3036,1517 @@ export async function ApplyInjuries(target, final_effective_damage)
 
 			target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
 		}
+}
+
+
+export function GetDistanceBetweenTokens(token1, token2)
+{
+	// let target = Array.from(game.user.targets)[0];
+	let ray = new Ray(token1, token2);
+	let segments = [{ray}];
+	let dist = canvas.grid.measureDistances(segments,{gridSpaces:true})[0]
+		
+	// ui.notifications.info(`${dist} m apart`)
+	return dist;
+};
+
+
+export function CreateStatusMoveButtonList(actor)
+{
+	// Initialize an array of buttons
+
+	// Iterate over a list of actor's items
+
+	// If item is a status move, add a button to the array based off that move
+};
+
+
+export function CreateDamageMoveButtonList(actor)
+{
+	// Initialize an array of buttons
+
+	// Iterate over a list of actor's items
+
+	// If item is a damaging move, add a button to the array based off that move
+};
+
+
+export function CreatePokeballButtonList(actor)
+{
+	// Initialize an array of buttons
+
+	// Iterate over a list of actor's items
+
+	// If item is a pokeball, add a button to the array based off that move
+};
+
+
+export function ThrowPokeball(actor_token, target_token, pokeball)
+{
+	let throwRange = actor_token.actor.data.data.capabilities["Throwing Range"];
+	let rangeToTarget = GetDistanceBetweenTokens(actor_token, target_token);
+	if(throwRange < rangeToTarget)
+	{
+		ui.notifications.warn(`Target is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
+	}
+	else
+	{
+		ui.notifications.info(`Target is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
+
+		let numDice=1;
+		let dieSize = "d20";
+
+		let roll= new Roll(`${numDice}${dieSize}-${6}`).roll()
+		console.log("THROW ROLL! ----------------");
+		console.log(roll);
+		roll.toMessage()
+
+		function castSpell(effect) {
+			// const tokens = canvas.tokens.controlled;
+			// if (tokens.length == 0) {
+			//   ui.notifications.error("Please select a token");
+			//   return;
+			// }
+			// game.user.targets.forEach((i, t) => {
+			//   canvas.fxmaster.drawSpecialToward(effect, tokens[0], t);
+			canvas.fxmaster.drawSpecialToward(effect, actor_token, target_token);
+			// });
+		}
+		  
+		
+		let TargetSpeedEvasion = target_token.actor.data.data.evasion.speed;
+
+		// roll = Math.floor(Math.random() * (20 - 1 + 1)) + 1;
+		console.log("roll.results[0] = ");
+		console.log(roll.results[0]);
+		console.log("roll.results[1] = ");
+		console.log(roll.results[1]);
+		console.log("roll.results[2] = ");
+		console.log(roll.results[2]);
+		console.log("roll.results[3] = ");
+		console.log(roll.results[3]);
+
+		if(Number(roll.results[0]-roll.results[2]) >= TargetSpeedEvasion)
+		{
+			castSpell({
+				file:
+					"Item_Icons/"+pokeball+".webm",
+				anchor: {
+					x: -0.08,
+					y: 0.5,
+				},
+				speed: 1,
+				angle: 0,
+				scale: {
+					x: 0.5,
+					y: 0.5,
+				},
+			});
+			ui.notifications.info(`Rolled ${roll.results[0]-roll.results[2]} vs ${TargetSpeedEvasion}, hit!`);
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+
+			
+			let pokeballShoop_params =
+			[
+				{
+					filterType: "transform",
+					filterId: "pokeballShoop",
+					bpRadiusPercent: 100,
+					//padding: 0,
+					autoDestroy: true,
+					animated:
+					{
+						bpStrength:
+						{
+							animType: "cosOscillation",//"cosOscillation",
+							val1: 0,
+							val2: -0.99,//-0.65,
+							loopDuration: 1500,
+							loops: 1,
+						}
+					}
+				},
+
+				{
+					filterType: "glow",
+					filterId: "pokeballShoop",
+					outerStrength: 40,
+					innerStrength: 20,
+					color: 0xFFFFFF,//0x5099DD,
+					quality: 0.5,
+					//padding: 0,
+					//zOrder: 2,
+					autoDestroy: true,
+					animated:
+					{
+						color: 
+						{
+						active: true, 
+						loopDuration: 1500, 
+						loops: 1,
+						animType: "colorOscillation", 
+						val1:0xFFFFFF,//0x5099DD, 
+						val2:0xff0000,//0x90EEFF
+						}
+					}
+				},
+
+				{
+					filterType: "adjustment",
+					filterId: "pokeballShoop",
+					saturation: 1,
+					brightness: 10,
+					contrast: 1,
+					gamma: 1,
+					red: 1,
+					green: 1,
+					blue: 1,
+					alpha: 1,
+					autoDestroy: true,
+					animated:
+					{
+						alpha: 
+						{ 
+						active: true, 
+						loopDuration: 1500, 
+						loops: 1,
+						animType: "syncCosOscillation",
+						val1: 0.35,
+						val2: 0.75 }
+					}
+				}
+			];
+
+			setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 800);
+
+
+			let pokeballWiggle_params =
+			[{
+				filterType: "transform",
+				filterId: "pokeballWiggle",
+				padding: 50,
+				animated:
+				{
+					translationX:
+					{
+						animType: "sinOscillation",
+						val1: -0.0025,
+						val2: +0.0025,
+						loopDuration: 500,
+					},
+					translationY:
+					{
+						animType: "cosOscillation",
+						val1: -0.00035,
+						val2: +0.00035,
+						loopDuration: 500,
+					},
+					rotation:
+					{
+						animType: "cosOscillation",
+						val1: 15,
+						val2: -15,
+						loopDuration: 1000,
+					},    
+				}
+			}];
+			
+			let polymorphFunc = async function () 
+			{
+				let transitionType = 9;
+				let targetImagePath = "/Item_Icons/"+pokeball+".png";
+				console.log("POKEBALL targetImagePath: __________________________");
+				console.log(targetImagePath);
+				let polymorphFilterId = "pokeball";
+				let polymorph_params;
+				
+				// Is the filter already activated on the placeable ? 
+				if (target_token.TMFXhasFilterId(polymorphFilterId)) 
+				{
+				
+					// Yes. So we update the type in the general section and loops + active in the progress animated section, to activate the animation for just one loop.
+					// "type" to allow you to change the animation type
+					// "active" to say at Token Magic : "Hey filter! It's time to work again!"
+					// "loops" so that Token Magic can know how many loops it needs to schedule for the animation.
+					// Each animation loop decreases "loops" by one. When "loops" reach 0, "active" becomes "false" and the animation will be dormant again.
+					// Thank to the halfCosOscillation, a loop brings the value of the property from val1 to val2. A second loop is needed to bring val2 to val1. This is useful for monitoring progress with back and forth movements.
+					polymorph_params =
+						[{
+							filterType: "polymorph",
+							filterId: polymorphFilterId,
+							type: transitionType,
+							animated:
+							{
+								progress:
+								{
+									active: true,
+									loops: 1
+								}
+							}
+						}];
+
+				} 
+				else 
+				{
+					// No. So we create the entirety of the filter
+					polymorph_params =
+						[{
+							filterType: "polymorph",
+							filterId: polymorphFilterId,
+							type: transitionType,
+							padding: 70,
+							magnify: 1,
+							imagePath: targetImagePath,
+							animated:
+							{
+								progress:
+								{
+									active: true,
+									animType: "halfCosOscillation",
+									val1: 0,
+									val2: 100,
+									loops: 1,
+									loopDuration: 1000
+								}
+							}
+						}];
+				}
+
+				// all functions that add, update or delete filters are asynchronous
+				// if you are in a loop AND/OR you chain these functions, it is MANDATORY to await them
+				// otherwise, data persistence may not works.
+				// this is the reason why we use an async function (we cant use await in a non-async function)
+				// avoid awaiting in a forEach loop, use "for" or "for/of" loop.
+				await target_token.TMFXaddUpdateFilters(polymorph_params);
+			};
+
+			// polymorph async function call
+			setTimeout(() => {
+				  polymorphFunc(); 
+
+				  target_token.update({"scale": (0.25/target_token.data.width)});
+				  setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballWiggle_params); }, 3500);
+			}, 1000);
+			
+
+			RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.results[0], target_token);
+		}
+		else
+		{
+			let dodge_params =
+			[{
+				filterType: "transform",
+				filterId: "jumpedDodge",
+				autoDestroy: true,
+				padding: 80,
+				animated:
+				{
+					translationY:
+					{
+						animType: "cosOscillation",
+						val1: 0,
+						val2: -0.225,
+						loops: 1,
+						loopDuration: 900
+					},
+					scaleY:
+					{
+						animType: "cosOscillation",
+						val1: 1,
+						val2: 0.65,
+						loops: 2,
+						loopDuration: 450,
+					},
+					scaleX:
+					{
+						animType: "cosOscillation",
+						val1: 1,
+						val2: 0.65,
+						loops: 2,
+						loopDuration: 450,
+					}
+				}
+			}];
+
+			TokenMagic.addFilters(target_token, dodge_params);
+
+
+			castSpell({
+				file:
+					"Item_Icons/"+pokeball+".webm",
+				anchor: {
+					x: -0.08,
+					y: 0.5,
+				},
+				speed: 1,
+				angle: 0,
+				scale: {
+					x: 0.5,
+					y: 0.5,
+				},
+			});
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			ui.notifications.info(`Rolled ${roll.results[0]-roll.results[2]} vs ${TargetSpeedEvasion}, miss...`);
+		}
+		
+	}
+
+	
+};
+
+
+export function SpeakPokemonName(pokemon_actor)
+{
+	let species = pokemon_actor.data.data.species;
+	let species_data = game.ptu.GetSpeciesData(species);
+	let species_number = species_data.number;
+	let species_number_string = species_number;
+
+	if(species_number.length == 1)
+	{
+		species_number_string = "00"+species_number;
+	}
+	else if(species_number.length == 2)
+	{
+		species_number_string = "0"+species_number;
+	}
+
+	let pokedexSpeechSoundFile = species_number_string+" - "+species+".wav";
+	AudioHelper.play({src: "pokemon_names/"+pokedexSpeechSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+};
+
+
+export function PokedexScan(trainer_token, target_pokemon_token)
+{
+	let trainer_actor = trainer_token.actor;
+	let target_pokemon_actor = target_pokemon_token.actor;
+	let distance = GetDistanceBetweenTokens(trainer_token, target_pokemon_token)
+
+	if(distance > 10)
+	{
+		ui.notifications.warn(`Target is ${distance}m away, which is past the Pokedex's scan range of 10m!`);
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+		return;
+	}
+	if(target_pokemon_actor.data.type != "pokemon")
+	{
+		ui.notifications.warn(`Target is not a pokemon!`);
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+		return;
+	}
+
+	if(target_pokemon_token.data.disposition == -1)
+	{
+		target_pokemon_token.update({"disposition": 0});
+	}
+	
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokedex_ding.wav", volume: 0.5, autoplay: true, loop: false}, true);
+	setTimeout(() => {  SpeakPokemonName(target_pokemon_actor); }, 800);
+	target_pokemon_token.update
+	game.PTUMoveMaster.TakeStandardAction(trainer_actor);
+	return;
+};
+
+
+export function TakeStandardAction(actor)
+{
+	let actorInjuries = actor.data.data.health.injuries;
+	console.log("actorInjuries = "+actorInjuries);
+
+	if(actorInjuries >=5)
+	{
+		game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
+		actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
+		game.PTUMoveMaster.ApplyInjuries(actor, actorInjuries);
+	}
+};
+
+
+export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target_token)
+{
+	let CaptureRollModifier = 0;
+	let CaptureRate = 100;
+
+	let TargetWeight = target.data.data.weight;
+	let TrainerActivePokemon = [];
+
+	let TargetSpecies = target.data.data.species;
+	let TargetType1 = target.data.data.typing[0];
+	let TargetType2 = target.data.data.typing[1];
+	let TargetMovementCapabilities = target.data.data.capabilities;
+	let TargetMovementAtLeast7 = false;
+	let TargetLevel = target.data.data.level.current;
+
+	console.log(TargetMovementCapabilities);
+	if( (TargetMovementCapabilities["Overland"] >= 7) || (TargetMovementCapabilities["Swim"] >= 7) || (TargetMovementCapabilities["Sky"] >= 7) || (TargetMovementCapabilities["Burrow"] >= 7) || (TargetMovementCapabilities["Levitate"] >= 7) || (TargetMovementCapabilities["Teleporter"] >= 7) )
+	{
+		TargetMovementAtLeast7 = true;
+	}
+
+
+	let TargetEvolvesWithStone = false;
+
+	if(to_hit_roll == 20)
+	{
+		CaptureRollModifier -= 10;
+	}
+
+	let PokemonLevel = target.data.data.level.current;
+	
+	let TrainerLevel = trainer.data.data.level.current;
+	CaptureRollModifier -= TrainerLevel;
+
+	let StoneEvolutionPokemon = [
+		"Eevee", "Vaporeon", "Jolteon", "Flareon", "Espeon", "Umbreon", "Leafeon", "Glaceon", "Sylveon", "Nucleon", "Vulpix", "Ninetales", "Growlithe", 
+		"Arcanine", "Pansear", "Simisear",  "Poliwhirl",  "Poliwrath",  "Poliwag",  "Shellder",  "Cloyster",  "Staryu",  "Starmie",  "Lombre",  "Lotad",  
+		"Ludicolo",  "Panpour",  "Simipour",  "Pansage",  "Simisage",  "Pikachu",  "Pichu",  "Raichu",  "Eelektrik",  "Tynamo",  "Eelektross",  "Gloom",  
+		"Oddish",  "Vileplume",  "Bellossom",  "Weepinbell",  "Bellsprout",  "Victreebel",  "Exeggcute",  "Exeggutor",  "Alolan Exeggutor",  "Nuzleaf",  
+		"Seedot",  "Shiftry",  "Nidorina",  "Nidorino",  "Nidoran",  "Nidoking",  "Nidoqueen",  "nidoran-(m)",  "nidoran-(f)",  "Clefairy",  "Cleffa",  
+		"Clefable",  "Jigglypuff",  "Igglybuff",  "Wigglytuff",  "Skitty",  "Delcatty",  "Munna",  "Musharna",  "Sunkern",  "Sunflora",  "Cottonee",  
+		"Whimsicott",  "Petilil",  "Lilligant",  "Helioptile",  "Heliolisk",  "Togetic",  "Togepi",  "Togekiss",  "Roselia",  "Budew",  "Roserade",  
+		"Minccino",  "Cinccino",  "Floette",  "Florges",  "Flabébé",  "Murkrow",  "Honchkrow",  "Misdreavus",  "Mismagius",  "Lampent",  "Litwick",  
+		"Chandelure",  "Doublade",  "Honedge",  "Aegislash",  "Kirlia",  "Ralts",  "Gardevoir",  "Gallade",  "Snorunt",  "Glalie", "Froslass"
+	];
+
+	if(StoneEvolutionPokemon.includes(TargetSpecies))
+	{
+		TargetEvolvesWithStone = true;
+	}
+
+	let currentRound = 1;
+	if(game.combat)
+	{
+		currentRound = game.combat.round;
+	}
+	
+	let currentRoundQuickBallMod = -20;
+
+	if(currentRound == 2)
+	{
+		currentRoundQuickBallMod = 5;
+	}
+	else if(currentRound == 3)
+	{
+		currentRoundQuickBallMod = 10;
+	}
+	else if (currentRound >= 4)
+	{
+		currentRoundQuickBallMod = 20;
+	}
+
+	let TargetIsWaterOrBug = false;
+	if(TargetType1 == "Water" || TargetType1 == "Bug" || TargetType2 == "Water" || TargetType2 == "Bug")
+	{
+		TargetIsWaterOrBug = true;
+	}
+
+	let TargetIsBelowLevel10 = false;
+	if(TargetLevel < 10)
+	{
+		TargetIsBelowLevel10 = true;
+	}
+
+	let pokeball_stats = {
+		"Basic Ball": {"Base Modifier": 0},
+		"Great Ball": {"Base Modifier": -10},
+		"Ultra Ball": {"Base Modifier": -15},
+		"Master Ball": {"Base Modifier": -100},
+		"Safari Ball": {"Base Modifier": 0},
+		"Level Ball": {"Base Modifier": 0, "Conditions": "-20 Modifier if the target is under half the level your active Pokémon is.", "Conditional Modifier": -20},
+		"Lure Ball": {"Base Modifier": 0, "Conditions": "-20 Modifier if the target was baited into the encounter with food.", "Conditional Modifier": -20},
+		"Moon Ball": {"Base Modifier": (0 - (TargetEvolvesWithStone*20) )},
+		"Friend Ball": {"Base Modifier": -5, "Effects": "A caught Pokémon will start with +1 Loyalty."},
+		"Love Ball": {"Base Modifier": 0, "Conditions": "-30 Modifier if the user has an active Pokémon that is of the same evolutionary line as the target, and the opposite gender. Does not work with genderless Pokémon.", "Conditional Modifier": -30},
+		"Heavy Ball": {"Base Modifier": (0- (Math.max(TargetWeight-1, 0)*5) )},
+		"Fast Ball": {"Base Modifier": (0 - (TargetMovementAtLeast7*20) )},
+		"Sport Ball": {"Base Modifier": 0},
+		"Premier Ball": {"Base Modifier": 0},
+		"Repeat Ball": {"Base Modifier": 0}, // TODO: -20 Modifier if you already own a Pokémon of the target’s species.
+		"Timer Ball": {"Base Modifier": Math.max((5 - ((currentRound-1)*5) ), Number(-20))},
+		"Nest Ball": {"Base Modifier": (0 - (TargetIsBelowLevel10*20) )},
+		"Net Ball": {"Base Modifier": (0 - (TargetIsWaterOrBug*20) )},
+		"Dive Ball": {"Base Modifier": 0, "Conditions": "-20 Modifier, if the target was found underwater or underground.", "Conditional Modifier": -20},
+		"Luxury Ball": {"Base Modifier": -5, "Effects": "A caught Pokémon is easily pleased and starts with a raised happiness."},
+		"Heal Ball": {"Base Modifier": -5, "Effects": "A caught Pokémon will heal to Max HP immediately upon capture."},
+		"Quick Ball": {"Base Modifier": (currentRoundQuickBallMod)},
+		"Dusk Ball": {"Base Modifier": 0, "Conditions": "-20 Modifier if it is dark, or if there is very little light out, when used.", "Conditional Modifier": -20},
+		"Cherish Ball": {"Base Modifier": -5},
+		"Park Ball": {"Base Modifier": -15}
+	};
+
+
+	console.log("Pokeball modifier: " + pokeball_stats[pokeball]["Base Modifier"] + " from "+ pokeball +".");
+	CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
+	console.log("CaptureRollModifier = " + CaptureRollModifier);
+	
+	CaptureRate -= PokemonLevel*2;
+	console.log("Pokemon Level = " + PokemonLevel);
+	console.log("CaptureRate = " + CaptureRate);
+
+	let PokemonHitPoints = target.data.data.health.value;
+	let PokemonMaxHitPoints = target.data.data.health.max;
+	let PokemonHealthPercent = (PokemonHitPoints/PokemonMaxHitPoints)*100;
+	console.log("PokemonHealthPercent = " + PokemonHealthPercent);
+
+	let PokemonShiny = target.data.data.shiny;
+
+	if (PokemonHitPoints == 1)
+	{
+		CaptureRate = CaptureRate + 30;
+		console.log("HP == 1");
+		console.log("CaptureRate = " + CaptureRate);
+	}
+	else if (PokemonHealthPercent <= 25)
+	{
+		CaptureRate = CaptureRate + 15;
+		console.log("HP <= 25");
+		console.log("CaptureRate = " + CaptureRate);
+	}
+	else if (PokemonHealthPercent <= 50)
+	{
+		CaptureRate = CaptureRate + 0;
+		console.log("HP <= 50");
+		console.log("CaptureRate = " + CaptureRate);
+	}
+	else if (PokemonHealthPercent <= 75)
+	{
+		CaptureRate = CaptureRate - 15;
+		console.log("HP <= 75");
+		console.log("CaptureRate = " + CaptureRate);
+	}
+
+	if (PokemonShiny)
+	{
+		CaptureRate = CaptureRate - 10;
+		console.log("Shiny == True");
+		console.log("CaptureRate = " + CaptureRate);
+	}
+	//TODO: Factor evolutionary stages; 2 remaining stages = +10, no remaining stages, -10
+
+	//TODO: Factor legendary; legendary = -30
+
+	//TODO: Factor status afflictions; each persistent = +10, each volatile = +5, stuck = +10, slow = +5
+
+	CaptureRate = CaptureRate + (target.data.data.health.injuries * 5)
+	console.log("Injuries = " + target.data.data.health.injuries);
+	console.log("CaptureRate = " + CaptureRate);
+
+
+	let numDice=1;
+	let dieSize = "d100";
+
+	let roll= new Roll(`${numDice}${dieSize}+${CaptureRollModifier}`).roll()
+	console.log("CAPTURE ROLL! ----------------");
+	console.log(roll);
+
+
+	// let dramaticDelayFactor = roll
+	
+
+	// const wait = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
+
+	let pokeballShoop_params =
+	[
+		{
+			filterType: "transform",
+			filterId: "pokeballShoop",
+			bpRadiusPercent: 100,
+			//padding: 0,
+			autoDestroy: true,
+			animated:
+			{
+				bpStrength:
+				{
+					animType: "cosOscillation",//"cosOscillation",
+					val1: 0,
+					val2: -0.99,//-0.65,
+					loopDuration: 1500,
+					loops: 1,
+				}
+			}
+		},
+
+		{
+			filterType: "glow",
+			filterId: "pokeballShoop",
+			outerStrength: 40,
+			innerStrength: 20,
+			color: 0xFFFFFF,//0x5099DD,
+			quality: 0.5,
+			//padding: 0,
+			//zOrder: 2,
+			autoDestroy: true,
+			animated:
+			{
+				color: 
+				{
+				active: true, 
+				loopDuration: 1500, 
+				loops: 1,
+				animType: "colorOscillation", 
+				val1:0xFFFFFF,//0x5099DD, 
+				val2:0xff0000,//0x90EEFF
+				}
+			}
+		},
+
+		{
+			filterType: "adjustment",
+			filterId: "pokeballShoop",
+			saturation: 1,
+			brightness: 10,
+			contrast: 1,
+			gamma: 1,
+			red: 1,
+			green: 1,
+			blue: 1,
+			alpha: 1,
+			autoDestroy: true,
+			animated:
+			{
+				alpha: 
+				{ 
+				active: true, 
+				loopDuration: 1500, 
+				loops: 1,
+				animType: "syncCosOscillation",
+				val1: 0.35,
+				val2: 0.75 }
+			}
+		}
+	];
+
+
+
+	let polymorphFunc = async function () 
+	{
+		let transitionType = 9;
+		let targetImagePath = "/Item_Icons/"+pokeball+".png";
+		let polymorphFilterId = "pokeball";
+		let polymorph_params;
+		
+		// Is the filter already activated on the placeable ? 
+		if (target_token.TMFXhasFilterId(polymorphFilterId)) 
+		{
+		
+			// Yes. So we update the type in the general section and loops + active in the progress animated section, to activate the animation for just one loop.
+			// "type" to allow you to change the animation type
+			// "active" to say at Token Magic : "Hey filter! It's time to work again!"
+			// "loops" so that Token Magic can know how many loops it needs to schedule for the animation.
+			// Each animation loop decreases "loops" by one. When "loops" reach 0, "active" becomes "false" and the animation will be dormant again.
+			// Thank to the halfCosOscillation, a loop brings the value of the property from val1 to val2. A second loop is needed to bring val2 to val1. This is useful for monitoring progress with back and forth movements.
+			polymorph_params =
+				[{
+					filterType: "polymorph",
+					filterId: polymorphFilterId,
+					type: transitionType,
+					animated:
+					{
+						progress:
+						{
+							active: true,
+							loops: 1
+						}
+					}
+				}];
+
+		} 
+		else 
+		{
+			// No. So we create the entirety of the filter
+			polymorph_params =
+				[{
+					filterType: "polymorph",
+					filterId: polymorphFilterId,
+					type: transitionType,
+					padding: 70,
+					magnify: 1,
+					imagePath: targetImagePath,
+					animated:
+					{
+						progress:
+						{
+							active: true,
+							animType: "halfCosOscillation",
+							val1: 0,
+							val2: 100,
+							loops: 1,
+							loopDuration: 1000
+						}
+					}
+				}];
+		}
+
+		// all functions that add, update or delete filters are asynchronous
+		// if you are in a loop AND/OR you chain these functions, it is MANDATORY to await them
+		// otherwise, data persistence may not works.
+		// this is the reason why we use an async function (we cant use await in a non-async function)
+		// avoid awaiting in a forEach loop, use "for" or "for/of" loop.
+		await target_token.TMFXaddUpdateFilters(polymorph_params);
+	};
+
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_catch_attempt.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+
+	setTimeout(() => {  
+		chatMessage(target, ("Pokeball hit! The ball wiggles..."));
+		// ui.notifications.info(`The ball wiggles!`);
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_escape_attempt.mp3", volume: 1.0, autoplay: true, loop: false}, true);
+		
+		setTimeout(() => {  
+			roll.toMessage();
+			if(Number(roll._total) <= CaptureRate)
+			{
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_catch_confirmed.mp3", volume: 0.8, autoplay: true, loop: false}, true);
+				chatMessage(target, (target.name + " was captured! Capture DC was " + CaptureRate + ", and you rolled "+Number(roll._total)+"!"));
+
+				target_token.TMFXdeleteFilters("pokeballWiggle");
+				const strength = window.confetti.confettiStrength.high;
+  				const shootConfettiProps = window.confetti.getShootConfettiProps(strength);
+				setTimeout(() => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
+				setTimeout(() => {  AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true); }, 750);
+			}
+			else
+			{
+				setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 800);
+				setTimeout(() => {  
+					polymorphFunc(); 
+					setTimeout(() => { target_token.update({"scale": 1}); 
+					target_token.TMFXdeleteFilters("pokeball");
+					}, 1000);
+				}, 500);
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+				chatMessage(target, (target.name + " escaped the "+pokeball+"! Capture DC was " + CaptureRate + ", and you rolled "+Number(roll._total)+"."));
+				target_token.TMFXdeleteFilters("pokeballWiggle");
+			}
+		}, 8000);
+	}, 4000);
+		
+
+
+	
+
+	// const wait = async (ms) => new Promise((resolve)=> setTimeout(resolve, ms));
+
+	// (async ()=> {
+	// game.macros.getName(`macroName1`).execute();
+	// await wait(1000000000000000000);
+	// game.macros.getName(`macroName2`).execute();
+	// })();
+
+	// chatMessage(target, (target.name + " capture DC: " + CaptureRate + "!\nRolling:[[1d100]]; from this roll, apply the following, then compare to DC:\n-Subtract Trainer level\n-Subtract 10 if throw was a Natural 20\n-Apply Pokeball Modifier\n-Subtract 10 per Persistent Condition\n-Subtract 5 per Volatile Condition\n-Subtract 10 if Stuck\n-Subtract 5 if Slow\n\nIf the final modified roll was equal to or less than the DC, the Pokemon is captured! A natural 100 on the roll always captures the target without fail."));
+
+
+};
+
+
+export function PokeballRelease(token)
+{
+	let pokeballShoop_params =
+	[
+		{
+			filterType: "transform",
+			filterId: "pokeballShoop",
+			bpRadiusPercent: 100,
+			//padding: 0,
+			autoDestroy: true,
+			animated:
+			{
+				bpStrength:
+				{
+					animType: "cosOscillation",//"cosOscillation",
+					val1: 0,
+					val2: -0.99,//-0.65,
+					loopDuration: 1500,
+					loops: 1,
+				}
+			}
+		},
+
+		{
+			filterType: "glow",
+			filterId: "pokeballShoop",
+			outerStrength: 40,
+			innerStrength: 20,
+			color: 0xFFFFFF,//0x5099DD,
+			quality: 0.5,
+			//padding: 0,
+			//zOrder: 2,
+			autoDestroy: true,
+			animated:
+			{
+				color: 
+				{
+				active: true, 
+				loopDuration: 1500, 
+				loops: 1,
+				animType: "colorOscillation", 
+				val1:0xFFFFFF,//0x5099DD, 
+				val2:0xff0000,//0x90EEFF
+				}
+			}
+		},
+
+		{
+			filterType: "adjustment",
+			filterId: "pokeballShoop",
+			saturation: 1,
+			brightness: 10,
+			contrast: 1,
+			gamma: 1,
+			red: 1,
+			green: 1,
+			blue: 1,
+			alpha: 1,
+			autoDestroy: true,
+			animated:
+			{
+				alpha: 
+				{ 
+				active: true, 
+				loopDuration: 1500, 
+				loops: 1,
+				animType: "syncCosOscillation",
+				val1: 0.35,
+				val2: 0.75 }
+			}
+		}
+	];
+
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+	token.TMFXaddUpdateFilters(pokeballShoop_params);
+	token.update({"scale": 1});
+	token.TMFXdeleteFilters("pokeballWiggle");
+	token.TMFXdeleteFilters("pokeball");
+};
+
+
+export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
+{
+	let return_value = true;
+	let trainer_actor = game.actors.get(pokemon_actor.data.data.owner)
+	let commanding_skill = "command";
+	let pokemon_loyalty = pokemon_actor.data.data.loyalty;
+
+
+	let alternate_commanding_skill_features = {
+		"Beast Master": "intimidate",
+		// "PokePsychologist": "pokemonEd",
+		// "PokéPsychologist": "pokemonEd"
+	};
+	if(game.settings.get("PTUMoveMaster", "pokepsychologistCanReplaceCommand") == true)
+	{
+		alternate_commanding_skill_features = {
+			"Beast Master": "intimidate",
+			"PokePsychologist": "pokemonEd",
+			"PokéPsychologist": "pokemonEd"
+		};
+	}
+
+	let loyalty_DCs = {
+		0: 20,
+		1: 8
+	};
+
+	let command_DC = loyalty_DCs[pokemon_loyalty];
+
+	if(trainer_actor && command_DC)
+	{
+		let commanding_skill_rank = (trainer_actor.data.data.skills[commanding_skill].value);
+		
+		for(let alternate_commanding_skill_feature in alternate_commanding_skill_features)
+		{
+			for(let item of trainer_actor.items)
+			{
+				if((item.type == "edge" || item.type == "feat") && item.name == alternate_commanding_skill_feature)
+				{
+					console.log(item.name);
+					console.log(alternate_commanding_skill_feature);
+					console.log('alternate_commanding_skill_features[alternate_commanding_skill_feature]');
+					console.log(alternate_commanding_skill_features[alternate_commanding_skill_feature]);
+					console.log('trainer_actor.data.data.skills.'+alternate_commanding_skill_features[alternate_commanding_skill_feature]);
+					console.log(
+						eval(
+							'trainer_actor.data.data.skills.'+alternate_commanding_skill_features[alternate_commanding_skill_feature]
+							)
+					);
+
+					if(eval(
+						'trainer_actor.data.data.skills.'+alternate_commanding_skill_features[alternate_commanding_skill_feature]
+						).value > commanding_skill_rank)
+					{
+						commanding_skill = alternate_commanding_skill_features[alternate_commanding_skill_feature];
+						commanding_skill_rank = trainer_actor.data.data.skills[alternate_commanding_skill_features[alternate_commanding_skill_feature]].value;
+					}
+					break;
+				}
+			}
+		}	
+
+		let numDice=commanding_skill_rank;
+		let dieSize = "d6";
+		let dieModifier = (trainer_actor.data.data.skills[commanding_skill].modifier);
+
+		let roll= new Roll(`${numDice}${dieSize}+${dieModifier}`).roll()
+		console.log("COMMANDING SKILL ROLL! ----------------");
+		console.log(roll);
+		roll.toMessage(
+			{flavor: `${trainer_actor.name} attempts a ${commanding_skill} check to control a disloyal pokemon.`,
+			speaker: ChatMessage.getSpeaker({token: trainer_actor}),}
+		)
+
+		if((roll.results[0]+roll.results[2]) < command_DC)
+		{
+			return_value = false;
+		}
+	}
+
+	return return_value;
+};
+
+
+export function ShowPokeballMenu(actor)
+{
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/pokeball_grow.mp3", volume: 0.8, autoplay: true, loop: false}, false);
+	let pokeball_inventory = [];
+	let pokeball_buttons = [];
+
+	let target_pokemon_token = Array.from(game.user.targets)[0];
+
+	let trainer_tokens = actor.getActiveTokens();
+	let actor_token = trainer_tokens[0]; // The throwing trainer
+
+	for(let item of actor.data.items)
+	{
+		if(item.type == "item" && item.name.includes("Ball"))
+		{
+			pokeball_inventory.push(item);
+		}
+	}
+
+	console.log(pokeball_inventory);
+
+	for(let pokeball of pokeball_inventory)
+	{
+		console.log(pokeball);
+		let pokeball_image = "";
+		let pokeball_count = pokeball.data.quantity;
+
+		for(let i=0; (i < pokeball_count) && (i < 10); i++)
+		{
+			pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball.name+".png' style='border-width: 0px; height: 30px;'></img>";
+		}
+
+		pokeball_buttons[pokeball.name]={
+			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+pokeball.name+" ("+pokeball_count+")</div>"+"</h3>"+pokeball_image+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+"</h6>"+"</div></center>",
+			callback: async () => {
+
+				// let key_shift = keyboard.isDown("Shift");
+				// if (key_shift) 
+				// {
+				// 	console.log("KEYBOARD SHIFT IS DOWN!");
+				// 	rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
+				// }
+				// else
+				// {
+				// 	game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
+				// }
+				
+				game.PTUMoveMaster.ThrowPokeball(actor_token, target_pokemon_token, pokeball.name);
+
+			}
+		};
+	}
+
+	let dialogOptions = game.users.filter(u => u.data.role < 3).map(u => `<option value=${u.id}> ${u.data.name} </option>`).join(``);
+	let dialogEditor = new Dialog({
+	  title: `Pokeball Selector`,
+	//   content: `
+	//   <div><h2>Paste your image url below:</h2><div>
+	//   <div>URL: <input name="url" style="width:350px"/></div>
+	//   <div><i>if the image is from the internet do not forget to include http(s):// in the url</i></div>
+	//   <div>Whisper to player?<input name="whisper" type="checkbox"/></div>
+	//   <div">Player name:<select name="player">${dialogOptions}</select></div>
+	//   `,
+	  content: "<center><div><h1>Throw a Pokeball!</h1></div><div style='font-family:Modesto Condensed;font-size:20px'><h2>"+"</h2><div><center>",
+	  buttons: pokeball_buttons
+	});
+	
+	dialogEditor.render(true);
+}
+
+
+export async function ShowInventoryMenu(actor)
+{
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+	let item_buttons = [];
+	let item_inventory = [];
+
+	let target = Array.from(game.user.targets)[0];
+	if(!target)
+	{
+		target = game.actors.get(actor.id).getActiveTokens()[0];
+		console.log("NO TARGET, SELECTING ACTOR________________");
+		console.log(target);
+	}
+
+	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target);
+
+	let target_token = Array.from(game.user.targets)[0];
+
+	let trainer_tokens = actor.getActiveTokens();
+	let actor_token = trainer_tokens[0]; // The using actor
+
+	let relevant_item_types = [
+		"Potion", "Revive", "Antidote", "Repel", "Cure", "Heal", "Bait"
+	];
+
+	for(let item_type of relevant_item_types)
+	{
+		for(let item of actor.data.items)
+		{
+			if(item.type == "item" && item.name.includes(item_type))
+			{
+				item_inventory.push(item);
+				break;
+			}
+		}
+	}
+
+	console.log(item_inventory);
+
+	for(let inventory_item of item_inventory)
+	{
+		console.log(inventory_item);
+		let item_base_image = await game.PTUMoveMaster.GetItemArt(inventory_item.name);
+		let item_image = "";
+		let item_count = inventory_item.data.quantity;
+		
+		for(let i=0; (i < item_count) && (i < 10); i++)
+		{
+			item_image = item_image + "<img src='"+item_base_image+"' style='border-width: 0px; width: 30px;'></img>";
+		}
+
+		item_buttons[inventory_item.name]={
+			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+inventory_item.name+" ("+item_count+")</div>"+"</h3>"+item_image+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+"</h6>"+"</div></center>",
+			callback: async () => {
+
+				// let key_shift = keyboard.isDown("Shift");
+				// if (key_shift) 
+				// {
+				// 	console.log("KEYBOARD SHIFT IS DOWN!");
+				// 	rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
+				// }
+				// else
+				// {
+				// 	game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
+				// }
+				
+				game.PTUMoveMaster.UseInventoryItem(actor_token, target_token, inventory_item.name);
+
+			}
+		};
+	}
+
+	let dialogOptions = game.users.filter(u => u.data.role < 3).map(u => `<option value=${u.id}> ${u.data.name} </option>`).join(``);
+	let dialogEditor = new Dialog({
+	  title: `Inventory Selector`,
+	//   content: `
+	//   <div><h2>Paste your image url below:</h2><div>
+	//   <div>URL: <input name="url" style="width:350px"/></div>
+	//   <div><i>if the image is from the internet do not forget to include http(s):// in the url</i></div>
+	//   <div>Whisper to player?<input name="whisper" type="checkbox"/></div>
+	//   <div">Player name:<select name="player">${dialogOptions}</select></div>
+	//   `,
+	  content: "<center><div><h1>Use an item!</h1></div><div style='font-family:Modesto Condensed;font-size:20px'><h2>"+targetTypingText+"</h2><div><center>",
+	  buttons: item_buttons
+	});
+	
+	dialogEditor.render(true);
+}
+
+
+export function ShowManeuverMenu(actor)
+{
+	let maneuver_list = {
+		"Disarm": {
+			"Trainer Only":false,
+			"Action":"Standard", 
+			"AC":6, 
+			"Class":"Status", 
+			"Frequency":"At-Will", 
+			"Range":"Melee, 1 Target", 
+			"User Checks":[ "combat", "stealth" ],
+			"Target Checks":[ "combat", "stealth" ],
+			"Success":"The target’s Held Item (Main Hand or Off-Hand for humans) falls to the ground.",
+			"Failure":""
+		},
+		"Dirty Trick: Hinder": {
+			"Trainer Only":false,
+			"Action":"Standard", 
+			"AC":2, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"Melee, 1 Target", 
+			"User Checks":[ "athletics" ],
+			"Target Checks":[ "athletics" ],
+			"Success":"The target is Slowed and takes a -2 penalty to all Skill Checks for one full round.",
+			"Failure":""
+		},
+		"Dirty Trick: Blind": {
+			"Trainer Only":false,
+			"Action":"Standard", 
+			"AC":2, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"Melee, 1 Target", 
+			"User Checks":[ "stealth" ],
+			"Target Checks":[ "stealth" ],
+			"Success":"The target is Blinded for one full round.",
+			"Failure":""
+		},
+		"Dirty Trick: Low Blow": {
+			"Trainer Only":false,
+			"Action":"Standard", 
+			"AC":2, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"Melee, 1 Target", 
+			"User Checks":[ "acrobatics" ],
+			"Target Checks":[ "acrobatics" ],
+			"Success":"The target is Vulnerable and has their Initiative set to 0 until the end of your next turn.",
+			"Failure":""
+		},
+		"Manipulate: Bon Mot": {
+			"Trainer Only":true,
+			"Action":"Standard", 
+			"AC":2, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"6, 1 Target", 
+			"User Checks":[ "guile" ],
+			"Target Checks":[ "guile", "focus" ],
+			"Success":"The target is Enraged and cannot spend AP for one full round. The target does not gain a Save Check against this effect.",
+			"Failure":""
+		},
+		"Manipulate: Flirt": {
+			"Trainer Only":true,
+			"Action":"Standard", 
+			"AC":2, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"6, 1 Target", 
+			"User Checks":[ "charm" ],
+			"Target Checks":[ "charm", "focus" ],
+			"Success":"The target is Infatuated with you for one full round. The target automatically fails their Save Check.",
+			"Failure":""
+		},
+		"Manipulate: Terrorize": {
+			"Trainer Only":true,
+			"Action":"Standard", 
+			"AC":2, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"6, 1 Target", 
+			"User Checks":[ "intimidate" ],
+			"Target Checks":[ "intimidate", "focus" ],
+			"Success":"The target loses all Temporary Hit Points and can only use At-Will Frequency Moves for one full round.",
+			"Failure":""
+		},
+		"Push": {
+			"Trainer Only":false,
+			"Action":"Standard", 
+			"AC":4, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"Melee, 1 Target", 
+			"User Checks":[ "combat", "athletics" ],
+			"Target Checks":[ "combat", "athletics" ],
+			"Success":"The target is Pushed back 1 Meter directly away from you. If you have Movement remaining this round, you may then Move into the newly occupied Space, and Push the target again. This continues until you choose to stop, or have no Movement remaining for the round. Push may only be used against a target whose weight is no heavier than your Heavy Lifting rating.",
+			"Failure":""
+		},
+		"Trip": {
+			"Trainer Only":false,
+			"Action":"Standard", 
+			"AC":6, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"Melee, 1 Target", 
+			"User Checks":[ "combat", "acrobatics" ],
+			"Target Checks":[ "combat", "acrobatics" ],
+			"Success":"The target is knocked over and Tripped.",
+			"Failure":""
+		},
+		"Grapple": {
+			"Trainer Only":false,
+			"Action":"Standard", 
+			"AC":6, 
+			"Class":"Status", 
+			"Frequency":"Scene, Per-Target", 
+			"Range":"Melee, 1 Target", 
+			"User Checks":[ "combat", "athletics" ],
+			"Target Checks":[ "combat", "athletics" ],
+			"Success":"You and the target each become Grappled, and you gain Dominance in the Grapple.",
+			"Failure":""
+		},
+		"Take a Breather": {
+			"Trainer Only":false,
+			"Action":"Full", 
+			"AC":null, 
+			"Class":"", 
+			"Frequency":"At-Will", 
+			"Range":"Self", 
+			"User Checks":null,
+			"Target Checks":null,
+			"Success":"Trainers and Pokémon can Take a Breather and temporarily remove themselves from the heat of combat to recover from Confusion and other Volatile Status Afflictions, though they still must pass any Save Checks to be able to take this action and do so. Taking a Breather is a Full Action and requires a Pokémon or Trainer to use their Shift Action to move as far away from enemies as possible, using their highest available Movement Capability. They then become Tripped and are Vulnerable until the end of their next turn. When a Trainer or Pokémon Takes a Breather, they set their Combat Stages back to their default level, lose all Temporary Hit Points, and are cured of all Volatile Status effects and the Slow and Stuck conditions. To be cured of Cursed in this way, the source of the Curse must either be Knocked Out or no longer within 12 meters at the end of the Shift triggered by Take a Breather. When a Trainer or Pokémon is unable to choose to Take a Breather themselves, such as when they are inflicted with the Rage Status Affliction or when someone doesn’t want to take a chance on passing a Confusion Save Check, they may be calmed and assisted by a Trainer to attempt to Take a Breather. This is a Full Action by both the assisting Trainer and their target (as an Interrupt for the target), and the assisting Trainer must be able to Shift to the target they intend to help. They then make a Command Check with a DC of 12. Upon success, both the assisting Trainer and their target must Shift as far away from enemies as possible, using the lower of the two’s maximum movement for a single Shift. They then both become Tripped and are treated as having 0 Evasion until the end of their next turn. The Trainer that has been assisted then gains all the effects of Taking a Breather. Upon a failure, nothing happens, and the assisted Trainer is not cured of their Status Afflictions.",
+			"Failure":""
+		},
+
+	};
+
+	for(let item of actor.data.items)
+		{
+			if(item.name.includes("Telekinetic") && item.type == "capability")
+			{
+				maneuver_list["Telekinetic Disarm"] = {
+					"Trainer Only":false,
+					"Action":"Standard", 
+					"AC":6, 
+					"Class":"Status", 
+					"Frequency":"At-Will", 
+					"Range":(actor.data.data.skills.focus.value)+", 1 Target", 
+					"User Checks":[ "focus" ],
+					"Target Checks":[ "combat", "stealth" ],
+					"Success":"The target’s Held Item (Main Hand or Off-Hand for humans) falls to the ground.",
+					"Failure":""
+				};
+
+				maneuver_list["Telekinetic Trip"] = {
+					"Trainer Only":false,
+					"Action":"Standard", 
+					"AC":6, 
+					"Class":"Status", 
+					"Frequency":"Scene, Per-Target", 
+					"Range":(actor.data.data.skills.focus.value)+", 1 Target", 
+					"User Checks":[ "focus" ],
+					"Target Checks":[ "combat", "acrobatics" ],
+					"Success":"The target is knocked over and Tripped.",
+					"Failure":""
+				};
+
+				maneuver_list["Telekinetic Push"] = {
+					"Trainer Only":false,
+					"Action":"Standard", 
+					"AC":4, 
+					"Class":"Status", 
+					"Frequency":"Scene, Per-Target", 
+					"Range":(actor.data.data.skills.focus.value)+", 1 Target", 
+					"User Checks":[ "focus" ],
+					"Target Checks":[ "combat", "athletics" ],
+					"Success":"The target is Pushed back "+Math.floor(actor.data.data.skills.focus.value/2)+" Meters directly away from you. Telekinetic Push may only be used against a target whose weight is no heavier than your Heavy Lifting rating (based off Focus as if it was your Power Capability).",
+					"Failure":""
+				};
+
+				break;
+			}
+		}
+
+	console.log(maneuver_list);
+
+	for(let maneuver in maneuver_list)
+	{
+		console.log(maneuver);
+	}
+}
+
+
+export function ShowStruggleMenu(actor)
+{
+	let struggle_types = ["Normal"];
+	let struggle_categories = ["Physical"];
+
+	let struggle_AC = 4;
+	let struggle_DB = 4;
+
+	let actor_combat_rank = actor.data.data.skills.combat.value;
+
+	if(actor_combat_rank >= 5)
+	{
+		struggle_AC = 3;
+		struggle_DB = 5;
+	}
+
+	let struggle_list = {};
+
+	let struggle_modifying_capabilities = {
+		"Firestarter": 	{"Special Damage":true, "Type":"Fire"},
+		"Fountain": 	{"Special Damage":true, "Type":"Water"},
+		"Freezer": 		{"Special Damage":true, "Type":"Ice"},
+		"Guster": 		{"Special Damage":true, "Type":"Flying"},
+		"Materializer":	{"Special Damage":true, "Type":"Rock"},
+		"Telekinetic": 	{"Special Damage":true, "Type":"Normal"},
+		"Zapper": 		{"Special Damage":true, "Type":"Electric"}
+	};
+
+	for(let struggle_modifying_capability in struggle_modifying_capabilities)
+	{
+		for(let item of actor.data.items)
+		{
+			if(item.type == "capability")
+			{
+				if(item.name.includes(struggle_modifying_capability))
+				{
+					if(struggle_modifying_capabilities[struggle_modifying_capability]["Special Damage"] && !struggle_categories.includes("Special"))
+					{
+						struggle_categories.push("Special");
+					}
+	
+					if(struggle_modifying_capabilities[struggle_modifying_capability]["Type"] && !struggle_types.includes([struggle_modifying_capabilities[struggle_modifying_capability]["Type"]]))
+					{
+						struggle_types.push(struggle_modifying_capabilities[struggle_modifying_capability]["Type"]);
+					}
+	
+					if(struggle_modifying_capability == "Telekinetic")
+					{
+						struggle_list["Physical Telekinetic Struggle"] = {
+							"Action":"Standard", 
+							"AC":struggle_AC, 
+							"Class":"Physical",
+							"Type":"Normal", 
+							"Frequency":"At-Will", 
+							"DB":struggle_DB,
+							"Range":(actor.data.data.skills.focus.value+", 1 Target")
+						};
+
+						struggle_list["Special Telekinetic Struggle"] = {
+							"Action":"Standard", 
+							"AC":struggle_AC, 
+							"Class":"Special",
+							"Type":"Normal", 
+							"Frequency":"At-Will", 
+							"DB":struggle_DB,
+							"Range":(actor.data.data.skills.focus.value+", 1 Target")
+						};
+					}
+					
+					break;
+				}
+			}
+		}
+	}
+
+	for(let struggle_category of struggle_categories)
+	{
+		for(let struggle_type of struggle_types)
+		{
+			struggle_list[(struggle_category+" "+struggle_type+" Struggle")] = {
+				"Action":"Standard", 
+				"AC":struggle_AC, 
+				"Class":struggle_category,
+				"Type":struggle_type, 
+				"Frequency":"At-Will", 
+				"DB":struggle_DB,
+				"Range":"Melee, 1 Target"
+			};
+		}
+	}
+
+	console.log(struggle_list);
+
+	for(let struggle in struggle_list)
+	{
+		console.log(struggle);
+	}
+}
+
+
+export function UseInventoryItem(actor_token, target_token, inventory_item)
+{
+	// TODO: Implement UseInventoryItem
+}
+
+
+export async function GetItemArt(item_name) 
+{
+	let item_base_image = ("item_icons/"+item_name+".webp");
+    let result = await fetch(item_base_image);
+	console.log(result.status);
+	if(result.status === 404) 
+	{
+		item_base_image = ("item_icons/Generic Item.webp");
+	}
+    return item_base_image;
+}
+
+
+export function GetTargetTypingHeader(target)
+{
+	let targetTypingText = "";
+	let targetType1 = "???";
+	let targetType2 = "???";
+	let effectiveness;
+
+	if ( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target))
+	{
+		if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+		{
+			if(target.actor.data.data.typing)
+			{
+				targetType1 = target.actor.data.data.typing[0];
+				targetType2 = target.actor.data.data.typing[1];
+			}
+		}
+
+		let tokenImage;
+		let tokenSize = 80;
+
+		if (target.actor.token)
+			{
+				tokenImage = target.actor.token.data.img;
+			}
+			else
+			{
+				tokenImage = target.actor.data.img;
+			}
+		
+		if(!target.actor.data.data.effectiveness)
+		{
+			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (Trainer).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div>";
+		}
+		else
+		{
+			effectiveness = target.actor.data.data.effectiveness.All;
+	
+			if(targetType2 == "null")
+			{
+				if(targetType1 == "???")
+				{
+					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div>";
+				}
+				else
+				{
+					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div></div>";
+					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>).";
+				}
+			}
+			else
+			{
+				if(targetType1 == "???")
+				{
+					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+"/"+targetType2+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div></div>";
+					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" ("+targetType1+"/"+targetType2+ ").";
+				}
+				else
+				{
+					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div></div>";
+					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>/<img src='" + TypeIconPath+targetType2+TypeIconSuffix+ "'>).";
+				}
+			}
+		}
+		
+
+		
+	}
+
+	return targetTypingText;
 }
