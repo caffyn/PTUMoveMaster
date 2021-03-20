@@ -85,6 +85,9 @@ Hooks.once('init', async function()
 		chatMessage,
 		adjustActorStage,
 		healActorPercent,
+		healActor,
+		setActorHealth,
+		setActorHealthPercent,
 		damageActorPercent,
 		CalculateAcRoll,
 		PerformFullAttack,
@@ -109,6 +112,7 @@ Hooks.once('init', async function()
 		UseInventoryItem,
 		GetItemArt,
 		GetTargetTypingHeader,
+		cureActorAffliction,
 	};
 });
 
@@ -139,7 +143,7 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 		let current_token_species = capitalizeFirstLetter((actor.data.data.species).toLowerCase());
 		let current_token_nature = capitalizeFirstLetter((actor.data.data.nature.value).toLowerCase());
 
-		if(actor.data.type == "pokemon" && (actor.data.data.owner != ""))
+		if(actor.data.type == "pokemon" && (actor.data.data.owner != "0"))
 		{
 			let trainer_actor = game.actors.get(actor.data.data.owner);
 			let trainer_tokens = trainer_actor.getActiveTokens();
@@ -169,7 +173,7 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
 				let transitionType = 9;
-				let targetImagePath = "/Item_Icons/"+pokeball+".png";
+				let targetImagePath = "/item_icons/"+pokeball+".png";
 
 				let polymorphFilterId = "pokeball";
 				let pokeball_polymorph_quick_params =
@@ -268,7 +272,7 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 				
 				castSpell({
 					file:
-						"Item_Icons/"+pokeball+".webm",
+						"item_icons/"+pokeball+".webm",
 					anchor: {
 						x: -0.08,
 						y: 0.5,
@@ -462,7 +466,7 @@ var stats = ["atk", "def", "spatk", "spdef", "spd"];
 
 var move_stage_changes = {
 	"Blank Template"  :   {
-		"roll-trigger": 20, // If roll-trigger is included in a move's entry here, the other effects will only trigger on a natural to-hit roll of that number or higher
+		"roll-trigger": 20,
 		"atk"   : 0,
 		"def"   : 0,
 		"spatk" : 0,
@@ -471,6 +475,7 @@ var move_stage_changes = {
 		"accuracy": 0,
 		"pct-healing": 0,
 		"pct-self-damage": 0,
+		"recoil": 0,
 		"crit-range": 20,
 		"effect-range": 20
 	},
@@ -642,9 +647,9 @@ var move_stage_changes = {
 	"Synthesis"  :   {// TODO: The healing percent varies depending on the weather
 		"pct-healing": 0.5,
 	},
-	"Double-Edge"  :   {
-		"pct-self-damage": 0.33333,
-	},
+	// "Double-Edge"  :   {
+	// 	"pct-self-damage": 0.33333,
+	// },
 	"Morning Sun"  :   {// TODO: The healing percent varies depending on the weather
 		"pct-healing": 0.5,
 	},
@@ -665,9 +670,9 @@ var move_stage_changes = {
 		"spdef" : 1,
 		"spd"   : 1,
 	},
-	"Head Smash"  :   {
-		"pct-self-damage": 0.33333,
-	},
+	// "Head Smash"  :   {
+	// 	"pct-self-damage": 0.33333,
+	// },
 	"Metal Claw"  :   {
 		"roll-trigger": 18,
 		"atk"   : 1,
@@ -2101,19 +2106,29 @@ export function PTUAutoFight(){
 
 	}};
 
-	buttons["itemMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
-	callback: () => {
-
-		game.PTUMoveMaster.ShowInventoryMenu(actor);
-
-	}};
-
 	if(actor.data.type == "character")
 	{
-		buttons["pokeballMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
+		buttons["itemMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
 		callback: () => {
 	
-			game.PTUMoveMaster.ShowPokeballMenu(actor);
+			game.PTUMoveMaster.ShowInventoryMenu(actor);
+	
+		}};
+
+
+		buttons["pokeballMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
+		callback: async () => {
+	
+			await game.PTUMoveMaster.ShowPokeballMenu(actor);
+	
+		}};
+
+		buttons["pokedexScan"] = {label: "<center><div style='background-color:darkred;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"Pokedex Scan!"+"</div></center>",
+		callback: async () => {
+	
+			let trainer_tokens = actor.getActiveTokens();
+			let actor_token = trainer_tokens[0];
+			await game.PTUMoveMaster.PokedexScan(actor_token, target);
 	
 		}};
 	
@@ -2463,8 +2478,31 @@ export const CritOptions = {
 	CRIT_HIT: 'hit'
 };
 
-export function adjustActorStage(actor,stat, change)
+export function adjustActorStage(actor, stat, change)
 {
+	let effects = actor.effects;
+	let AE_changes = [];
+
+	effects.forEach((value, key, map) => {	// We check if there are any Active Effects changing the stat and offset them to avoid weird results.
+		for(let change of value.data.changes)
+		{
+			if(change.key == eval("'data.stats."+stat+".stage'"))
+			{
+				AE_changes.push(change);
+			}
+		}
+	});
+
+  	console.log(AE_changes);
+
+	let stage_AE_sum = 0;
+
+	for(let AE_change of AE_changes)
+	{
+		stage_AE_sum += Number(AE_change.value);
+		console.log(stat+" stage_AE_sum = "+stage_AE_sum);
+	}
+
 	if(change > 0)
 	{
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
@@ -2474,27 +2512,57 @@ export function adjustActorStage(actor,stat, change)
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 
-	let new_stage = eval("Math.max(Math.min((actor.data.data.stats."+stat+".stage + change), 6), -6)");
+	let old_stage = eval("(Number(actor.data.data.stats."+stat+".stage))");
+	old_stage -= stage_AE_sum;
+
+	let new_stage = eval("Math.max(Math.min((old_stage + Number(change)), 6), -6)");
+
 	eval("actor.update({'data.stats."+stat+".stage': Number("+ new_stage +") })");
 	game.PTUMoveMaster.chatMessage(actor, actor.name + ' '+ stat +' Stage +'+ change +'!');
 }
+
 
 export function healActorPercent(actor,pct_healing)
 {
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
-	// let new_health = Math.min( (actor.data.data.health.value + Number(pct_healing*actor.data.data.health.max) ), actor.data.data.health.max);
-	// actor.update({'data.health.value': Number(new_health) });
 	actor.modifyTokenAttribute("health", (Math.floor(pct_healing*actor.data.data.health.max)), true, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed '+ pct_healing*100 +'% of their max hit points!');
 }
 
+
+export function healActor(actor, healing_amount)
+{
+	let difference_to_max = Number(actor.data.data.health.max - actor.data.data.health.value);
+	let final_healing_amount = Math.min(healing_amount, difference_to_max)
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	actor.modifyTokenAttribute("health", (final_healing_amount), true, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed '+ final_healing_amount +' hit points!');
+}
+
+
+export function setActorHealth(actor, new_health)
+{
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	actor.modifyTokenAttribute("health", (new_health), false, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + '\'s health was set to '+ new_health +' hit points!');
+}
+
+
+export function setActorHealthPercent(actor, new_health_percent) // Percent expressed as fractions of 1. 30% would be 0.3, etc.
+{
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	actor.modifyTokenAttribute("health", (new_health_percent*actor.data.data.health.max), false, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + '\'s health was set to '+ new_health_percent*100 +'% of their max hit points!');
+}
+
+
 export function damageActorPercent(actor,pct_damage)
 {
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-
-	// let new_health = Math.min( (actor.data.data.health.value - Number(pct_damage*actor.data.data.health.max) ), actor.data.data.health.max);
-	// actor.update({'data.health.value': Number(new_health) });
 
 	let finalDamage = (Math.floor(pct_damage*actor.data.data.health.max));
 
@@ -2503,14 +2571,67 @@ export function damageActorPercent(actor,pct_damage)
 	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
 }
 
+
+export async function cureActorAffliction(actor, affliction_name)
+{
+	let affliction_table = {
+		"paralysis":	"is_paralyzed",
+		"flinch":		"is_flinched",
+		"infatuation":	"is_infatuated",
+		"rage":			"is_raging",
+		"sleep":		"is_sleeping",
+		"badsleep":	"is_badly_sleeping",
+		"blindness":	"is_blind",
+		"total_blindness":"is_totally_blind",
+		"fainted":		"is_fainted"
+	};
+
+	let lowercase_affliction_name = "is_"+(affliction_name.toLowerCase().replace(" ", "_"));
+	if(affliction_table[affliction_name.toLowerCase()])
+	{
+		lowercase_affliction_name = affliction_table[affliction_name.toLowerCase()];
+	}
+	let effects = actor.effects;
+	console.log("actor.effects");
+	console.log(actor.effects);
+
+	if(actor.data.flags.ptu)
+	{
+		if(eval('actor.data.flags.ptu.'+lowercase_affliction_name) == true)
+		{
+			console.log(actor.name+" has effect: "+lowercase_affliction_name);
+			
+			// await actor.effects.filter(x => x.data.label == affliction_name).forEach(x => await x.delete());
+
+			for(let effect of actor.effects.filter(x => x.data.label == affliction_name))
+  			{
+				await effect.delete();
+			}
+
+			game.PTUMoveMaster.chatMessage(actor, actor.name + ' was cured of '+ affliction_name +'!');
+
+			return true;
+		}
+		else
+		{
+			console.log(actor.name+" does NOT have effect: "+lowercase_affliction_name);
+			return false;
+		}
+	}
+	else
+	{
+		console.log(actor.name+" does not have any flags set.");
+		return false;
+	}
+}
+
+
 export function CalculateAcRoll (moveData, actorData)   {
 	return new Roll('1d20-@ac+@acBonus', {
 		ac: (parseInt(moveData.ac) || 0),
 		acBonus: (parseInt(actorData.modifiers.acBonus) || 0)
 	})
 };
-
-
 
 
 export function PerformFullAttack (actor, move, finalDB, bonusDamage) 
@@ -3081,7 +3202,7 @@ export function CreatePokeballButtonList(actor)
 };
 
 
-export function ThrowPokeball(actor_token, target_token, pokeball)
+export async function ThrowPokeball(actor_token, target_token, pokeball)
 {
 	let throwRange = actor_token.actor.data.data.capabilities["Throwing Range"];
 	let rangeToTarget = GetDistanceBetweenTokens(actor_token, target_token);
@@ -3130,7 +3251,7 @@ export function ThrowPokeball(actor_token, target_token, pokeball)
 		{
 			castSpell({
 				file:
-					"Item_Icons/"+pokeball+".webm",
+					"item_icons/"+pokeball+".webm",
 				anchor: {
 					x: -0.08,
 					y: 0.5,
@@ -3254,7 +3375,7 @@ export function ThrowPokeball(actor_token, target_token, pokeball)
 			let polymorphFunc = async function () 
 			{
 				let transitionType = 9;
-				let targetImagePath = "/Item_Icons/"+pokeball+".png";
+				let targetImagePath = "/item_icons/"+pokeball+".png";
 				console.log("POKEBALL targetImagePath: __________________________");
 				console.log(targetImagePath);
 				let polymorphFilterId = "pokeball";
@@ -3329,7 +3450,7 @@ export function ThrowPokeball(actor_token, target_token, pokeball)
 			}, 1000);
 			
 
-			RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.results[0], target_token);
+			await RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.results[0], target_token);
 		}
 		else
 		{
@@ -3373,7 +3494,7 @@ export function ThrowPokeball(actor_token, target_token, pokeball)
 
 			castSpell({
 				file:
-					"Item_Icons/"+pokeball+".webm",
+					"item_icons/"+pokeball+".webm",
 				anchor: {
 					x: -0.08,
 					y: 0.5,
@@ -3462,7 +3583,7 @@ export function TakeStandardAction(actor)
 };
 
 
-export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target_token)
+export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target_token)
 {
 	let CaptureRollModifier = 0;
 	let CaptureRate = 100;
@@ -3762,7 +3883,7 @@ export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target
 	let polymorphFunc = async function () 
 	{
 		let transitionType = 9;
-		let targetImagePath = "/Item_Icons/"+pokeball+".png";
+		let targetImagePath = "/item_icons/"+pokeball+".png";
 		let polymorphFilterId = "pokeball";
 		let polymorph_params;
 		
@@ -3843,8 +3964,35 @@ export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target
 				target_token.TMFXdeleteFilters("pokeballWiggle");
 				const strength = window.confetti.confettiStrength.high;
   				const shootConfettiProps = window.confetti.getShootConfettiProps(strength);
+				
+				// Update permissions
+				let users = trainer.getUsers(CONST.ENTITY_PERMISSIONS.OWNER, true)
+				let non_gm_user;
+				let pokemon_parent_actor = game.actors.get(target_token.data.actorId);
+				console.log("pokemon_parent_actor.data.permission");
+				console.log(pokemon_parent_actor.data.permission);
+
+				for(let user in users)
+				{
+					console.log("users[user]");
+					console.log(users[user]);
+					if(users[user].data.role < 4)
+					{
+						non_gm_user = users[user];
+						break;
+					}
+				}
+
+				game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.id]: CONST.ENTITY_PERMISSIONS.OWNER}});
+
+				console.log("pokemon_parent_actor.data.permission");
+				console.log(pokemon_parent_actor.data.permission);
+
 				setTimeout(() => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
-				setTimeout(() => {  AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true); }, 750);
+				setTimeout(() => {  
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true); 
+					// await target.update({"data.owner = "});
+				}, 750);
 			}
 			else
 			{
@@ -3861,22 +4009,6 @@ export function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target
 			}
 		}, 8000);
 	}, 4000);
-		
-
-
-	
-
-	// const wait = async (ms) => new Promise((resolve)=> setTimeout(resolve, ms));
-
-	// (async ()=> {
-	// game.macros.getName(`macroName1`).execute();
-	// await wait(1000000000000000000);
-	// game.macros.getName(`macroName2`).execute();
-	// })();
-
-	// chatMessage(target, (target.name + " capture DC: " + CaptureRate + "!\nRolling:[[1d100]]; from this roll, apply the following, then compare to DC:\n-Subtract Trainer level\n-Subtract 10 if throw was a Natural 20\n-Apply Pokeball Modifier\n-Subtract 10 per Persistent Condition\n-Subtract 5 per Volatile Condition\n-Subtract 10 if Stuck\n-Subtract 5 if Slow\n\nIf the final modified roll was equal to or less than the DC, the Pokemon is captured! A natural 100 on the roll always captures the target without fail."));
-
-
 };
 
 
@@ -3971,8 +4103,6 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 
 	let alternate_commanding_skill_features = {
 		"Beast Master": "intimidate",
-		// "PokePsychologist": "pokemonEd",
-		// "PokéPsychologist": "pokemonEd"
 	};
 	if(game.settings.get("PTUMoveMaster", "pokepsychologistCanReplaceCommand") == true)
 	{
@@ -4045,7 +4175,7 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 };
 
 
-export function ShowPokeballMenu(actor)
+export async function ShowPokeballMenu(actor)
 {
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/pokeball_grow.mp3", volume: 0.8, autoplay: true, loop: false}, false);
@@ -4075,7 +4205,20 @@ export function ShowPokeballMenu(actor)
 
 		for(let i=0; (i < pokeball_count) && (i < 10); i++)
 		{
-			pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball.name+".png' style='border-width: 0px; height: 30px;'></img>";
+			if(pokeball.name.includes("Thrown"))
+			{//filter: sepia(100%) saturate(300%) brightness(70%) hue-rotate(180deg);
+				let pokeball_name_without_thrown = pokeball.name.replace("Thrown ", "");
+				pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball_name_without_thrown+".png' style='border-width: 0px; height: 30px; filter: saturate(0%) opacity(50%) brightness(100%);'></img>";
+			}
+			else if(pokeball.name.includes("Broken"))
+			{//filter: sepia(100%) saturate(300%) brightness(70%) hue-rotate(180deg);
+				let pokeball_name_without_broken = pokeball.name.replace("Broken ", "");
+				pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball_name_without_broken+".png' style='border-width: 0px; height: 30px; filter: sepia(100%) saturate(150%) brightness(100%);'></img>";
+			}
+			else
+			{
+				pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball.name+".png' style='border-width: 0px; height: 30px;'></img>";
+			}
 		}
 
 		pokeball_buttons[pokeball.name]={
@@ -4092,8 +4235,24 @@ export function ShowPokeballMenu(actor)
 				// {
 				// 	game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
 				// }
+				console.log("target_pokemon_token.actor.data.data.owner");
+				console.log(target_pokemon_token.actor.data.data.owner);
+				if(!target_pokemon_token || target_pokemon_token.actor.data.type != "pokemon" || target_pokemon_token.actor.data.data.owner != "0")
+				{
+					ui.notifications.warn("You must target an unowned Pokemon to throw a Pokeball");
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+					return;
+				}
+
+				if(await ExpendItem(actor, pokeball))
+				{
+					await game.PTUMoveMaster.ThrowPokeball(actor_token, target_pokemon_token, pokeball.name);
+				}
+				else
+				{
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+				}
 				
-				game.PTUMoveMaster.ThrowPokeball(actor_token, target_pokemon_token, pokeball.name);
 
 			}
 		};
@@ -4133,26 +4292,23 @@ export async function ShowInventoryMenu(actor)
 
 	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target);
 
-	let target_token = Array.from(game.user.targets)[0];
-
 	let trainer_tokens = actor.getActiveTokens();
 	let actor_token = trainer_tokens[0]; // The using actor
 
-	let relevant_item_types = [
-		"Potion", "Revive", "Antidote", "Repel", "Cure", "Heal", "Bait"
-	];
+	// let relevant_item_types = [
+	// 	"Potion", "Revive", "Antidote", "Repel", "Cure", "Heal", "Bait"
+	// ];
 
-	for(let item_type of relevant_item_types)
-	{
+	// for(let item_type of relevant_item_types)
+	// {
 		for(let item of actor.data.items)
 		{
-			if(item.type == "item" && item.name.includes(item_type))
+			if(item.type == "item" && !item.name.includes(" Ball"))
 			{
 				item_inventory.push(item);
-				break;
 			}
 		}
-	}
+	// }
 
 	console.log(item_inventory);
 
@@ -4172,18 +4328,14 @@ export async function ShowInventoryMenu(actor)
 			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+inventory_item.name+" ("+item_count+")</div>"+"</h3>"+item_image+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+"</h6>"+"</div></center>",
 			callback: async () => {
 
-				// let key_shift = keyboard.isDown("Shift");
-				// if (key_shift) 
-				// {
-				// 	console.log("KEYBOARD SHIFT IS DOWN!");
-				// 	rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
-				// }
-				// else
-				// {
-				// 	game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
-				// }
-				
-				game.PTUMoveMaster.UseInventoryItem(actor_token, target_token, inventory_item.name);
+				if(await ExpendItem(actor, inventory_item))
+				{
+					await game.PTUMoveMaster.UseInventoryItem(actor_token, target, inventory_item.name);
+				}
+				else
+				{
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+				}
 
 			}
 		};
@@ -4501,9 +4653,141 @@ export function ShowStruggleMenu(actor)
 }
 
 
-export function UseInventoryItem(actor_token, target_token, inventory_item)
+export async function UseInventoryItem(actor_token, target_token, inventory_item)
 {
-	// TODO: Implement UseInventoryItem
+	// console.log("actor_token = ");
+	// console.log(actor_token);
+
+	// console.log("target_token = ");
+	// console.log(target_token);
+
+	// console.log("inventory_item = ");
+	// console.log(inventory_item);
+
+	let item_properties = {
+		"Blank Template":	{
+			"healing":			0,
+			"set_hitpoint_to":	0,
+			"set_hitpoint_to_pct":	0,
+			"condition_cure":	[],
+			"repulsive":		false,
+			"stage_change":		{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
+			"crit_boost":		0,
+			"accuracy_boost":	0,
+			"guard_spec":		false,
+		},
+		"Potion":	{
+			"healing":	20,
+		},
+		"Super Potion":	{
+			"healing":	35,
+		},
+		"Hyper Potion":	{
+			"healing":	70,
+		},
+		"Antidote":	{
+			"condition_cure":	["Poisoned", "Badly Poisoned"],
+		},
+		"Paralyze Heal":	{
+			"condition_cure":	["Paralysis"],
+		},
+		"Burn Heal":	{
+			"condition_cure":	["Burned"],
+		},
+		"Ice Heal":	{
+			"condition_cure":	["Frozen"],
+		},
+		"Full Heal":	{
+			"condition_cure":	["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned"], 
+		},
+		"Full Restore":	{
+			"healing":			80,
+			"condition_cure":	["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned", "Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed",], 
+		},
+		"Revive":	{
+			"condition_cure":	["Fainted"],
+			"set_hitpoint_to":	20,
+		},
+		"Energy Powder":	{
+			"healing":			25,
+			"repulsive":		true,
+		},
+		"Energy Root":	{
+			"healing":			70,
+			"repulsive":		true,
+		},
+		"Heal Powder":	{
+			"condition_cure":	["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned"], 
+			"repulsive":		true,
+		},
+		"Revival Herb":	{
+			"condition_cure":	["Fainted"], 
+			"set_hitpoint_to_pct":	0.5,
+			"repulsive":		true,
+		},
+		"X Attack":	{
+			"stage_change":		{"atk":2},
+		},
+		"X Defend":	{
+			"stage_change":		{"def":2},
+		},
+		"X Special":	{
+			"stage_change":		{"spatk":2},
+		},
+		"X Sp. Def.":	{
+			"stage_change":		{"spdef":2},
+		},
+		"X Speed":	{
+			"stage_change":		{"spd":2},
+		},
+		"Dire Hit":	{
+			"crit_boost":		2,
+		},
+		"Guard Spec":	{
+			"guard_spec":		true,
+		},
+	};
+
+	if(item_properties[inventory_item]["healing"])
+	{
+		game.PTUMoveMaster.healActor(target_token.actor, item_properties[inventory_item]["healing"]);
+	}
+
+	if(item_properties[inventory_item]["set_hitpoint_to"])
+	{
+		game.PTUMoveMaster.setActorHealth(target_token.actor, item_properties[inventory_item]["set_hitpoint_to"]);
+	}
+
+	if(item_properties[inventory_item]["set_hitpoint_to_pct"])
+	{
+		game.PTUMoveMaster.healActor(target_token.actor, item_properties[inventory_item]["set_hitpoint_to_pct"]);
+	}
+
+	if(item_properties[inventory_item]["condition_cure"])
+	{
+		if(item_properties[inventory_item]["condition_cure"].length > 0)
+		{
+			for(let affliction of (item_properties[inventory_item]["condition_cure"]))
+			{
+				await game.PTUMoveMaster.cureActorAffliction(target_token.actor, affliction);
+			}
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+		}
+	}
+
+	// TODO: Range checking for non-pokeball items
+
+	// TODO: Stage Change from item handling
+
+	// TODO: Crit boost from item handling
+
+	// TODO: Accuracy boost from item handling
+
+	// TODO: Guard Spec handling
+
+	// TODO: Repulsive tracking from item handling
+
+	setTimeout(() => {  game.PTUMoveMaster.TakeStandardAction(actor_token.actor); }, 1000);
 }
 
 
@@ -4514,8 +4798,14 @@ export async function GetItemArt(item_name)
 	console.log(result.status);
 	if(result.status === 404) 
 	{
-		item_base_image = ("item_icons/Generic Item.webp");
+		item_base_image = ("item_icons/"+item_name+".png");
+		result = await fetch(item_base_image);
+		if(result.status === 404) 
+		{
+			item_base_image = ("item_icons/Generic Item.webp");
+		}
 	}
+	
     return item_base_image;
 }
 
@@ -4590,4 +4880,59 @@ export function GetTargetTypingHeader(target)
 	}
 
 	return targetTypingText;
+}
+
+
+export async function ExpendItem(owning_actor, item_object) 
+{
+	console.log("EXPENDING ITEM: ");
+	console.log(item_object);
+
+	console.log(duplicate(item_object).name);
+
+	if(item_object.data.quantity < 1)
+	{
+		ui.notifications.warn("You do not have any of this item left to use!");
+		return false;
+	}
+
+	if(item_object.name.includes("Thrown") || item_object.name.includes("Broken"))
+	{
+		ui.notifications.warn("This item is not in a usable state!");
+		return false;
+	}
+
+	await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.quantity-1) }); // Decrement the spent item count
+
+	if(item_object.data.name.includes("Ball")) 	// For balls, create a thrown version that can be picked up after battle (this will be changed to 
+	{										// broken or removed entirely by the capture function if it hits and fails/succeeds to capture a 
+											// pokemon, respectively.)
+
+
+		let item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
+		if(item) 
+		{
+			await owning_actor.updateOwnedItem({_id: item._id, "data.quantity": Number(duplicate(item).data.quantity)+1});
+		}
+		else // If we get here, then we never found an existing thrown version to increment, so create new thrown version
+		{
+			await owning_actor.createOwnedItem({
+				"name": "Thrown "+(item_object.data.name),
+				"type": "item",
+				"data": {
+					"cost": item_object.data.cost,
+					"effect": item_object.data.effect,
+					"UseCount": item_object.data.UseCount,
+					"origin": item_object.data.effect,
+					"quantity": 1
+				}
+			});
+		}
+		return true;
+	}
+	else // Not a ball, just decrement the count
+	{
+		await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.quantity-1) });
+		return true;
+	}
 }
