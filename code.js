@@ -3532,7 +3532,11 @@ export function SpeakPokemonName(pokemon_actor)
 		species_number_string = "0"+species_number;
 	}
 
-	let pokedexSpeechSoundFile = species_number_string+" - "+species+".wav";
+	function capitalizeFirstLetter(string) {
+		return string[0].toUpperCase() + string.slice(1);
+	}
+
+	let pokedexSpeechSoundFile = species_number_string+" - "+capitalizeFirstLetter((species).toLowerCase())+".wav";
 	AudioHelper.play({src: "pokemon_names/"+pokedexSpeechSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 };
 
