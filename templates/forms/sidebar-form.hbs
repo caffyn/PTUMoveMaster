@@ -1,0 +1,7 @@
+<div style="text-align: center;">
+    <link rel="stylesheet" href="../modules/PTUMoveMaster/css/main.css"></link>
+    {{{content}}}
+    {{#each buttons as | btn |}}
+         <div class="row", style="margin:0; padding:0"><button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="margin-top:3px; margin-bottom:3px; margin-left:0; margin-right:0; padding:0">{{{btn.label}}}</button></div>
+    {{/each}}
+</div>

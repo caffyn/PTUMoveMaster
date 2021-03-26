@@ -1,5 +1,6 @@
 
 import { MoveMasterBonusDamageOptions } from './MoveMasterBonusDamageForm.js'
+import { SidebarForm } from './forms/sidebar-form.js'
 
 /* -------------------------------------------- */
 /*  Module Setting Initialization               */
@@ -22,7 +23,7 @@ function _loadModuleSettings() {
 	game.settings.register("PTUMoveMaster", "showEffectiveness", {
 		name: "GM Setting: Show move effectiveness on current target",
 		hint: "",
-		scope: "client",
+		scope: "world",
 		config: true,
 		type: String,
 		choices: {
@@ -72,6 +73,15 @@ function _loadModuleSettings() {
 		type: Boolean,
 		default: false
 	});
+
+	game.settings.register("PTUMoveMaster", "autoResetStagesOnCombatEnd", {
+		name: "GM Setting: Automatically reset stages when ending an encounter.",
+		hint: "This will make all combatants reset their combat stages when you end an encounter.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: false
+	});
 } 
 
 Hooks.once('init', async function() 
@@ -113,7 +123,13 @@ Hooks.once('init', async function()
 		GetItemArt,
 		GetTargetTypingHeader,
 		cureActorAffliction,
+		ResetStagesToDefault,
+		SidebarForm,
 	};
+
+	// let sidebar = new game.PTUMoveMaster.SidebarForm();
+	// sidebar.render(true);
+	//debug(sidebar);
 });
 
 
@@ -128,313 +144,377 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	}
 });
 
-Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and TODO: create lightshow
-	
-	let pokeball = "Basic Ball"
-	let actor = game.actors.get(tokenData.actorId);
 
-	function capitalizeFirstLetter(string) {
-		return string[0].toUpperCase() + string.slice(1);
-	}
+Hooks.on("preDeleteCombat", async (combat) => {
 
-	if(actor)
+	if(game.settings.get("PTUMoveMaster", "autoResetStagesOnCombatEnd"))
 	{
-		let target_token = game.actors.get(actor._id).getActiveTokens().slice(-1)[0]; // The thrown pokemon
-		let current_token_species = capitalizeFirstLetter((actor.data.data.species).toLowerCase());
-		let current_token_nature = capitalizeFirstLetter((actor.data.data.nature.value).toLowerCase());
-
-		if(actor.data.type == "pokemon" && (actor.data.data.owner != "0"))
+		let combatants = combat.data.combatants;
+		for(let combatant of combatants)
 		{
-			let trainer_actor = game.actors.get(actor.data.data.owner);
-			let trainer_tokens = trainer_actor.getActiveTokens();
-			let actor_token = trainer_tokens[0]; // The throwing trainer
+			await game.PTUMoveMaster.ResetStagesToDefault(combatant.actor);
+		}
+	}
+});
 
-			if(!actor_token)
+
+Hooks.on("controlToken", async (token, selected) => {
+	if(selected)
+	{
+		PTUAutoFight().ChatWindow(token.actor);
+		console.log("CONTROL TOKEN HOOK FIRED: "+token);
+		console.log(token);
+	}
+});
+
+
+Hooks.on("targetToken", async (user, token, targeted) => {
+
+	let selected_token = canvas.tokens.controlled[0];
+	PTUAutoFight().ChatWindow(selected_token.actor);
+	console.log("TARGET TOKEN HOOK FIRED: "+token);
+	console.log(token);
+
+});
+
+
+Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and create lightshow
+
+	setTimeout(() => {
+
+		let pokeball = "Basic Ball"
+		let actor = game.actors.get(tokenData.actorId);
+
+		function capitalizeFirstLetter(string) {
+			return string[0].toUpperCase() + string.slice(1);
+		}
+
+		if(actor)
+		{
+			let target_token;
+
+			if(tokenData.actorLink == false)
 			{
-				game.ptu.PlayPokemonCry(current_token_species);	
-				return;
-			}
-
-			let throwRange = trainer_actor.data.data.capabilities["Throwing Range"];
-			let rangeToTarget = GetDistanceBetweenTokens(actor_token, tokenData);
-
-			if(throwRange < rangeToTarget)
-			{
-				ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
-				game.actors.get(actor._id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
+				target_token = canvas.tokens.get(tokenData._id);//.slice(-1)[0]; // The thrown pokemon
 			}
 			else
 			{
-				setTimeout(() => { game.ptu.PlayPokemonCry(current_token_species); }, 2000);
-				
-				target_token.update({"scale": (0.25/target_token.data.width)});
+				target_token = game.actors.get(actor._id).getActiveTokens().slice(-1)[0]; // The thrown pokemon
+			}
 
-				ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			let current_token_species = actor.name;
+			if(actor.data.data.species)
+			{
+				current_token_species = capitalizeFirstLetter((actor.data.data.species).toLowerCase());
+			}
+			
+			let current_token_nature = "";
+			if(actor.data.data.nature)
+			{
+				current_token_nature = capitalizeFirstLetter((actor.data.data.nature.value).toLowerCase());
+			}
 
-				let transitionType = 9;
-				let targetImagePath = "/item_icons/"+pokeball+".png";
+			if(actor.data.type == "pokemon" && (actor.data.data.owner != "0" && actor.data.data.owner != ""))
+			{
+				let trainer_actor = game.actors.get(actor.data.data.owner);
+				let trainer_tokens = trainer_actor.getActiveTokens();
+				let actor_token = trainer_tokens[0]; // The throwing trainer
 
-				let polymorphFilterId = "pokeball";
-				let pokeball_polymorph_quick_params =
-				[{
-					filterType: "polymorph",
-					filterId: polymorphFilterId,
-					type: transitionType,
-					padding: 70,
-					magnify: 1,
-					imagePath: targetImagePath,
-					animated:
-					{
-						progress:
-						{
-							active: true,
-							animType: "halfCosOscillation",
-							val1: 0,
-							val2: 100,
-							loops: 1,
-							loopDuration: 1
-						}
-					}
-				},
-
+				if(!actor_token)
 				{
-					filterType: "transform",
-					filterId: "pokeball_bounce",
-					autoDestroy: true,
-					padding: 80,
-					animated:
-					{
-						translationY:
-						{
-							animType: "cosOscillation",
-							val1: 0,
-							val2: 0.25,
-							loops: 1,
-							loopDuration: 450
-						},
-						// translationX:
-						// {
-						// 	animType: "cosOscillation",
-						// 	val1: 0.15,
-						// 	val2: 0.12,
-						// 	loops: 1,
-						// 	loopDuration: 450
-						// },
-						scaleY:
-						{
-							animType: "cosOscillation",
-							val1: 1,
-							val2: 0.75,
-							loops: 2,
-							loopDuration: 450,
-						},
-						scaleX:
-						{
-							animType: "cosOscillation",
-							val1: 1,
-							val2: 0.75,
-							loops: 2,
-							loopDuration: 450,
-						}
-					}
+					game.ptu.PlayPokemonCry(current_token_species);	
+					return;
 				}
 
-				];
+				let throwRange = trainer_actor.data.data.capabilities["Throwing Range"];
+				let rangeToTarget = GetDistanceBetweenTokens(actor_token, tokenData);
 
-				let pokeball_polymorph_params =
-				[{
-					filterType: "polymorph",
-					filterId: polymorphFilterId,
-					type: transitionType,
-					padding: 70,
-					magnify: 1,
-					imagePath: targetImagePath,
-					animated:
-					{
-						progress:
-						{
-							active: true,
-							animType: "halfCosOscillation",
-							val1: 0,
-							val2: 100,
-							loops: 1,
-							loopDuration: 1
-						}
-					}
-				}];
-
-				target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
-
-				function castSpell(effect) {
-					canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor._id).getActiveTokens().slice(-1)[0]);//target_token);
+				if(throwRange < rangeToTarget)
+				{
+					ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
+					game.actors.get(actor._id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
 				}
-				
-				castSpell({
-					file:
-						"item_icons/"+pokeball+".webm",
-					anchor: {
-						x: -0.08,
-						y: 0.5,
-					},
-					speed: 1,
-					angle: 0,
-					scale: {
-						x: 0.5,
-						y: 0.5,
-					},
-				});
+				else
+				{
+					setTimeout(() => { game.ptu.PlayPokemonCry(current_token_species); }, 2000);
+					
+					target_token.update({"scale": (0.25/target_token.data.width)});
 
-				setTimeout(() => { target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
+					ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
-				let pokeballShoop_params =
-				[
+					let transitionType = 9;
+					let targetImagePath = "/item_icons/"+pokeball+".png";
+
+					let polymorphFilterId = "pokeball";
+					let pokeball_polymorph_quick_params =
+					[{
+						filterType: "polymorph",
+						filterId: polymorphFilterId,
+						type: transitionType,
+						padding: 70,
+						magnify: 1,
+						imagePath: targetImagePath,
+						animated:
+						{
+							progress:
+							{
+								active: true,
+								animType: "halfCosOscillation",
+								val1: 0,
+								val2: 100,
+								loops: 1,
+								loopDuration: 1
+							}
+						}
+					},
+
 					{
 						filterType: "transform",
-						filterId: "pokeballShoop",
-						bpRadiusPercent: 100,
-						//padding: 0,
+						filterId: "pokeball_bounce",
 						autoDestroy: true,
+						padding: 80,
 						animated:
 						{
-							bpStrength:
+							translationY:
 							{
-								animType: "cosOscillation",//"cosOscillation",
+								animType: "cosOscillation",
 								val1: 0,
-								val2: -0.99,//-0.65,
-								loopDuration: 1500,
+								val2: 0.25,
 								loops: 1,
-							}
-						}
-					},
-
-					{
-						filterType: "glow",
-						filterId: "pokeballShoop",
-						outerStrength: 40,
-						innerStrength: 20,
-						color: 0xFFFFFF,//0x5099DD,
-						quality: 0.5,
-						//padding: 0,
-						//zOrder: 2,
-						autoDestroy: true,
-						animated:
-						{
-							color: 
+								loopDuration: 450
+							},
+							// translationX:
+							// {
+							// 	animType: "cosOscillation",
+							// 	val1: 0.15,
+							// 	val2: 0.12,
+							// 	loops: 1,
+							// 	loopDuration: 450
+							// },
+							scaleY:
 							{
-							active: true, 
-							loopDuration: 1500, 
-							loops: 1,
-							animType: "colorOscillation", 
-							val1:0xFFFFFF,//0x5099DD, 
-							val2:0xff0000,//0x90EEFF
+								animType: "cosOscillation",
+								val1: 1,
+								val2: 0.75,
+								loops: 2,
+								loopDuration: 450,
+							},
+							scaleX:
+							{
+								animType: "cosOscillation",
+								val1: 1,
+								val2: 0.75,
+								loops: 2,
+								loopDuration: 450,
 							}
-						}
-					},
-
-					{
-						filterType: "adjustment",
-						filterId: "pokeballShoop",
-						saturation: 1,
-						brightness: 10,
-						contrast: 1,
-						gamma: 1,
-						red: 1,
-						green: 1,
-						blue: 1,
-						alpha: 1,
-						autoDestroy: true,
-						animated:
-						{
-							alpha: 
-							{ 
-							active: true, 
-							loopDuration: 1500, 
-							loops: 1,
-							animType: "syncCosOscillation",
-							val1: 0.35,
-							val2: 0.75 }
 						}
 					}
-				];
 
-				setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
-				setTimeout(() => {  
+					];
 
-					if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
-					{
-						if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+					let pokeball_polymorph_params =
+					[{
+						filterType: "polymorph",
+						filterId: polymorphFilterId,
+						type: transitionType,
+						padding: 70,
+						magnify: 1,
+						imagePath: targetImagePath,
+						animated:
+						{
+							progress:
+							{
+								active: true,
+								animType: "halfCosOscillation",
+								val1: 0,
+								val2: 100,
+								loops: 1,
+								loopDuration: 1
+							}
+						}
+					}];
+
+					target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
+
+					function castSpell(effect) {
+						canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor._id).getActiveTokens().slice(-1)[0]);//target_token);
+					}
+					
+
+					castSpell({
+						file:
+							"item_icons/"+pokeball+".webm",
+						anchor: {
+							x: -0.08,
+							y: 0.5,
+						},
+						speed: 1,
+						angle: 0,
+						scale: {
+							x: 0.5,
+							y: 0.5,
+						},
+					});
+					
+
+					setTimeout(() => { target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
+
+					let pokeballShoop_params =
+					[
+						{
+							filterType: "transform",
+							filterId: "pokeballShoop",
+							bpRadiusPercent: 100,
+							//padding: 0,
+							autoDestroy: true,
+							animated:
+							{
+								bpStrength:
+								{
+									animType: "cosOscillation",//"cosOscillation",
+									val1: 0,
+									val2: -0.99,//-0.65,
+									loopDuration: 1500,
+									loops: 1,
+								}
+							}
+						},
+
+						{
+							filterType: "glow",
+							filterId: "pokeballShoop",
+							outerStrength: 40,
+							innerStrength: 20,
+							color: 0xFFFFFF,//0x5099DD,
+							quality: 0.5,
+							//padding: 0,
+							//zOrder: 2,
+							autoDestroy: true,
+							animated:
+							{
+								color: 
+								{
+								active: true, 
+								loopDuration: 1500, 
+								loops: 1,
+								animType: "colorOscillation", 
+								val1:0xFFFFFF,//0x5099DD, 
+								val2:0xff0000,//0x90EEFF
+								}
+							}
+						},
+
+						{
+							filterType: "adjustment",
+							filterId: "pokeballShoop",
+							saturation: 1,
+							brightness: 10,
+							contrast: 1,
+							gamma: 1,
+							red: 1,
+							green: 1,
+							blue: 1,
+							alpha: 1,
+							autoDestroy: true,
+							animated:
+							{
+								alpha: 
+								{ 
+								active: true, 
+								loopDuration: 1500, 
+								loops: 1,
+								animType: "syncCosOscillation",
+								val1: 0.35,
+								val2: 0.75 }
+							}
+						}
+					];
+
+					setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
+					setTimeout(() => {  
+
+						if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
+						{
+							if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+							{
+								target_token.update({
+									"scale": (1),
+									"bar1.attribute": "health",
+									"displayBars": 50,
+									"displayName": 50
+								});  
+							}
+							else
+							{
+								target_token.update({
+									"scale": (1),
+									"displayName": 50
+								});  
+							}
+						}
+						else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 						{
 							target_token.update({
 								"scale": (1),
 								"bar1.attribute": "health",
 								"displayBars": 50,
-								"displayName": 50
 							});  
 						}
 						else
 						{
-							target_token.update({
-								"scale": (1),
-								"displayName": 50
-							});  
+							target_token.update({"scale": (1)});
 						}
-					}
-					else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+						
+					}, 2000);
+
+					setTimeout(() => { AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true); }, 500);
+				}
+			}
+			else if (actor.data.type == "pokemon")
+			{
+				if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
+				{
+					if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 					{
 						target_token.update({
-							"scale": (1),
+							"name": (current_token_nature+" "+current_token_species),
 							"bar1.attribute": "health",
 							"displayBars": 50,
+							"displayName": 50
 						});  
 					}
 					else
 					{
-						target_token.update({"scale": (1)});
+						target_token.update({
+							"name": (current_token_nature+" "+current_token_species),
+							"displayName": 50
+						});  
 					}
-					
-				}, 1500);
-
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
-			}
-		}
-		else if (actor.data.type == "pokemon")
-		{
-			if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
-			{
-				if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+				}
+				else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 				{
 					target_token.update({
 						"name": (current_token_nature+" "+current_token_species),
 						"bar1.attribute": "health",
 						"displayBars": 50,
-						"displayName": 50
 					});  
 				}
 				else
 				{
-					target_token.update({
-						"name": (current_token_nature+" "+current_token_species),
-						"displayName": 50
-					});  
-				}
+					target_token.update({"name": (current_token_nature+" "+current_token_species)});
+				}	
+				game.ptu.PlayPokemonCry(current_token_species);	
 			}
-			else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+			
+			if(game.combat)
 			{
-				target_token.update({
-					"name": (current_token_nature+" "+current_token_species),
-					"bar1.attribute": "health",
-					"displayBars": 50,
-				});  
+				target_token.toggleCombat().then(() => game.combat.rollAll({rollMode: 'gmroll'}));
 			}
-			else
-			{
-				target_token.update({"name": (current_token_nature+" "+current_token_species)});
-			}	
-			game.ptu.PlayPokemonCry(current_token_species);	
 		}
-	}
+	}, 100);
 });
+
 
 // Hooks.on("hoverToken", async (token, update, options, userId) => {
 
@@ -459,7 +539,6 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 // 		acBonus: (parseInt(actorData.modifiers.acBonus) || 0)
 // 	})
 // };
-
 
 
 var stats = ["atk", "def", "spatk", "spdef", "spd"];
@@ -687,13 +766,13 @@ var move_stage_changes = {
 	},
 };
 
-const ButtonHeight = 85;
+const ButtonHeight = 100;
 const RangeFontSize = 14;
 const RangeIconFontSizeOffset = (8);
 const MoveButtonBackgroundColor = "#333333";
 const MoveButtonTextColor = "#cccccc";
 
-const TypeIconWidth = 78;
+const TypeIconWidth = 97;
 const EffectivenessBorderThickness = 5;
 
 const TypeIconSuffix = "IC.png";
@@ -745,8 +824,6 @@ const DoubleStrikeIcon = "<img title='Double Strike' src='" + AlternateIconPath 
 const FiveStrikeIcon = "<img title='Five Strike' src='" + AlternateIconPath + "fivestrike_icon" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 
 
-
-
 const JingleDirectory = "pokemon_jingles/";
 const NameVoiceLinesDirectory = "pokemon_names/";
 
@@ -783,7 +860,405 @@ const MoveMessageTypes = {
 
 
 
-export function PTUAutoFight(){
+/**
+ * @typedef {Object} MoveMasterSidebarDialogButton
+ * @property {string} icon            A Font Awesome icon for the button
+ * @property {string} label           The label for the button
+ * @property {Function} [callback]    A callback function that fires when the button is clicked
+ */
+/**
+ * Create a dialog window displaying a title, a message, and a set of buttons which trigger callback functions.
+ * @implements {Application}
+ *
+ * @param {Object} data               An object of dialog data which configures how the modal window is rendered
+ * @param {string} data.title         The window title
+ * @param {string} data.content       HTML content
+ * @param {Function} [data.render]    A callback function invoked when the dialog is rendered
+ * @param {Function} [data.close]     Common callback operations to perform when the dialog is closed
+ * @param {Object<string, MoveMasterSidebarDialogButton>} data.buttons The buttons which are displayed as action choices for the dialog
+ *
+ * @param {Object} options            MoveMasterSidebarDialog rendering options, see :class:`Application`
+ * @param {string} options.default    The name of the default button which should be triggered on Enter
+ * @param {boolean} options.jQuery    Whether to provide jQuery objects to callback functions (if true) or plain
+ *                                    HTMLElement instances (if false). This is currently true by default but in the
+ *                                    future will become false by default.
+ *
+ * @example <caption>Constructing a custom dialog instance</caption>
+ * let d = new MoveMasterSidebarDialog({
+ *  title: "Test MoveMasterSidebarDialog",
+ *  content: "<p>You must choose either Option 1, or Option 2</p>",
+ *  buttons: {
+ *   one: {
+ *    icon: '<i class="fas fa-check"></i>',
+ *    label: "Option One",
+ *    callback: () => console.log("Chose One")
+ *   },
+ *   two: {
+ *    icon: '<i class="fas fa-times"></i>',
+ *    label: "Option Two",
+ *    callback: () => console.log("Chose Two")
+ *   }
+ *  },
+ *  default: "two",
+ *  render: html => console.log("Register interactivity in the rendered dialog"),
+ *  close: html => console.log("This always is logged no matter which option is chosen")
+ * });
+ * d.render(true);
+ */
+ class MoveMasterSidebarDialog extends Application {
+	constructor(data, options) {
+	  super(options);
+	  this.data = data;
+	}
+	  /* -------------------------------------------- */
+	/** @override */
+	  static get defaultOptions() {
+		return mergeObject(super.defaultOptions, {
+		  template: "templates/hud/dialog.html",
+		classes: ["MoveMasterSidebarDialog"],
+		width: 200,
+		jQuery: true
+	  });
+	}
+	/* -------------------------------------------- */
+	/** @override */
+	get title() {
+	  return this.data.title || "MoveMasterSidebarDialog";
+	}
+	/* -------------------------------------------- */
+	/** @override */
+	getData(options) {
+	  let buttons = Object.keys(this.data.buttons).reduce((obj, key) => {
+		let b = this.data.buttons[key];
+		b.cssClass = [key, this.data.default === key ? "default" : ""].filterJoin(" ");
+		if ( b.condition !== false ) obj[key] = b;
+		return obj;
+	  }, {});
+	  return {
+		content: this.data.content,
+		buttons: buttons
+	  }
+	}
+	/* -------------------------------------------- */
+	/** @override */
+	activateListeners(html) {
+	  html.find(".dialog-button").click(this._onClickButton.bind(this));
+	  $(document).on('keydown.chooseDefault', this._onKeyDown.bind(this));
+	  if ( this.data.render instanceof Function ) this.data.render(this.options.jQuery ? html : html[0]);
+	}
+	/* -------------------------------------------- */
+	/**
+	 * Handle a left-mouse click on one of the dialog choice buttons
+	 * @param {MouseEvent} event    The left-mouse click event
+	 * @private
+	 */
+	_onClickButton(event) {
+	  const id = event.currentTarget.dataset.button;
+	  const button = this.data.buttons[id];
+	  this.submit(button);
+	}
+	/* -------------------------------------------- */
+	/**
+	 * Handle a keydown event while the dialog is active
+	 * @param {KeyboardEvent} event   The keydown event
+	 * @private
+	 */
+	_onKeyDown(event) {
+	  // Close dialog
+	  if ( event.key === "Escape" ) {
+		event.preventDefault();
+		event.stopPropagation();
+		return this.close();
+	  }
+	  // Confirm default choice
+	  if ( (event.key === "Enter") && this.data.default ) {
+		event.preventDefault();
+		event.stopPropagation();
+		const defaultChoice = this.data.buttons[this.data.default];
+		return this.submit(defaultChoice);
+	  }
+	}
+	/* -------------------------------------------- */
+	/**
+	 * Submit the MoveMasterSidebarDialog by selecting one of its buttons
+	 * @param {Object} button     The configuration of the chosen button
+	 * @private
+	 */
+	submit(button) {
+	  try {
+		if (button.callback) button.callback(this.options.jQuery ? this.element : this.element[0]);
+		//this.close(true);
+		let current_actor = canvas.tokens.controlled[0].actor;
+		setTimeout(() => {  PTUAutoFight().ChatWindow(current_actor); }, 100);
+		
+	  } catch(err) {
+		ui.notifications.error(err);
+		throw new Error(err);
+	  }
+	}
+	/* -------------------------------------------- */
+	/** @override */
+	close() {
+	  if ( this.data.close ) this.data.close(this.options.jQuery ? this.element : this.element[0]);
+	  super.close();
+	  $(document).off('keydown.chooseDefault');
+	}
+	/* -------------------------------------------- */
+	/*  Factory Methods                             */
+	/* -------------------------------------------- */
+	/**
+	 * A helper factory method to create simple confirmation dialog windows which consist of simple yes/no prompts.
+	 * If you require more flexibility, a custom MoveMasterSidebarDialog instance is preferred.
+	 *
+	 * @param {string} title          The confirmation window title
+	 * @param {string} content        The confirmation message
+	 * @param {Function} yes          Callback function upon yes
+	 * @param {Function} no           Callback function upon no
+	 * @param {Function} render       A function to call when the dialog is rendered
+	 * @param {boolean} defaultYes    Make "yes" the default choice?
+	 * @param {boolean} rejectClose   Reject the Promise if the MoveMasterSidebarDialog is closed without making a choice.
+	 * @param {Object} options        Additional rendering options passed to the MoveMasterSidebarDialog
+	 *
+	 * @return {Promise<*>}           A promise which resolves once the user makes a choice or closes the window
+	 *
+	 * @example
+	 * let d = MoveMasterSidebarDialog.confirm({
+	 *  title: "A Yes or No Question",
+	 *  content: "<p>Choose wisely.</p>",
+	 *  yes: () => console.log("You chose ... wisely"),
+	 *  no: () => console.log("You chose ... poorly"),
+	 *  defaultYes: false
+	 * });
+	 */
+	static async confirm({title, content, yes, no, render, defaultYes=true, rejectClose=false, options={}}={}, old) {
+	  // TODO: Support the old second-paramter options until 0.8.x release
+	  if ( old ) {
+		console.warn("You are passing an options object as a second parameter to MoveMasterSidebarDialog.confirm. This should now be passed in as the options key of the first parameter.")
+		options = old;
+	  }
+	  return new Promise((resolve, reject) => {
+		const dialog = new this({
+		  title: title,
+		  content: content,
+		  buttons: {
+			yes: {
+			  icon: '<i class="fas fa-check"></i>',
+			  label: game.i18n.localize("Yes"),
+			  callback: html => {
+				const result = yes ? yes(html) : true;
+				resolve(result);
+			  }
+			},
+			no: {
+			  icon: '<i class="fas fa-times"></i>',
+			  label: game.i18n.localize("No"),
+			  callback: html => {
+				const result = no ? no(html) : false;
+				resolve(result);
+			  }
+			}
+		  },
+		  default: defaultYes ? "yes" : "no",
+		  render: render,
+		  close: () => {
+			if ( rejectClose ) reject("The confirmation MoveMasterSidebarDialog was closed without a choice being made");
+			else resolve(null);
+		  },
+		}, options);
+		dialog.render(true);
+	  });
+	}
+	/* -------------------------------------------- */
+	/**
+	 * A helper factory method to display a basic "prompt" style MoveMasterSidebarDialog with a single button
+	 * @param {string} title          The confirmation window title
+	 * @param {string} content        The confirmation message
+	 * @param {string} label          The confirmation button text
+	 * @param {Function} callback     A callback function to fire when the button is clicked
+	 * @param {Function} render       A function that fires after the dialog is rendered
+	 * @param {object} options        Additional rendering options
+	 * @return {Promise<*>}           A promise which resolves when clicked, or rejects if closed
+	 */
+	static async prompt({title, content, label, callback, render, options={}}={}) {
+	  return new Promise((resolve, reject) => {
+		const dialog = new this({
+		  title: title,
+		  content: content,
+		  buttons: {
+			ok: {
+			  icon: '<i class="fas fa-check"></i>',
+			  label: label,
+			  callback: html => {
+				const result = callback(html);
+				resolve(result);
+			  }
+			},
+		  },
+		  default: "ok",
+		  render: render,
+		  close: () => reject,
+		}, options);
+		dialog.render(true);
+	  });
+	}
+  }
+  /**
+   * A UI utility to make an element draggable.
+   */
+  class Draggable {
+	constructor(app, element, handle, resizable) {
+	  // Setup element data
+	  this.app = app;
+	  this.element = element[0];
+	  this.handle = handle || this.element;
+	  this.resizable = resizable || false;
+	  /**
+	   * Duplicate the application's starting position to track differences
+	   * @type {Object}
+	   */
+	  this.position = null;
+	  /**
+	   * Remember event handlers associated with this Draggable class so they may be later unregistered
+	   * @type {Object}
+	   */
+	  this.handlers = {};
+	  /**
+	   * Throttle mousemove event handling to 60fps
+	   * @type {number}
+	   */
+	  this._moveTime = 0;
+	  // Activate interactivity
+	  this.activateListeners();
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Activate event handling for a Draggable application
+	 * Attach handlers for floating, dragging, and resizing
+	 */
+	activateListeners() {
+	  // Float to top
+	  this.handlers["click"] = ["mousedown", this._onClickFloatTop.bind(this), {capture: true, passive: true}];
+	  this.element.addEventListener(...this.handlers.click);
+	  // Drag handlers
+	  this.handlers["dragDown"] = ["mousedown", e => this._onDragMouseDown(e), false];
+	  this.handlers["dragMove"] = ["mousemove", e => this._onDragMouseMove(e), false];
+	  this.handlers["dragUp"] = ["mouseup", e => this._onDragMouseUp(e), false];
+	  this.handle.addEventListener(...this.handlers.dragDown);
+	  this.handle.classList.add("draggable");
+	  // Resize handlers
+	  if ( !this.resizable ) return;
+	  let handle = $('<div class="window-resizable-handle"><i class="fas fa-arrows-alt-h"></i></div>')[0];
+	  this.element.appendChild(handle);
+	  // Register handlers
+	  this.handlers["resizeDown"] = ["mousedown", e => this._onResizeMouseDown(e), false];
+	  this.handlers["resizeMove"] = ["mousemove", e => this._onResizeMouseMove(e), false];
+	  this.handlers["resizeUp"] = ["mouseup", e => this._onResizeMouseUp(e), false];
+	  // Attach the click handler and CSS class
+	  handle.addEventListener(...this.handlers.resizeDown);
+	  this.handle.classList.add("resizable");
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Handle left-mouse down events to float the window to the top of the rendering stack
+	 * @param {MouseEvent} event      The mousedown event on the application element
+	 * @private
+	 */
+	_onClickFloatTop(event) {
+	  let z = Number(window.document.defaultView.getComputedStyle(this.element).zIndex);
+	  if ( z <= _maxZ ) {
+		this.element.style.zIndex = Math.min(++_maxZ, 9999);
+	  }
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Handle the initial mouse click which activates dragging behavior for the application
+	 * @private
+	 */
+	_onDragMouseDown(event) {
+	  event.preventDefault();
+	  // Record initial position
+	  this.position = duplicate(this.app.position);
+	  this._initial = {x: event.clientX, y: event.clientY};
+	  // Add temporary handlers
+	  window.addEventListener(...this.handlers.dragMove);
+	  window.addEventListener(...this.handlers.dragUp);
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Move the window with the mouse, bounding the movement to ensure the window stays within bounds of the viewport
+	 * @private
+	 */
+	_onDragMouseMove(event) {
+	  event.preventDefault();
+	  // Limit dragging to 60 updates per second
+	  const now = Date.now();
+	  if ( (now - this._moveTime) < (1000/60) ) return;
+	  this._moveTime = now;
+	  // Update application position
+	  this.app.setPosition({
+		left: this.position.left + (event.clientX - this._initial.x),
+		top: this.position.top + (event.clientY - this._initial.y)
+	  });
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Conclude the dragging behavior when the mouse is release, setting the final position and removing listeners
+	 * @private
+	 */
+	_onDragMouseUp(event) {
+	  event.preventDefault();
+	  window.removeEventListener(...this.handlers.dragMove);
+	  window.removeEventListener(...this.handlers.dragUp);
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Handle the initial mouse click which activates dragging behavior for the application
+	 * @private
+	 */
+	_onResizeMouseDown(event) {
+	  event.preventDefault();
+	  // Limit dragging to 60 updates per second
+	  const now = Date.now();
+	  if ( (now - this._moveTime) < (1000/60) ) return;
+	  this._moveTime = now;
+	  // Record initial position
+	  this.position = duplicate(this.app.position);
+	  if ( this.position.height === "auto" ) this.position.height = this.element.clientHeight;
+	  if ( this.position.width === "auto" ) this.position.width = this.element.clientWidth;
+	  this._initial = {x: event.clientX, y: event.clientY};
+	  // Add temporary handlers
+	  window.addEventListener(...this.handlers.resizeMove);
+	  window.addEventListener(...this.handlers.resizeUp);
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Move the window with the mouse, bounding the movement to ensure the window stays within bounds of the viewport
+	 * @private
+	 */
+	_onResizeMouseMove(event) {
+	  event.preventDefault();
+	  this.app.setPosition({
+		width: this.position.width + (event.clientX - this._initial.x),
+		height: this.position.height + (event.clientY - this._initial.y)
+	  });
+	}
+	/* ----------------------------------------- */
+	/**
+	 * Conclude the dragging behavior when the mouse is release, setting the final position and removing listeners
+	 * @private
+	 */
+	_onResizeMouseUp(event) {
+	  event.preventDefault();
+	  window.removeEventListener(...this.handlers.resizeMove);
+	  window.removeEventListener(...this.handlers.resizeUp);
+	  this.app._onResize(event);
+	}
+  }
+
+
+
+export function PTUAutoFight()
+{
 
 	async function ApplyDamage(event)
 	{
@@ -913,1404 +1388,1394 @@ export function PTUAutoFight(){
 	}
 
 
-	async function ChatWindow(actor){
+	async function ChatWindow(actor)
+	{
 
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 
 		let target = Array.from(game.user.targets)[0];
-		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target)
-		// let targetType1 = "???";
-		// let targetType2 = "???";
-		// let effectiveness;
-		// if ( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target))
-		// {
-		// 	effectiveness = target.actor.data.data.effectiveness.All;
-		// 	if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
-		// 	{
-		// 		targetType1 = target.actor.data.data.typing[0];
-		// 		targetType2 = target.actor.data.data.typing[1];
-		// 	}
-
-		// 	let tokenImage;
-		// 	let tokenSize = 80;
-
-		// 	if (target.actor.token)
-		// 	{
-		// 		tokenImage = target.actor.token.data.img;
-		// 	}
-		// 	else
-		// 	{
-		// 		tokenImage = target.actor.data.img;
-		// 	}
-
-		// 	if(targetType2 == "null")
-		// 	{
-		// 		if(targetType1 == "???")
-		// 		{
-		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div>";
-		// 		}
-		// 		else
-		// 		{
-		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
-		// 			// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>).";
-		// 		}
-		// 	}
-		// 	else
-		// 	{
-		// 		if(targetType1 == "???")
-		// 		{
-		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+"/"+targetType2+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
-		// 			// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" ("+targetType1+"/"+targetType2+ ").";
-		// 		}
-		// 		else
-		// 		{
-		// 			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' width='"+tokenSize+"' height='"+tokenSize+"'></img></div></div></div>";
-		// 			// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>/<img src='" + TypeIconPath+targetType2+TypeIconSuffix+ "'>).";
-		// 		}
-		// 	}
-
-		// }
-	var items=actor.data.items;
-	var item_entities=actor.items;
-	var i = 0;
-
-	if(game.combat == null)
-	{
-		var currentRound = 0;
-		var currentEncounterID = 0;
-	}
-	else
-	{
-		var currentRound = game.combat.round;
-		var currentEncounterID = game.combat.data._id;
-	}
-
-	var typeStrategist = [];
-	var technician = false;
-
-	for(let item of items) // START Ability Check Loop
-	{
-		if(item.name.search("Type Strategist \\(") > -1)
-		{
-			typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-			console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-			console.log(typeStrategist);
-			console.log(typeStrategist.length);
-		}
-		if(item.name.search("Technician") > -1)
-		{
-			technician = true;
-			console.log("DEBUG: Technician Ability Found");
-		}
-	} // END Ability Check Loop
-
-	var buttons={};
-
-	for(let item of items) // START STATUS MOVE LOOP
-	{
-		var currentid=item._id;
-		var currentlabel=item.data.name;
-		var currentCooldownLabel = "";
-		var currentEffectivenessLabel = "";
-
-		var currentFrequency=item.data.frequency;
-		if(!currentFrequency)
-		{
-			currentFrequency = "";
-		}
+		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
+		let background_field = 'background-image: url("background_fields/BG_Field.png"); background-repeat: repeat-x; background-position: left bottom';
 		
-		if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
+		var items=actor.data.items;
+		var item_entities=actor.items;
+		var i = 0;
+
+		if(game.combat == null)
 		{
-			for(let search_item of item_entities)
-			{
-				if (search_item._id == item._id)
-				{
-					console.log("updating item",search_item);
-					await search_item.update({ "data.LastRoundUsed" : -2});
-					await search_item.update({ "data.LastEncounterUsed": 0});
-				}
-			}
+			var currentRound = 0;
+			var currentEncounterID = 0;
 		}
-
-		var currentLastRoundUsed = item.data.LastRoundUsed;
-		var currentLastEncounterUsed = item.data.LastEncounterUsed;
-
-		if(item.data.UseCount == null)
+		else
 		{
-			for(let search_item of item_entities)
-			{
-				if (search_item._id == item._id)
-				{
-					await search_item.update({ "data.UseCount": 0});
-				}
-			}
+			var currentRound = game.combat.round;
+			var currentEncounterID = game.combat.data._id;
 		}
 
-		var currentUseCount = item.data.UseCount;
-		var cooldownFileSuffix = "";
+		var typeStrategist = [];
+		var technician = false;
 
-		if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
-			{
-				cooldownFileSuffix = "_CD"
-			}
-
-		if(currentFrequency == "At-Will" || currentFrequency == "")
+		for(let item of items) // START Ability Check Loop
 		{
-			currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-		}
+			if(item.name.search("Type Strategist \\(") > -1)
+			{
+				typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+				console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+				console.log(typeStrategist);
+				console.log(typeStrategist.length);
+			}
+			if(item.name.search("Technician") > -1)
+			{
+				technician = true;
+				console.log("DEBUG: Technician Ability Found");
+			}
+		} // END Ability Check Loop
 
-		else if(currentFrequency == "EOT")
+		let dialogEditor;
+		var buttons={};
+
+		for(let item of items) // START STATUS MOVE LOOP
 		{
-			console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+			var currentid=item._id;
+			var currentlabel=item.data.name;
+			var currentCooldownLabel = "";
+			var currentEffectivenessLabel = "";
 
-			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
+			var currentFrequency=item.data.frequency;
+			if(!currentFrequency)
 			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
-		}
-
-		else if(currentFrequency == "Scene")
-		{
-			if( Number(currentUseCount) >= 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Scene x2")
-		{
-			if( Number(currentUseCount) >= 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Scene x3")
-		{
-			if( Number(currentUseCount) >= 3 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Daily")
-		{
-			if( Number(currentUseCount) >= 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Daily x2")
-		{
-			if( Number(currentUseCount) >= 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Daily x3")
-		{
-			if( Number(currentUseCount) >= 3 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		if(currentlabel == ""){
-		currentlabel=item.name;
-		}
-		var currenttype=item.type;
-		var currentCategory=item.data.category;
-		var effectivenessBackgroundColor = "darkgrey"
-		var effectivenessTextColor = "black";
-		var effectivenessText = "";
-		let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
-
-		if(!target)
-		{
-			target = game.actors.get(actor.id).getActiveTokens()[0];
-			console.log("NO TARGET, SELECTING ACTOR________________");
-			console.log(target);
-		}
-
-		if(target.actor.data.data.effectiveness)
-		{
-			effectiveness = target.actor.data.data.effectiveness.All;
-		}
-
-		if(currenttype=="move" && (currentCategory == "Status"))
-		{
-			if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
-			{
-				if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
-				{
-					currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
-					if (effectiveness[item.data.type] == 0.5)
-					{
-						effectivenessBackgroundColor = "#cc6666";
-					}
-					else if (effectiveness[item.data.type] == 1)
-					{
-						effectivenessBackgroundColor = "white";
-						effectivenessTextColor = "black";
-					}
-					else if (effectiveness[item.data.type] == 0.25)
-					{
-						effectivenessBackgroundColor = "red";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[item.data.type] == 0)
-					{
-						effectivenessBackgroundColor = "black";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[item.data.type] < 0.25)
-					{
-						effectivenessBackgroundColor = "darkred";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[item.data.type] == 1.5)
-					{
-						effectivenessBackgroundColor = "#6699cc";//"#3399ff";
-						effectivenessTextColor = "black";
-					}
-					else if (effectiveness[item.data.type] > 1.5)
-					{
-						effectivenessBackgroundColor = "blue";
-						effectivenessTextColor = "white";
-					}
-					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
-					{
-						effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
-					}
-				}
-			}
-
-			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
-			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
-			{
-				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
-				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
-			}
-
-			let currentMoveRange = item.data.range;
-
-			let currentMoveRangeIcon = "";
-
-			if (currentMoveRange != "")
-			{
-				if(currentMoveRange.search("See Effect") > -1)
-				{
-					currentMoveRangeIcon = currentMoveRange;
-				}
-				else if(currentMoveRange.search("Blessing") > -1)
-				{
-					currentMoveRangeIcon = BlessingIcon + currentMoveRange.slice(currentMoveRange.search("Blessing")+9).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Self") > -1)
-				{
-					currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+5).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Burst") > -1)
-				{
-					console.log("currentMoveRange = "+currentMoveRange);
-					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
-					currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
-					console.log("currentMoveRange = "+currentMoveRange);
-					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
-				}
-				else if(currentMoveRange.search("Cone") > -1)
-				{
-					currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Line") > -1)
-				{
-					currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Close Blast") > -1)
-				{
-					currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Ranged Blast") > -1)
-				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Melee") > -1)
-				{
-					currentMoveRangeIcon = MeleeIcon;
-				}
-				else
-				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")).replace(/[, ]+/g, " ").trim();
-				}
-
-				if(currentMoveRange.search("Healing") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Healing", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Healing", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + HealingIcon;
-				}
-
-				if(currentMoveRange.search("Friendly") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Friendly", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Friendly", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + FriendlyIcon;
-				}
-
-				if(currentMoveRange.search("Sonic") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Sonic", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Sonic", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + SonicIcon;
-				}
-
-				if(currentMoveRange.search("Interrupt") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Interrupt", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Interrupt", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + InterruptIcon;
-				}
-				
-				if(currentMoveRange.search("Shield") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Shield", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Shield", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + ShieldIcon;
-				}
-
-				if(currentMoveRange.search("Trigger") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Trigger", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Trigger", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + TriggerIcon;
-				}
-
-				if(currentMoveRange.search("Social") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Social", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Social", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + SocialIcon;
-				}
-
-				if(currentMoveRange.search("Five Strike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Five Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Five Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
-				}
-
-				if(currentMoveRange.search("Fivestrike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Fivestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Fivestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
-				}
-
-				if(currentMoveRange.search("Double Strike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Double Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Double Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
-				}
-
-				if(currentMoveRange.search("Doublestrike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Doublestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
-				}
-
-				console.log("FINAL currentMoveRange = "+currentMoveRange);
-				console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
-			}
-
-
-			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-			buttons[currentid]={
-				style:"padding-left: 0px;border-right-width: 0px;border-bottom-width: 0px;border-left-width: 0px;border-top-width: 0px;margin-right: 0px;",
-				label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+ButtonHeight+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
-			callback: async () => {
-				if(!ThisPokemonsTrainerCommandCheck(actor))
-				{
-					game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
-					return;
-				}
-				let key_shift = keyboard.isDown("Shift");
-				if (key_shift) 
-				{
-					console.log("KEYBOARD SHIFT IS DOWN!");
-				}
-
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-				let diceRoll = PerformFullAttack (actor,item);
-				if(game.combat == null)
-				{
-					var currentRound = 0;
-					var currentEncounterID = 0;
-				}
-				else
-				{
-					var currentRound = game.combat.round;
-					var currentEncounterID = game.combat.data._id;
-				}
-
-				console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
-				console.log(item);
-				if(item.data.UseCount == null)
-				{
-					for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.UseCount": 0});
-							console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
-						}
-					}
-					// item.update({ "data.UseCount": Number(0)});
-				}
-
-				if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3" || item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
-				{
-					for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
-							console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
-						}
-					}
-					// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
-				}
-
-				for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
-
-							if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
-							{
-								let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
-								let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-								console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
-								await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
-							}
-						}
-					}
-				// item.update({ "data.LastRoundUsed": currentRound});
-				// item.update({ "data.LastEncounterUsed": currentEncounterID});
-				// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
-				for(let searched_move in move_stage_changes)
-				{
-					if(searched_move == item.name)
-					{
-						if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
-						{
-							let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
-							console.log("EFFECT THRESHOLD"+effectThreshold);
-							console.log("DICE ROLL"+diceRoll);
-							if(diceRoll >= effectThreshold) // Effect Range Hit
-							{
-								console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
-								
-								for (let searched_stat of stats)
-								{
-									if (move_stage_changes[searched_move][searched_stat] != null)
-									{
-										adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
-									}
-								}
-								if(move_stage_changes[searched_move]["pct-healing"] != null)
-								{
-									healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
-								}
-								if(move_stage_changes[searched_move]["pct-self-damage"] != null)
-								{
-									damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
-								}
-							}
-							else // Effect Range Missed
-							{
-								console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
-							}
-						}
-						else // No Effect Range
-						{
-							for (let searched_stat of stats)
-							{
-								if (move_stage_changes[searched_move][searched_stat] != null)
-								{
-									adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
-								}
-							}
-							if(move_stage_changes[searched_move]["pct-healing"] != null)
-							{
-								healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
-							}
-							if(move_stage_changes[searched_move]["pct-self-damage"] != null)
-							{
-								damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
-							}
-						}
-						
-					}
-				}
-
-			}
-
-			}
-
-		}
-
-		i++;
-	} // END STATUS MOVE LOOP
-
-	for(let item of items) // START DAMAGE MOVE LOOP
-	{
-		var currentid=item._id;
-		var currentlabel=item.data.name;
-		var currentCooldownLabel = "";
-		var currentEffectivenessLabel = "";
-
-		var currentFrequency=item.data.frequency;
-		if(!currentFrequency)
-		{
-			currentFrequency = "";
-		}
-		
-		if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
-		{
-			for(let search_item of item_entities)
-			{
-				if (search_item._id == item._id)
-				{
-					console.log("updating item",search_item);
-					await search_item.update({ "data.LastRoundUsed" : -2});
-					await search_item.update({ "data.LastEncounterUsed": 0});
-				}
-			}
-		}
-
-		var currentLastRoundUsed = item.data.LastRoundUsed;
-		var currentLastEncounterUsed = item.data.LastEncounterUsed;
-
-		if(item.data.UseCount == null)
-		{
-			for(let search_item of item_entities)
-			{
-				if (search_item._id == item._id)
-				{
-					await search_item.update({ "data.UseCount": 0});
-				}
-			}
-			// item.update({ "data.UseCount": Number(0)});
-		}
-
-		var currentUseCount = item.data.UseCount;
-		var cooldownFileSuffix = "";
-
-		if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
-			{
-				cooldownFileSuffix = "_CD"
-			}
-
-		if(currentFrequency == "At-Will" || currentFrequency == "")
-		{
-			currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-		}
-
-		else if(currentFrequency == "EOT")
-		{
-			console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
-
-			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
-		}
-
-		else if(currentFrequency == "Scene")
-		{
-			if( Number(currentUseCount) >= 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Scene x2")
-		{
-			if( Number(currentUseCount) >= 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Scene x3")
-		{
-			if( Number(currentUseCount) >= 3 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Daily")
-		{
-			if( Number(currentUseCount) >= 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Daily x2")
-		{
-			if( Number(currentUseCount) >= 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		else if(currentFrequency == "Daily x3")
-		{
-			if( Number(currentUseCount) >= 3 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 2 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else if( Number(currentUseCount) == 1 )
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-			else
-			{
-				currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-			}
-		}
-
-		if(currentlabel == ""){
-		currentlabel=item.name;
-		}
-		var currenttype=item.type;
-		var currentCategory = item.data.category;
-		var effectivenessBackgroundColor = "darkgrey"
-		var effectivenessTextColor = "black";
-		var effectivenessText = "";
-		let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
-
-		if(target.actor.data.data.effectiveness)
-		{
-			effectiveness = target.actor.data.data.effectiveness.All;
-		}
-		if(currenttype=="move" && (currentCategory == "Physical" || currentCategory == "Special"))
-		{
-			if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
-			{
-				if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
-				{
-					currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
-					if (effectiveness[item.data.type] == 0.5)
-					{
-						effectivenessBackgroundColor = "#cc6666";
-					}
-					else if (effectiveness[item.data.type] == 1)
-					{
-						effectivenessBackgroundColor = "white";
-						effectivenessTextColor = "black";
-					}
-					else if (effectiveness[item.data.type] == 0.25)
-					{
-						effectivenessBackgroundColor = "red";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[item.data.type] == 0)
-					{
-						effectivenessBackgroundColor = "black";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[item.data.type] < 0.25)
-					{
-						effectivenessBackgroundColor = "darkred";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[item.data.type] == 1.5)
-					{
-						effectivenessBackgroundColor = "#6699cc";//"#3399ff";
-						effectivenessTextColor = "black";
-					}
-					else if (effectiveness[item.data.type] > 1.5)
-					{
-						effectivenessBackgroundColor = "blue";
-						effectivenessTextColor = "white";
-					}
-					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
-					{
-						effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
-					}
-				}
-			}
-
-			let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
-			if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
-			{
-				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
-				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
-			}
-
-			let currentMoveRange = item.data.range;
-
-			let currentMoveRangeIcon = "";
-
-			let currentMoveFiveStrike = false;
-			let currentMoveDoubleStrike = false;
-
-			if (currentMoveRange != "")
-			{
-				if(currentMoveRange.search("See Effect") > -1)
-				{
-					currentMoveRangeIcon = currentMoveRange;
-				}
-				else if(currentMoveRange.search("Blessing") > -1)
-				{
-					currentMoveRangeIcon = BlessingIcon + currentMoveRange.slice(currentMoveRange.search("Blessing")+9).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Self") > -1)
-				{
-					currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+5).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Burst") > -1)
-				{
-					console.log("currentMoveRange = "+currentMoveRange);
-					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
-					currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
-					console.log("currentMoveRange = "+currentMoveRange);
-					console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
-				}
-				else if(currentMoveRange.search("Cone") > -1)
-				{
-					currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Line") > -1)
-				{
-					currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Close Blast") > -1)
-				{
-					currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Ranged Blast") > -1)
-				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13).replace(/[, ]+/g, " ").trim();
-				}
-				else if(currentMoveRange.search("Melee") > -1)
-				{
-					currentMoveRangeIcon = MeleeIcon;
-				}
-				else
-				{
-					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")).replace(/[, ]+/g, " ").trim();
-				}
-
-				if(currentMoveRange.search("Healing") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Healing", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Healing", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + HealingIcon;
-				}
-
-				if(currentMoveRange.search("Friendly") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Friendly", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Friendly", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + FriendlyIcon;
-				}
-
-				if(currentMoveRange.search("Sonic") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Sonic", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Sonic", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + SonicIcon;
-				}
-
-				if(currentMoveRange.search("Interrupt") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Interrupt", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Interrupt", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + InterruptIcon;
-				}
-				
-				if(currentMoveRange.search("Shield") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Shield", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Shield", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + ShieldIcon;
-				}
-
-				if(currentMoveRange.search("Trigger") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Trigger", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Trigger", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + TriggerIcon;
-				}
-
-				if(currentMoveRange.search("Social") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Social", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Social", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + SocialIcon;
-				}
-
-				if(currentMoveRange.search("Five Strike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Five Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Five Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
-				}
-
-				if(currentMoveRange.search("Fivestrike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Fivestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Fivestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
-				}
-
-				if(currentMoveRange.search("Double Strike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Double Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Double Strike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
-				}
-
-				if(currentMoveRange.search("Doublestrike") > -1)
-				{
-					currentMoveRange = currentMoveRange.replace("Doublestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
-					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
-				}
-
-				console.log("FINAL currentMoveRange = "+currentMoveRange);
-				console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
-			}
-
-			if(currentMoveRange.search("Five Strike") > -1)
-			{
-				// console.log("DEBUG: FIVE STRIKE FOUND!");
-				currentMoveFiveStrike = true;
-			}
-
-			if( (currentMoveRange.search("Doublestrike") > -1) || (currentMoveRange.search("Double Strike") > -1) )
-			{
-				// console.log("DEBUG: DOUBLE STRIKE FOUND!");
-				currentMoveDoubleStrike = true;
-			}
-
-			let STABBorderImage = "";
-			let DBBorderImage = "";
-			let finalDB = 0;
-			let actorData = actor.data.data;
-			let moveData = item.data;
-
-			let isFiveStrike = false;
-			let isDoubleStrike = false;
-			let userHasTechnician = false;
-			let userHasAdaptability = false;
-			let fiveStrikeCount = 0;
-			let hasSTAB = false;
-			let hitCount = 1;
-
-			let actorType1 = null;
-			let actorType2 = null;
-
-			if(actor.data.data.typing)
-			{
-				actorType1 = actor.data.data.typing[0];
-				actorType2 = actor.data.data.typing[1];
-			}
-
-			let currentHasExtraEffect = false;
-			let currentExtraEffectText = "";
-
-			for(let search_item of actor.items)
-			{
-				// console.log(search_item.name);
-				if(search_item.name == "Technician")
-				{
-					userHasTechnician = true;
-				}
-				if(search_item.name == "Adaptability")
-				{
-					userHasAdaptability = true;
-				}
-			}
-
-			if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
-			{
-				let db = parseInt(moveData.damageBase);
-				let damageBase;
-				let damageBaseOriginal;
-				let dbRoll;
-				let dbRollOriginal;
-				let technicianDBBonus = 0;
-				let STABBonus = 2;
-				let actorType1 = null;
-				let actorType2 = null;
-	
-				if(actorData.typing)
-				{
-					actorType1 = actorData.typing[0];
-					actorType2 = actorData.typing[1];
-				}
-	
-				if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
-				{
-					console.log("DEBUG: TECHNICIAN APPLIES");
-					technicianDBBonus = 2;
-				}
-	
-				if(userHasAdaptability)
-				{
-					console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
-					STABBonus = 3;
-				}
-
-				if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
-				{
-					console.log("DEBUG: STORED POWER ROLLED!")
-					let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
-					let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
-					let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
-					let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
-					let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
-
-					let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
-					console.log("db_from_stages = " + db_from_stages );
-
-					damageBase = (
-						moveData.type == actorType1 || moveData.type == actorType2) ? 
-						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
-						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
-
-					damageBaseOriginal = (
-						moveData.type == actorType1 || moveData.type == actorType2) ? 
-						Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
-						Math.min(db + db_from_stages, 20) + technicianDBBonus;
-					
-					dbRoll = game.ptu.DbData[damageBase];
-					dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
-				}
-				else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
-				{
-					console.log("DEBUG: PUNISHMENT ROLLED!")
-					let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
-					let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
-					let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
-					let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
-					let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
-
-					let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
-					console.log("db_from_stages = " + db_from_stages );
-
-					damageBase = (
-						moveData.type == actorType1 || moveData.type == actorType2) ? 
-						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + STABBonus + technicianDBBonus : 
-						Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + technicianDBBonus;
-
-					damageBaseOriginal = (
-						moveData.type == actorType1 || moveData.type == actorType2) ? 
-						Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
-						Math.min(db + db_from_stages, 20) + technicianDBBonus;
-					
-					dbRoll = game.ptu.DbData[damageBase];
-					dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
-				}
-				else
-				{
-					damageBase = (
-						moveData.type == actorType1 || moveData.type == actorType2) ? 
-						db*(hitCount + fiveStrikeCount) + STABBonus + technicianDBBonus : 
-						db*(hitCount + fiveStrikeCount) + technicianDBBonus;
-
-					damageBaseOriginal = (
-						moveData.type == actorType1 || moveData.type == actorType2) ? 
-						db + STABBonus + technicianDBBonus : 
-						db + technicianDBBonus;
-
-					console.log("DEBUG: db = " + db);
-					console.log("DEBUG: STABBonus = " + STABBonus);
-					console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
-
-					dbRoll = game.ptu.DbData[damageBase];
-					dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
-				}
-
-				console.log("damageBase = " + damageBase);
-				console.log("damageBaseOriginal = " + damageBaseOriginal);
-				finalDB = damageBase;
-
-				DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+finalDB+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+				currentFrequency = "";
 			}
 			
-			// if(moveData.damageBase)
-			// {
-			// 	DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+damageBase+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
-			// }
-
-			if(actor.data.data.typing)
+			if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
 			{
-				if(item.data.type == actor.data.data.typing[0] || item.data.type == actor.data.data.typing[1])
+				for(let search_item of item_entities)
 				{
-					STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: 1px; padding: 0px ! important;"></img></span></div>';
+					if (search_item._id == item._id)
+					{
+						console.log("updating item",search_item);
+						await search_item.update({ "data.LastRoundUsed" : -2});
+						await search_item.update({ "data.LastEncounterUsed": 0});
+					}
 				}
 			}
 
-			// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-			buttons[currentid]={label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight+3)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
-				//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
-			callback: async () => {
-				if(!ThisPokemonsTrainerCommandCheck(actor))
+			var currentLastRoundUsed = item.data.LastRoundUsed;
+			var currentLastEncounterUsed = item.data.LastEncounterUsed;
+
+			if(item.data.UseCount == null)
+			{
+				for(let search_item of item_entities)
 				{
-					game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
-					return;
+					if (search_item._id == item._id)
+					{
+						await search_item.update({ "data.UseCount": 0});
+					}
 				}
-				let key_shift = keyboard.isDown("Shift");
-				if (key_shift) 
+			}
+
+			var currentUseCount = item.data.UseCount;
+			var cooldownFileSuffix = "";
+
+			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 				{
-					console.log("KEYBOARD SHIFT IS DOWN!");
-					rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
+					cooldownFileSuffix = "_CD"
+				}
+
+			if(currentFrequency == "At-Will" || currentFrequency == "")
+			{
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+			}
+
+			else if(currentFrequency == "EOT")
+			{
+				console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+
+				if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 				}
 				else
 				{
-					game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
+			}
+
+			else if(currentFrequency == "Scene")
+			{
+				if( Number(currentUseCount) >= 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Scene x2")
+			{
+				if( Number(currentUseCount) >= 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Scene x3")
+			{
+				if( Number(currentUseCount) >= 3 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Daily")
+			{
+				if( Number(currentUseCount) >= 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Daily x2")
+			{
+				if( Number(currentUseCount) >= 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Daily x3")
+			{
+				if( Number(currentUseCount) >= 3 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			if(currentlabel == ""){
+			currentlabel=item.name;
+			}
+			var currenttype=item.type;
+			var currentCategory=item.data.category;
+			var effectivenessBackgroundColor = "darkgrey"
+			var effectivenessTextColor = "black";
+			var effectivenessText = "";
+			let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+
+			if(!target)
+			{
+				target = game.actors.get(actor.id).getActiveTokens()[0];
+				console.log("NO TARGET, SELECTING ACTOR________________");
+				console.log(target);
+			}
+
+			if(target.actor.data.data.effectiveness)
+			{
+				effectiveness = target.actor.data.data.effectiveness.All;
+			}
+
+			if(currenttype=="move" && (currentCategory == "Status"))
+			{
+				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
+				{
+					if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+					{
+						currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
+						if (effectiveness[item.data.type] == 0.5)
+						{
+							effectivenessBackgroundColor = "#cc6666";
+						}
+						else if (effectiveness[item.data.type] == 1)
+						{
+							effectivenessBackgroundColor = "white";
+							effectivenessTextColor = "black";
+						}
+						else if (effectiveness[item.data.type] == 0.25)
+						{
+							effectivenessBackgroundColor = "red";
+							effectivenessTextColor = "white";
+						}
+						else if (effectiveness[item.data.type] == 0)
+						{
+							effectivenessBackgroundColor = "black";
+							effectivenessTextColor = "white";
+						}
+						else if (effectiveness[item.data.type] < 0.25)
+						{
+							effectivenessBackgroundColor = "darkred";
+							effectivenessTextColor = "white";
+						}
+						else if (effectiveness[item.data.type] == 1.5)
+						{
+							effectivenessBackgroundColor = "#6699cc";//"#3399ff";
+							effectivenessTextColor = "black";
+						}
+						else if (effectiveness[item.data.type] > 1.5)
+						{
+							effectivenessBackgroundColor = "blue";
+							effectivenessTextColor = "white";
+						}
+						if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
+						{
+							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
+						}
+					}
+				}
+
+				let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+				if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
+				{
+					// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+					currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+				}
+
+				let currentMoveRange = item.data.range;
+
+				let currentMoveRangeIcon = "";
+
+				if (currentMoveRange != "")
+				{
+					if(currentMoveRange.search("See Effect") > -1)
+					{
+						currentMoveRangeIcon = currentMoveRange;
+					}
+					else if(currentMoveRange.search("Blessing") > -1)
+					{
+						currentMoveRangeIcon = BlessingIcon + currentMoveRange.slice(currentMoveRange.search("Blessing")+9).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Self") > -1)
+					{
+						currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+5).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Burst") > -1)
+					{
+						console.log("currentMoveRange = "+currentMoveRange);
+						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
+						currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
+						console.log("currentMoveRange = "+currentMoveRange);
+						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
+					}
+					else if(currentMoveRange.search("Cone") > -1)
+					{
+						currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Line") > -1)
+					{
+						currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Close Blast") > -1)
+					{
+						currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Ranged Blast") > -1)
+					{
+						currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Melee") > -1)
+					{
+						currentMoveRangeIcon = MeleeIcon;
+					}
+					else
+					{
+						currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")).replace(/[, ]+/g, " ").trim();
+					}
+
+					if(currentMoveRange.search("Healing") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Healing", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Healing", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + HealingIcon;
+					}
+
+					if(currentMoveRange.search("Friendly") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Friendly", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Friendly", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + FriendlyIcon;
+					}
+
+					if(currentMoveRange.search("Sonic") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Sonic", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Sonic", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + SonicIcon;
+					}
+
+					if(currentMoveRange.search("Interrupt") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Interrupt", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Interrupt", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + InterruptIcon;
+					}
+					
+					if(currentMoveRange.search("Shield") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Shield", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Shield", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + ShieldIcon;
+					}
+
+					if(currentMoveRange.search("Trigger") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Trigger", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Trigger", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + TriggerIcon;
+					}
+
+					if(currentMoveRange.search("Social") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Social", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Social", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + SocialIcon;
+					}
+
+					if(currentMoveRange.search("Five Strike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Five Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Five Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+					}
+
+					if(currentMoveRange.search("Fivestrike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Fivestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Fivestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+					}
+
+					if(currentMoveRange.search("Double Strike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Double Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Double Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+					}
+
+					if(currentMoveRange.search("Doublestrike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Doublestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+					}
+
+					console.log("FINAL currentMoveRange = "+currentMoveRange);
+					console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
+				}
+
+
+				// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
+				buttons[currentid]={
+					id:currentid,
+					style:"padding-left: 0px;border-right-width: 0px;border-bottom-width: 0px;border-left-width: 0px;border-top-width: 0px;margin-right: 0px;",
+					label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+ButtonHeight+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+					callback: async () => {
+
+						if(!ThisPokemonsTrainerCommandCheck(actor))
+						{
+							game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
+							return;
+						}
+						let key_shift = keyboard.isDown("Shift");
+						if (key_shift) 
+						{
+							console.log("KEYBOARD SHIFT IS DOWN!");
+						}
+
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+						let diceRoll = PerformFullAttack (actor,item);
+						if(game.combat == null)
+						{
+							var currentRound = 0;
+							var currentEncounterID = 0;
+						}
+						else
+						{
+							var currentRound = game.combat.round;
+							var currentEncounterID = game.combat.data._id;
+						}
+
+						console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
+						console.log(item);
+						if(item.data.UseCount == null)
+						{
+							for(let search_item of item_entities)
+							{
+								if (search_item._id == item._id)
+								{
+									await search_item.update({ "data.UseCount": 0});
+									console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
+								}
+							}
+							// item.update({ "data.UseCount": Number(0)});
+						}
+
+						if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3" || item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
+						{
+							for(let search_item of item_entities)
+							{
+								if (search_item._id == item._id)
+								{
+									await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+									console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
+								}
+							}
+							// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+						}
+
+						for(let search_item of item_entities)
+							{
+								if (search_item._id == item._id)
+								{
+									await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+
+									if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
+									{
+										let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
+										let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
+										console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+										await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
+									}
+								}
+							}
+						// item.update({ "data.LastRoundUsed": currentRound});
+						// item.update({ "data.LastEncounterUsed": currentEncounterID});
+						// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+						for(let searched_move in move_stage_changes)
+						{
+							if(searched_move == item.name)
+							{
+								if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
+								{
+									let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+									console.log("EFFECT THRESHOLD"+effectThreshold);
+									console.log("DICE ROLL"+diceRoll);
+									if(diceRoll >= effectThreshold) // Effect Range Hit
+									{
+										console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
+										
+										for (let searched_stat of stats)
+										{
+											if (move_stage_changes[searched_move][searched_stat] != null)
+											{
+												adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+											}
+										}
+										if(move_stage_changes[searched_move]["pct-healing"] != null)
+										{
+											healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+										}
+										if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+										{
+											damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+										}
+									}
+									else // Effect Range Missed
+									{
+										console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
+									}
+								}
+								else // No Effect Range
+								{
+									for (let searched_stat of stats)
+									{
+										if (move_stage_changes[searched_move][searched_stat] != null)
+										{
+											adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+										}
+									}
+									if(move_stage_changes[searched_move]["pct-healing"] != null)
+									{
+										healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+									}
+									if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+									{
+										damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+									}
+								}
+								
+							}
+						}
+
+					}
+
+				}
+
+			}
+
+			i++;
+		} // END STATUS MOVE LOOP
+
+		for(let item of items) // START DAMAGE MOVE LOOP
+		{
+			var currentid=item._id;
+			var currentlabel=item.data.name;
+			var currentCooldownLabel = "";
+			var currentEffectivenessLabel = "";
+
+			var currentFrequency=item.data.frequency;
+			if(!currentFrequency)
+			{
+				currentFrequency = "";
+			}
+			
+			if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
+			{
+				for(let search_item of item_entities)
+				{
+					if (search_item._id == item._id)
+					{
+						console.log("updating item",search_item);
+						await search_item.update({ "data.LastRoundUsed" : -2});
+						await search_item.update({ "data.LastEncounterUsed": 0});
+					}
+				}
+			}
+
+			var currentLastRoundUsed = item.data.LastRoundUsed;
+			var currentLastEncounterUsed = item.data.LastEncounterUsed;
+
+			if(item.data.UseCount == null)
+			{
+				for(let search_item of item_entities)
+				{
+					if (search_item._id == item._id)
+					{
+						await search_item.update({ "data.UseCount": 0});
+					}
+				}
+				// item.update({ "data.UseCount": Number(0)});
+			}
+
+			var currentUseCount = item.data.UseCount;
+			var cooldownFileSuffix = "";
+
+			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
+				{
+					cooldownFileSuffix = "_CD"
+				}
+
+			if(currentFrequency == "At-Will" || currentFrequency == "")
+			{
+				currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+			}
+
+			else if(currentFrequency == "EOT")
+			{
+				console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+
+				if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
+			}
+
+			else if(currentFrequency == "Scene")
+			{
+				if( Number(currentUseCount) >= 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Scene x2")
+			{
+				if( Number(currentUseCount) >= 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Scene x3")
+			{
+				if( Number(currentUseCount) >= 3 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "Scene3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Daily")
+			{
+				if( Number(currentUseCount) >= 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily1_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Daily x2")
+			{
+				if( Number(currentUseCount) >= 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily2_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			else if(currentFrequency == "Daily x3")
+			{
+				if( Number(currentUseCount) >= 3 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_0" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 2 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_1" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else if( Number(currentUseCount) == 1 )
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_2" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+				else
+				{
+					currentCooldownLabel = "<img src='" + AlternateIconPath + "daily3_3" + cooldownFileSuffix + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+				}
+			}
+
+			if(currentlabel == ""){
+			currentlabel=item.name;
+			}
+			var currenttype=item.type;
+			var currentCategory = item.data.category;
+			var effectivenessBackgroundColor = "darkgrey"
+			var effectivenessTextColor = "black";
+			var effectivenessText = "";
+			let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+
+			if(target.actor.data.data.effectiveness)
+			{
+				effectiveness = target.actor.data.data.effectiveness.All;
+			}
+			if(currenttype=="move" && (currentCategory == "Physical" || currentCategory == "Special"))
+			{
+				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
+				{
+					if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+					{
+						currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
+						if (effectiveness[item.data.type] == 0.5)
+						{
+							effectivenessBackgroundColor = "#cc6666";
+						}
+						else if (effectiveness[item.data.type] == 1)
+						{
+							effectivenessBackgroundColor = "white";
+							effectivenessTextColor = "black";
+						}
+						else if (effectiveness[item.data.type] == 0.25)
+						{
+							effectivenessBackgroundColor = "red";
+							effectivenessTextColor = "white";
+						}
+						else if (effectiveness[item.data.type] == 0)
+						{
+							effectivenessBackgroundColor = "black";
+							effectivenessTextColor = "white";
+						}
+						else if (effectiveness[item.data.type] < 0.25)
+						{
+							effectivenessBackgroundColor = "darkred";
+							effectivenessTextColor = "white";
+						}
+						else if (effectiveness[item.data.type] == 1.5)
+						{
+							effectivenessBackgroundColor = "#6699cc";//"#3399ff";
+							effectivenessTextColor = "black";
+						}
+						else if (effectiveness[item.data.type] > 1.5)
+						{
+							effectivenessBackgroundColor = "blue";
+							effectivenessTextColor = "white";
+						}
+						if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
+						{
+							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
+						}
+					}
+				}
+
+				let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+				if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
+				{
+					// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+					currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+				}
+
+				let currentMoveRange = item.data.range;
+
+				let currentMoveRangeIcon = "";
+
+				let currentMoveFiveStrike = false;
+				let currentMoveDoubleStrike = false;
+
+				if (currentMoveRange != "")
+				{
+					if(currentMoveRange.search("See Effect") > -1)
+					{
+						currentMoveRangeIcon = currentMoveRange;
+					}
+					else if(currentMoveRange.search("Blessing") > -1)
+					{
+						currentMoveRangeIcon = BlessingIcon + currentMoveRange.slice(currentMoveRange.search("Blessing")+9).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Self") > -1)
+					{
+						currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+5).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Burst") > -1)
+					{
+						console.log("currentMoveRange = "+currentMoveRange);
+						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
+						currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
+						console.log("currentMoveRange = "+currentMoveRange);
+						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
+					}
+					else if(currentMoveRange.search("Cone") > -1)
+					{
+						currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Line") > -1)
+					{
+						currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Close Blast") > -1)
+					{
+						currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Ranged Blast") > -1)
+					{
+						currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13).replace(/[, ]+/g, " ").trim();
+					}
+					else if(currentMoveRange.search("Melee") > -1)
+					{
+						currentMoveRangeIcon = MeleeIcon;
+					}
+					else
+					{
+						currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")).replace(/[, ]+/g, " ").trim();
+					}
+
+					if(currentMoveRange.search("Healing") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Healing", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Healing", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + HealingIcon;
+					}
+
+					if(currentMoveRange.search("Friendly") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Friendly", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Friendly", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + FriendlyIcon;
+					}
+
+					if(currentMoveRange.search("Sonic") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Sonic", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Sonic", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + SonicIcon;
+					}
+
+					if(currentMoveRange.search("Interrupt") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Interrupt", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Interrupt", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + InterruptIcon;
+					}
+					
+					if(currentMoveRange.search("Shield") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Shield", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Shield", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + ShieldIcon;
+					}
+
+					if(currentMoveRange.search("Trigger") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Trigger", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Trigger", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + TriggerIcon;
+					}
+
+					if(currentMoveRange.search("Social") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Social", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Social", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + SocialIcon;
+					}
+
+					if(currentMoveRange.search("Five Strike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Five Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Five Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+					}
+
+					if(currentMoveRange.search("Fivestrike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Fivestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Fivestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+					}
+
+					if(currentMoveRange.search("Double Strike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Double Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Double Strike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+					}
+
+					if(currentMoveRange.search("Doublestrike") > -1)
+					{
+						currentMoveRange = currentMoveRange.replace("Doublestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
+						currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+					}
+
+					console.log("FINAL currentMoveRange = "+currentMoveRange);
+					console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
+				}
+
+				if(currentMoveRange.search("Five Strike") > -1)
+				{
+					// console.log("DEBUG: FIVE STRIKE FOUND!");
+					currentMoveFiveStrike = true;
+				}
+
+				if( (currentMoveRange.search("Doublestrike") > -1) || (currentMoveRange.search("Double Strike") > -1) )
+				{
+					// console.log("DEBUG: DOUBLE STRIKE FOUND!");
+					currentMoveDoubleStrike = true;
+				}
+
+				let STABBorderImage = "";
+				let DBBorderImage = "";
+				let finalDB = 0;
+				let actorData = actor.data.data;
+				let moveData = item.data;
+
+				let isFiveStrike = false;
+				let isDoubleStrike = false;
+				let userHasTechnician = false;
+				let userHasAdaptability = false;
+				let fiveStrikeCount = 0;
+				let hasSTAB = false;
+				let hitCount = 1;
+
+				let actorType1 = null;
+				let actorType2 = null;
+
+				if(actor.data.data.typing)
+				{
+					actorType1 = actor.data.data.typing[0];
+					actorType2 = actor.data.data.typing[1];
+				}
+
+				let currentHasExtraEffect = false;
+				let currentExtraEffectText = "";
+
+				for(let search_item of actor.items)
+				{
+					// console.log(search_item.name);
+					if(search_item.name == "Technician")
+					{
+						userHasTechnician = true;
+					}
+					if(search_item.name == "Adaptability")
+					{
+						userHasAdaptability = true;
+					}
+				}
+
+				if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
+				{
+					let db = parseInt(moveData.damageBase);
+					let damageBase;
+					let damageBaseOriginal;
+					let dbRoll;
+					let dbRollOriginal;
+					let technicianDBBonus = 0;
+					let STABBonus = 2;
+					let actorType1 = null;
+					let actorType2 = null;
+		
+					if(actorData.typing)
+					{
+						actorType1 = actorData.typing[0];
+						actorType2 = actorData.typing[1];
+					}
+		
+					if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
+					{
+						console.log("DEBUG: TECHNICIAN APPLIES");
+						technicianDBBonus = 2;
+					}
+		
+					if(userHasAdaptability)
+					{
+						console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
+						STABBonus = 3;
+					}
+
+					if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
+					{
+						console.log("DEBUG: STORED POWER ROLLED!")
+						let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
+						let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
+						let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
+						let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
+						let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
+
+						let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
+						console.log("db_from_stages = " + db_from_stages );
+
+						damageBase = (
+							moveData.type == actorType1 || moveData.type == actorType2) ? 
+							Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+							Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 20) + technicianDBBonus;
+
+						damageBaseOriginal = (
+							moveData.type == actorType1 || moveData.type == actorType2) ? 
+							Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+							Math.min(db + db_from_stages, 20) + technicianDBBonus;
+						
+						dbRoll = game.ptu.DbData[damageBase];
+						dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+					}
+					else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
+					{
+						console.log("DEBUG: PUNISHMENT ROLLED!")
+						let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
+						let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
+						let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
+						let spdef_stages = actorData.stats.spdef.stage < 0 ? 0 : actorData.stats.spdef.stage;
+						let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
+
+						let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
+						console.log("db_from_stages = " + db_from_stages );
+
+						damageBase = (
+							moveData.type == actorType1 || moveData.type == actorType2) ? 
+							Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + STABBonus + technicianDBBonus : 
+							Math.min(db*(hitCount + fiveStrikeCount) + db_from_stages, 12) + technicianDBBonus;
+
+						damageBaseOriginal = (
+							moveData.type == actorType1 || moveData.type == actorType2) ? 
+							Math.min(db + db_from_stages, 20) + STABBonus + technicianDBBonus : 
+							Math.min(db + db_from_stages, 20) + technicianDBBonus;
+						
+						dbRoll = game.ptu.DbData[damageBase];
+						dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+					}
+					else
+					{
+						damageBase = (
+							moveData.type == actorType1 || moveData.type == actorType2) ? 
+							db*(hitCount + fiveStrikeCount) + STABBonus + technicianDBBonus : 
+							db*(hitCount + fiveStrikeCount) + technicianDBBonus;
+
+						damageBaseOriginal = (
+							moveData.type == actorType1 || moveData.type == actorType2) ? 
+							db + STABBonus + technicianDBBonus : 
+							db + technicianDBBonus;
+
+						console.log("DEBUG: db = " + db);
+						console.log("DEBUG: STABBonus = " + STABBonus);
+						console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
+
+						dbRoll = game.ptu.DbData[damageBase];
+						dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
+					}
+
+					console.log("damageBase = " + damageBase);
+					console.log("damageBaseOriginal = " + damageBaseOriginal);
+					finalDB = damageBase;
+
+					DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+finalDB+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
 				}
 				
+				// if(moveData.damageBase)
+				// {
+				// 	DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+damageBase+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+				// }
 
+				if(actor.data.data.typing)
+				{
+					if(item.data.type == actor.data.data.typing[0] || item.data.type == actor.data.data.typing[1])
+					{
+						STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: 1px; padding: 0px ! important;"></img></span></div>';
+					}
 				}
 
-			}
-
-		}
-
-		i++;
-	} // END DAMAGE MOVE LOOP
-
-	let menuButtonWidth = "333px";
-
-	buttons["struggleMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
-		callback: () => {
-
-			game.PTUMoveMaster.ShowStruggleMenu(actor);
-
-		  }};
-
-	buttons["maneuverMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
-	callback: () => {
-
-		game.PTUMoveMaster.ShowManeuverMenu(actor);
-
-	}};
-
-	if(actor.data.type == "character")
-	{
-		buttons["itemMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
-		callback: () => {
-	
-			game.PTUMoveMaster.ShowInventoryMenu(actor);
-	
-		}};
-
-
-		buttons["pokeballMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
-		callback: async () => {
-	
-			await game.PTUMoveMaster.ShowPokeballMenu(actor);
-	
-		}};
-
-		buttons["pokedexScan"] = {label: "<center><div style='background-color:darkred;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"Pokedex Scan!"+"</div></center>",
-		callback: async () => {
-	
-			let trainer_tokens = actor.getActiveTokens();
-			let actor_token = trainer_tokens[0];
-			await game.PTUMoveMaster.PokedexScan(actor_token, target);
-	
-		}};
-	
-	}
-	else
-	{
-		buttons["trainerMenu"] = {label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Trainer 💬"+"</div></center>",
-		callback: () => {
-	
-			//PerformStruggleAttack ("Normal", "Physical");
-	
-		}};
-	}
-
-	for(let item of items)
-	{
-		// if(currentlabel == "")
-		// {
-		//         currentlabel=item.name;
-		// }
-
-		var currenttype = item.type;
-		var currentid=item._id;
-		var currentlabel=item.data.name;
-
-		if(currenttype=="ability")
-		{
-			console.log("ABILITY: " + item.name + ", Type = " + item.type)
-			var currentlabel=item.name;
-			var respdata=item.data;
-			respdata['category']='details';
-			buttons[currentid]={label: "<center><div style='background-color:gray;color:black;border:2px solid darkgray;width:333px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+AbilityIcon+currentlabel+"</div></center>",
+				// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
+				buttons[currentid]={id:currentid, label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+					//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 				callback: async () => {
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
-
+					console.log("_____________________ INSIDE BUTTON CALL _____________________");
+					if(!ThisPokemonsTrainerCommandCheck(actor))
+					{
+						game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
+						return;
+					}
+					let key_shift = keyboard.isDown("Shift");
+					if (key_shift) 
+					{
+						console.log("KEYBOARD SHIFT IS DOWN!");
+						rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
+					}
+					else
+					{
+						game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
+					}
 					
-					sendMoveMessage({
-						move: item.data,
-						templateType: MoveMessageTypes.DETAILS,
-						category: "details", 
-						hasAC: (!isNaN(item.data.ac)),
-						isAbility: true
-					});
 
-					// sendMoveRollMessage(acRoll, acRoll2, {
-					// 	speaker: ChatMessage.getSpeaker({
-					// 		actor: actor
-					// 	}),
-					// 	move: move.data,
-					// 	damageRoll: damageRoll,
-					// 	damageRollTwoHits: damageRollTwoHits,
-					// 	critDamageRoll: critDamageRoll,
-					// 	critDamageRollOneHitOneCrit: critDamageRollOneHitOneCrit,
-					// 	critDamageRollTwoCrits: critDamageRollTwoCrits,
-					// 	templateType: MoveMessageTypes.FULL_ATTACK,
-					// 	crit: crit,
-					// 	crit2: crit2,
-					// 	hasAC: hasAC,
-					// 	hasExtraEffect: currentHasExtraEffect,
-					// 	extraEffectText: currentExtraEffectText,
-					// 	isUntyped: isUntyped,
-					// 	isFiveStrike: isFiveStrike,
-					// 	fiveStrikeHits: (fiveStrikeCount+1),
-					// 	isDoubleStrike: isDoubleStrike
-					// }).then(data => console.log(data));
-
-					
-			}
-			}
-		}
-	}
-
-
-	buttons["resetEOT"] = {label: ResetEOTMark,
-		callback: async () => {
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-			for(let item of items)
-			{
-				let searched_frequency = item.data.frequency;
-				if(!searched_frequency)
-				{
-					searched_frequency = "";
-				}
-				if(searched_frequency.search("EOT") > -1 || searched_frequency.search("Scene") > -1 || searched_frequency.search("Daily") > -1)
-				{
-					for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.LastRoundUsed": Number(-2)});
-						}
 					}
-					// item.update({ "data.LastRoundUsed": Number(-2)});
-				}
-			}
-			chatMessage(actor, (actor.name + " refreshes their EOT-frequency moves!"))
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
-		  }};
 
-	buttons["resetScene"] = {label: ResetSceneMark,
-		callback: async () => {
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-			for(let item of items)
-			{
-				if(item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
-				{
-					for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.UseCount": Number(0)});
-						}
-					}
-					// item.update({ "data.UseCount": Number(0)});
 				}
-			}
-			chatMessage(actor, (actor.name + " refreshes their Scene-frequency moves!"))
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
-		  }};
 
-	buttons["resetDaily"] = {label: ResetDailyMark,
-	callback: async () => {
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-			for(let item of items)
-			{
-				if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3")
-				{
-					for(let search_item of item_entities)
-					{
-						if (search_item._id == item._id)
-						{
-							await search_item.update({ "data.UseCount": Number(0)});
-						}
-					}
-					// item.update({ "data.UseCount": Number(0)});
-				}
 			}
-			chatMessage(actor, (actor.name + " refreshes their Daily-frequency moves!"))
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+
+			i++;
+		} // END DAMAGE MOVE LOOP
+
+		let menuButtonWidth = "200px";
+
+		buttons["struggleMenu"] = {id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
+			callback: () => {
+				game.PTUMoveMaster.ShowStruggleMenu(actor);
+			}};
+
+		buttons["maneuverMenu"] = {id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
+		callback: () => {
+			game.PTUMoveMaster.ShowManeuverMenu(actor);
+		}};
+
+		if(actor.data.type == "character")
+		{
+			buttons["itemMenu"] = {id:"itemMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
+			callback: () => {
+				game.PTUMoveMaster.ShowInventoryMenu(actor);
 			}};
 
 
+			buttons["pokeballMenu"] = {id:"pokeballMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
+			callback: async () => {
+				await game.PTUMoveMaster.ShowPokeballMenu(actor);
+			}};
 
-
-		let dialogOptions = game.users.filter(u => u.data.role < 3).map(u => `<option value=${u.id}> ${u.data.name} </option>`).join(``);
-		let dialogEditor = new Dialog({
-		  title: `Move Selector`,
-		//   content: `
-		//   <div><h2>Paste your image url below:</h2><div>
-		//   <div>URL: <input name="url" style="width:350px"/></div>
-		//   <div><i>if the image is from the internet do not forget to include http(s):// in the url</i></div>
-		//   <div>Whisper to player?<input name="whisper" type="checkbox"/></div>
-		//   <div">Player name:<select name="player">${dialogOptions}</select></div>
-		//   `,
-		  content: "<center><div><h1>Use A Move!</h1></div><div style='font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2><div><center>",
-		  buttons: buttons
-		});
+			buttons["pokedexScan"] = {id:"pokedexScan", label: "<center><div style='background-color:darkred;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"Pokedex Scan!"+"</div></center>",
+			callback: async () => {
+				let trainer_tokens = actor.getActiveTokens();
+				let actor_token = trainer_tokens[0];
+				await game.PTUMoveMaster.PokedexScan(actor_token, target);
+			}};
+		}
+		else
+		{
+			buttons["trainerMenu"] = {id:"trainerMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Trainer 💬"+"</div></center>",
+			callback: () => {
 		
-		dialogEditor.render(true);
-		};
-
-
+				//PerformStruggleAttack ("Normal", "Physical");
 		
+			}};
+		}
 
-	
+		for(let item of items)
+		{
+			var currenttype = item.type;
+			var currentid=item._id;
+			var currentlabel=item.data.name;
+
+			if(currenttype=="ability")
+			{
+				console.log("ABILITY: " + item.name + ", Type = " + item.type)
+				var currentlabel=item.name;
+				var respdata=item.data;
+				respdata['category']='details';
+				buttons[currentid]={id:currentid, label: "<center><div style='background-color:gray;color:black;border:2px solid darkgray;width:200px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+AbilityIcon+currentlabel+"</div></center>",
+					callback: async () => {
+						
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+
+
+						
+						sendMoveMessage({
+							move: item.data,
+							templateType: MoveMessageTypes.DETAILS,
+							category: "details", 
+							hasAC: (!isNaN(item.data.ac)),
+							isAbility: true
+						});
+				}
+				}
+			}
+		}
+
+
+		buttons["resetEOT"] = {id:"resetEOT", label: ResetEOTMark,
+			callback: async () => {
+
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				for(let item of items)
+				{
+					let searched_frequency = item.data.frequency;
+					if(!searched_frequency)
+					{
+						searched_frequency = "";
+					}
+					if(searched_frequency.search("EOT") > -1 || searched_frequency.search("Scene") > -1 || searched_frequency.search("Daily") > -1)
+					{
+						for(let search_item of item_entities)
+						{
+							if (search_item._id == item._id)
+							{
+								await search_item.update({ "data.LastRoundUsed": Number(-2)});
+							}
+						}
+						// item.update({ "data.LastRoundUsed": Number(-2)});
+					}
+				}
+				chatMessage(actor, (actor.name + " refreshes their EOT-frequency moves!"))
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+			}};
+
+		buttons["resetScene"] = {id:"resetScene", label: ResetSceneMark,
+			callback: async () => {
+
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				for(let item of items)
+				{
+					if(item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
+					{
+						for(let search_item of item_entities)
+						{
+							if (search_item._id == item._id)
+							{
+								await search_item.update({ "data.UseCount": Number(0)});
+							}
+						}
+						// item.update({ "data.UseCount": Number(0)});
+					}
+				}
+				chatMessage(actor, (actor.name + " refreshes their Scene-frequency moves!"))
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+			}};
+
+		buttons["resetDaily"] = {id:"resetDaily", label: ResetDailyMark,
+		callback: async () => {
+
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				for(let item of items)
+				{
+					if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3")
+					{
+						for(let search_item of item_entities)
+						{
+							if (search_item._id == item._id)
+							{
+								await search_item.update({ "data.UseCount": Number(0)});
+							}
+						}
+						// item.update({ "data.UseCount": Number(0)});
+					}
+				}
+				chatMessage(actor, (actor.name + " refreshes their Daily-frequency moves!"))
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+				//dialogEditor.render(true);
+				}
+			};
+
+
+
+		let dialogueID = "ptu-sidebar";
+		// let dialogOptions = game.users.filter(u => u.data.role < 3).map(u => `<option value=${u.id}> ${u.data.name} </option>`).join(``);
+		// // dialogEditor = new Dialog({
+		// dialogEditor = new MoveMasterSidebarDialog({
+		// 	title: `Move Selector`,
+		// 	content: "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2><div></center>",
+		// 	buttons: buttons
+		// },{id: dialogueID});
+		
+		let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2><div></center>";
+		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID});
+		
+		console.log("========buttons========");
+		console.log(buttons);
+		sidebar.render(true);
+		//dialogEditor.render(true, {"left":500, "top":500, "width":200, "height":1000,});
+	};
+
 
 	async function rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist)
 	{
 		// var bonusDamage = 0; // TODO: Implement this; popup form to type into, etc.
 
 		let form = new game.PTUMoveMaster.MoveMasterBonusDamageOptions({actor , item, finalDB, typeStrategist}, {"submitOnChange": false, "submitOnClose": true});
-        form.render(true);
+		form.render(true);
 
 		// new game.ptu.PTUDexDragOptions(update, {"submitOnChange": false, "submitOnClose": true}).render(true);
 	}
 
+
 	return {
-		ChatWindow:ChatWindow,
-		ApplyDamage:ApplyDamage
+	ChatWindow:ChatWindow,
+	ApplyDamage:ApplyDamage
 	}
+
 };
+
+
+
+
+//////////////////////////////////////////
+
+
+// let soundList = await FilePicker.browse("data", "/assets/Sounds/SFX");
+// let sounds = soundList.files;
+// let myButtons = sounds.reduce((button, sound, i) => {
+//     button[`button${i}`] = {
+//         label: sound.substring(18, sound.length - 4),
+//         callback: () => {
+//             AudioHelper.play({src: sound, volume: 0.5, autoplay: true, loop: false}, true);
+//             d.render(true);
+//         }
+//     }; 
+//     return button;
+// }, {} );
+
+// let dialogContent = `<style> #sounds-dialog .dialog-buttons {flex-direction: column;}</style>`;
+// const d = new Dialog({ title: "Sound selector", content: dialogContent + "click a button to play", buttons: myButtons },{id: "sounds-dialog"}).render(true);
+
+//////////////////////////////////////////
+
+
+
+export async function ResetStagesToDefault(actor)
+{
+	console.log("RESET STAGES TO DEFAULT actor");
+	console.log(actor);
+	var stats = ["atk", "def", "spatk", "spdef", "spd"];
+
+	var default_stages = {
+		// Bunker  :   {
+		// 	atk   : 2,
+		// 	def   : 0,
+		// 	spatk : 0,
+		// 	spdef : 0,
+		// 	spd   : 0
+		// },
+		// Jasmine  :   {
+		// 	atk   : 0,
+		// 	def   : 0,
+		// 	spatk : 1,
+		// 	spdef : 0,
+		// 	spd   : 0
+		// }
+	};
+
+	// for (let token of canvas.tokens.controlled){
+
+		for (let stat of stats)
+		{
+			var actor_stat_string = String("data.stats." + stat + ".stage");
+			if(default_stages[actor.name])
+			{
+				await actor.update({[actor_stat_string]: Number(default_stages[actor.name][stat])});
+			}
+			else
+			{
+				await actor.update({[actor_stat_string]: Number(0)});
+			}
+		}
+		game.PTUMoveMaster.chatMessage(actor, actor.name + " All Stages Reset!");
+	// }
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+}
+
 
 export function GetSoundDirectory()
 {
@@ -2524,9 +2989,11 @@ export function adjustActorStage(actor, stat, change)
 
 export function healActorPercent(actor,pct_healing)
 {
+	let difference_to_max = Number(actor.data.data.health.max - actor.data.data.health.value);
+	let final_healing_amount = Math.min(Math.floor(pct_healing*actor.data.data.health.max), difference_to_max)
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
-	actor.modifyTokenAttribute("health", (Math.floor(pct_healing*actor.data.data.health.max)), true, true);
+	actor.modifyTokenAttribute("health", (final_healing_amount), true, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed '+ pct_healing*100 +'% of their max hit points!');
 }
 
@@ -4294,7 +4761,8 @@ export async function ShowInventoryMenu(actor)
 		console.log(target);
 	}
 
-	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target);
+	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor);
+	let background_field = "style='background-image: url('background_fields/BG_Field.png');'";
 
 	let trainer_tokens = actor.getActiveTokens();
 	let actor_token = trainer_tokens[0]; // The using actor
@@ -4814,7 +5282,7 @@ export async function GetItemArt(item_name)
 }
 
 
-export function GetTargetTypingHeader(target)
+export function GetTargetTypingHeader(target, actor)
 {
 	let targetTypingText = "";
 	let targetType1 = "???";
@@ -4833,7 +5301,9 @@ export function GetTargetTypingHeader(target)
 		}
 
 		let tokenImage;
-		let tokenSize = 80;
+		let actorImage = actor.data.token.img;
+		let tokenSize = 60;
+		let actorTokenSize = 90;
 
 		if (target.actor.token)
 			{
@@ -4846,7 +5316,7 @@ export function GetTargetTypingHeader(target)
 		
 		if(!target.actor.data.data.effectiveness)
 		{
-			targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (Trainer).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div>";
+			targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(Trainer)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 		}
 		else
 		{
@@ -4856,31 +5326,53 @@ export function GetTargetTypingHeader(target)
 			{
 				if(targetType1 == "???")
 				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div>";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 				}
 				else
 				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div></div>";
-					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>).";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+"'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div></div>";
 				}
 			}
 			else
 			{
 				if(targetType1 == "???")
 				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" ("+targetType1+"/"+targetType2+ ").</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div></div>";
-					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" ("+targetType1+"/"+targetType2+ ").";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+"/"+targetType2+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div></div>";
 				}
 				else
 				{
-					targetTypingText = "<div class='row'><div class='column' style='width:75%'>Your current target is<br>"+ target.name +" (<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>).</div><div class='column' style='width:"+tokenSize+"'><img src='"+ tokenImage +"' height='"+tokenSize+"'></img></div></div></div>";
-					// targetTypingText = "Your current target is <img src='"+ tokenImage +"'; width='"+tokenSize+"' height='"+tokenSize+"'></img>" + target.name +" (<img src='" + TypeIconPath+targetType1+TypeIconSuffix+ "'>/<img src='" + TypeIconPath+targetType2+TypeIconSuffix+ "'>).";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+" height=auto' style='border:none;'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div></div>";
 				}
 			}
 		}
 		
 
 		
+	}
+	else if (!target)
+	{
+		let actorImage = actor.data.token.img;
+		let tokenSize = 60;
+		let actorTokenSize = 90;
+
+		targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>No current target<br></div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'></div></div>";
+	}
+	else
+	{
+		let tokenImage;
+		if (target.actor.token)
+			{
+				tokenImage = target.actor.token.data.img;
+			}
+			else
+			{
+				tokenImage = target.actor.data.img;
+			}
+		let actorImage = actor.data.token.img;
+		let tokenSize = 60;
+		let actorTokenSize = 90;
+
+		targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(???/???)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 	}
 
 	return targetTypingText;

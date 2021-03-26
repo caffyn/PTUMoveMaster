@@ -1,0 +1,12 @@
+
+.sidebar-tab .action-buttons button {
+  height: unset;
+  max-height: 50px;
+}
+/* Sidebar */
+.ptu-sidebar .window-header {
+  display: none;
+}
+.ptu-sidebar .window-content {
+  background: unset;
+}
