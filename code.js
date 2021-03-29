@@ -1,5 +1,6 @@
 
 import { MoveMasterBonusDamageOptions } from './MoveMasterBonusDamageForm.js'
+import { MoveMasterBonusDamageReductionOptions } from './MoveMasterBonusDamageReductionForm.js'
 import { SidebarForm } from './forms/sidebar-form.js'
 
 /* -------------------------------------------- */
@@ -82,6 +83,15 @@ function _loadModuleSettings() {
 		type: Boolean,
 		default: false
 	});
+
+	game.settings.register("PTUMoveMaster", "usePokeballAnimationOnDragOut", {
+		name: "GM Setting: Use an animated pokeball effect when dragging an owned pokemon onto a field with their trainer present.",
+		hint: "Disable this if you are having problems with the effects.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
 } 
 
 Hooks.once('init', async function() 
@@ -91,6 +101,7 @@ Hooks.once('init', async function()
 		PTUAutoFight,
 		RollDamageMove,
 		MoveMasterBonusDamageOptions,
+		MoveMasterBonusDamageReductionOptions,
 		sendMoveMessage,
 		chatMessage,
 		adjustActorStage,
@@ -124,6 +135,7 @@ Hooks.once('init', async function()
 		GetTargetTypingHeader,
 		cureActorAffliction,
 		ResetStagesToDefault,
+		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 	};
 
@@ -260,7 +272,7 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 				{
 					setTimeout(() => { game.ptu.PlayPokemonCry(current_token_species); }, 2000);
 					
-					target_token.update({"scale": (0.25/target_token.data.width)});
+					if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut")){ target_token.update({"scale": (0.25/target_token.data.width)}); }
 
 					ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
@@ -357,103 +369,106 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 						}
 					}];
 
-					target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
+					if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
+					{ 
+						target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
 
-					function castSpell(effect) {
-						canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor._id).getActiveTokens().slice(-1)[0]);//target_token);
-					}
-					
-
-					castSpell({
-						file:
-							"item_icons/"+pokeball+".webm",
-						anchor: {
-							x: -0.08,
-							y: 0.5,
-						},
-						speed: 1,
-						angle: 0,
-						scale: {
-							x: 0.5,
-							y: 0.5,
-						},
-					});
-					
-
-					setTimeout(() => { target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
-
-					let pokeballShoop_params =
-					[
-						{
-							filterType: "transform",
-							filterId: "pokeballShoop",
-							bpRadiusPercent: 100,
-							//padding: 0,
-							autoDestroy: true,
-							animated:
-							{
-								bpStrength:
-								{
-									animType: "cosOscillation",//"cosOscillation",
-									val1: 0,
-									val2: -0.99,//-0.65,
-									loopDuration: 1500,
-									loops: 1,
-								}
-							}
-						},
-
-						{
-							filterType: "glow",
-							filterId: "pokeballShoop",
-							outerStrength: 40,
-							innerStrength: 20,
-							color: 0xFFFFFF,//0x5099DD,
-							quality: 0.5,
-							//padding: 0,
-							//zOrder: 2,
-							autoDestroy: true,
-							animated:
-							{
-								color: 
-								{
-								active: true, 
-								loopDuration: 1500, 
-								loops: 1,
-								animType: "colorOscillation", 
-								val1:0xFFFFFF,//0x5099DD, 
-								val2:0xff0000,//0x90EEFF
-								}
-							}
-						},
-
-						{
-							filterType: "adjustment",
-							filterId: "pokeballShoop",
-							saturation: 1,
-							brightness: 10,
-							contrast: 1,
-							gamma: 1,
-							red: 1,
-							green: 1,
-							blue: 1,
-							alpha: 1,
-							autoDestroy: true,
-							animated:
-							{
-								alpha: 
-								{ 
-								active: true, 
-								loopDuration: 1500, 
-								loops: 1,
-								animType: "syncCosOscillation",
-								val1: 0.35,
-								val2: 0.75 }
-							}
+						function castSpell(effect) {
+							canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor._id).getActiveTokens().slice(-1)[0]);//target_token);
 						}
-					];
+						
 
-					setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
+						castSpell({
+							file:
+								"item_icons/"+pokeball+".webm",
+							anchor: {
+								x: -0.08,
+								y: 0.5,
+							},
+							speed: 1,
+							angle: 0,
+							scale: {
+								x: 0.5,
+								y: 0.5,
+							},
+						});
+						
+
+						setTimeout(() => { target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
+
+						let pokeballShoop_params =
+						[
+							{
+								filterType: "transform",
+								filterId: "pokeballShoop",
+								bpRadiusPercent: 100,
+								//padding: 0,
+								autoDestroy: true,
+								animated:
+								{
+									bpStrength:
+									{
+										animType: "cosOscillation",//"cosOscillation",
+										val1: 0,
+										val2: -0.99,//-0.65,
+										loopDuration: 1500,
+										loops: 1,
+									}
+								}
+							},
+
+							{
+								filterType: "glow",
+								filterId: "pokeballShoop",
+								outerStrength: 40,
+								innerStrength: 20,
+								color: 0xFFFFFF,//0x5099DD,
+								quality: 0.5,
+								//padding: 0,
+								//zOrder: 2,
+								autoDestroy: true,
+								animated:
+								{
+									color: 
+									{
+									active: true, 
+									loopDuration: 1500, 
+									loops: 1,
+									animType: "colorOscillation", 
+									val1:0xFFFFFF,//0x5099DD, 
+									val2:0xff0000,//0x90EEFF
+									}
+								}
+							},
+
+							{
+								filterType: "adjustment",
+								filterId: "pokeballShoop",
+								saturation: 1,
+								brightness: 10,
+								contrast: 1,
+								gamma: 1,
+								red: 1,
+								green: 1,
+								blue: 1,
+								alpha: 1,
+								autoDestroy: true,
+								animated:
+								{
+									alpha: 
+									{ 
+									active: true, 
+									loopDuration: 1500, 
+									loops: 1,
+									animType: "syncCosOscillation",
+									val1: 0.35,
+									val2: 0.75 }
+								}
+							}
+						];
+
+						setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
+					}
 					setTimeout(() => {  
 
 						if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
@@ -1286,116 +1301,127 @@ export function PTUAutoFight()
 
 	async function ApplyDamage(event)
 	{
-		var initial_damage_total=event.currentTarget.dataset.damage;
-		var damage_category=event.currentTarget.dataset.category;
-		var damage_type=event.currentTarget.dataset.type;
-		var mode=event.currentTarget.dataset.mode;
-		var crit=event.currentTarget.dataset.crit;
-		let damageSoundFile = "";
-
-		for(let token of canvas.tokens.controlled)
+		let key_shift = keyboard.isDown("Shift");
+		if (key_shift) 
 		{
-			let def = token.actor.data.data.stats.def.total
-			let spdef = token.actor.data.data.stats.spdef.total
-			let extraDR = 0;
-			let extraDRSource = "";
-
-			var flavor;
-			var postEffectNotes = "";
-			var extraDRNotes = "";
-
-			if(game.combat == null)
+			console.log("KEYBOARD SHIFT IS DOWN!");
+			let form = new game.PTUMoveMaster.MoveMasterBonusDamageReductionOptions({event}, {"submitOnChange": false, "submitOnClose": true});
+			form.render(true);
+		}
+		else
+		{
+			var initial_damage_total=event.currentTarget.dataset.damage;
+			var damage_category=event.currentTarget.dataset.category;
+			var damage_type=event.currentTarget.dataset.type;
+			var mode=event.currentTarget.dataset.mode;
+			var crit=event.currentTarget.dataset.crit;
+			let damageSoundFile = "";
+	
+			for(let token of canvas.tokens.controlled)
 			{
-				var currentRound = 0;
-				var currentEncounterID = 0;
-			}
-			else
-			{
-				var currentRound = game.combat.round;
-				var currentEncounterID = game.combat.data._id;
-			}
-
-			if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
-			{
-				console.log("DEBUG: ApplyDamage TypeStrategist Conditional Triggered!")
-				extraDR = token.actor.data.data.TypeStrategistDR;
-				extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
-				extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
-			}
-
-			if(crit=="true")
-			{
-				flavor = "Critical Hit! ";
-				damageSoundFile = "Hit%20Super%20Effective.mp3";
-			}
-			else
-			{
-				flavor = "Hit! ";
-				damageSoundFile = "Hit%20Normal%20Damage.mp3";
-			}
-
-			let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
-
-			if(token.actor.data.data.effectiveness)
-			{
-				effectiveness = token.actor.data.data.effectiveness.All;
-			}
-
-			let this_moves_effectiveness = effectiveness[damage_type];
-			if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
-			{
-				this_moves_effectiveness = 1;
-				damage_type = "Untyped";
-			}
-			if(mode=="resist")
-			{
-				flavor+="(resisted 1 step) "
-				let old_effectiveness=this_moves_effectiveness;
-				if(old_effectiveness > 1)
+				let def = token.actor.data.data.stats.def.total
+				let spdef = token.actor.data.data.stats.spdef.total
+				let extraDR = 0;
+				let extraDRSource = "";
+	
+				var flavor;
+				var postEffectNotes = "";
+				var extraDRNotes = "";
+	
+				if(game.combat == null)
 				{
-					this_moves_effectiveness=this_moves_effectiveness - .5;
+					var currentRound = 0;
+					var currentEncounterID = 0;
 				}
 				else
 				{
-					this_moves_effectiveness=Number(this_moves_effectiveness /2);
+					var currentRound = game.combat.round;
+					var currentEncounterID = game.combat.data._id;
 				}
+	
+				if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
+				{
+					console.log("DEBUG: ApplyDamage TypeStrategist Conditional Triggered!")
+					extraDR = token.actor.data.data.TypeStrategistDR;
+					extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
+					extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
+				}
+	
+				if(crit=="true")
+				{
+					flavor = "Critical Hit! ";
+					damageSoundFile = "Hit%20Super%20Effective.mp3";
+				}
+				else
+				{
+					flavor = "Hit! ";
+					damageSoundFile = "Hit%20Normal%20Damage.mp3";
+				}
+	
+				let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+	
+				if(token.actor.data.data.effectiveness)
+				{
+					effectiveness = token.actor.data.data.effectiveness.All;
+				}
+	
+				let this_moves_effectiveness = effectiveness[damage_type];
+				if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
+				{
+					this_moves_effectiveness = 1;
+					damage_type = "Untyped";
+				}
+				if(mode=="resist")
+				{
+					flavor+="(resisted 1 step) "
+					let old_effectiveness=this_moves_effectiveness;
+					if(old_effectiveness > 1)
+					{
+						this_moves_effectiveness=this_moves_effectiveness - .5;
+					}
+					else
+					{
+						this_moves_effectiveness=Number(this_moves_effectiveness /2);
+					}
+				}
+	
+				if(damage_category == "Physical")
+				{
+					var DR = def + extraDR;
+				}
+				if(damage_category == "Special")
+				{
+					var DR = spdef + extraDR;
+				}
+				if(mode=="half")
+				{
+					flavor+="(1/2 damage) ";
+					initial_damage_total=Number(initial_damage_total/2);
+				}
+	
+				var defended_damage = Number(Number(initial_damage_total) - Number(DR));
+				var final_effective_damage = Math.max(Math.floor(Number(defended_damage)*Number(this_moves_effectiveness)), 0);
+	
+				if(mode=="flat")
+				{
+					flavor+="(flat damage) ";
+					final_effective_damage = initial_damage_total;
+					defended_damage = 0;
+					this_moves_effectiveness = 1;
+				}
+				// ui.notifications.info(flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
+	
+				chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + this_moves_effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
+	
+				// token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
+				token.actor.modifyTokenAttribute("health", (-final_effective_damage), true, true);
+	
+				ApplyInjuries(token.actor, final_effective_damage);
+				
 			}
-
-			if(damage_category == "Physical")
-			{
-				var DR = def + extraDR;
-			}
-			if(damage_category == "Special")
-			{
-				var DR = spdef + extraDR;
-			}
-			if(mode=="half")
-			{
-				flavor+="(1/2 damage) ";
-				initial_damage_total=Number(initial_damage_total/2);
-			}
-
-			var defended_damage = Number(Number(initial_damage_total) - Number(DR));
-			var final_effective_damage = Math.max(Math.floor(Number(defended_damage)*Number(this_moves_effectiveness)), 0);
-
-			if(mode=="flat")
-			{
-				flavor+="(flat damage) ";
-				final_effective_damage = initial_damage_total;
-				defended_damage = 0;
-				this_moves_effectiveness = 1;
-			}
-			// ui.notifications.info(flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
-
-			chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + this_moves_effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
-
-			// token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
-			token.actor.modifyTokenAttribute("health", (-final_effective_damage), true, true);
-
-			ApplyInjuries(token.actor, final_effective_damage);
-			
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 		}
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+		
 	};
 
 
@@ -2704,7 +2730,7 @@ export function PTUAutoFight()
 		// 	buttons: buttons
 		// },{id: dialogueID});
 		
-		let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2><div></center>";
+		let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2></div></center>";
 		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID});
 		
 		console.log("========buttons========");
@@ -2755,6 +2781,122 @@ export function PTUAutoFight()
 // const d = new Dialog({ title: "Sound selector", content: dialogContent + "click a button to play", buttons: myButtons },{id: "sounds-dialog"}).render(true);
 
 //////////////////////////////////////////
+
+
+
+export async function applyDamageWithBonusDR(event, bonusDamageReduction)
+	{
+		var initial_damage_total=event.currentTarget.dataset.damage;
+		var damage_category=event.currentTarget.dataset.category;
+		var damage_type=event.currentTarget.dataset.type;
+		var mode=event.currentTarget.dataset.mode;
+		var crit=event.currentTarget.dataset.crit;
+		let damageSoundFile = "";
+
+		for(let token of canvas.tokens.controlled)
+		{
+			let def = token.actor.data.data.stats.def.total
+			let spdef = token.actor.data.data.stats.spdef.total
+			let extraDR = 0;
+			let extraDRSource = "";
+
+			var flavor;
+			var postEffectNotes = "";
+			var extraDRNotes = "";
+
+			if(game.combat == null)
+			{
+				var currentRound = 0;
+				var currentEncounterID = 0;
+			}
+			else
+			{
+				var currentRound = game.combat.round;
+				var currentEncounterID = game.combat.data._id;
+			}
+
+			if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
+			{
+				console.log("DEBUG: ApplyDamage TypeStrategist Conditional Triggered!")
+				extraDR = token.actor.data.data.TypeStrategistDR;
+				extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
+				extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
+			}
+
+			if(crit=="true")
+			{
+				flavor = "Critical Hit! ("+"+"+bonusDamageReduction+" Extra DR) ";
+				damageSoundFile = "Hit%20Super%20Effective.mp3";
+			}
+			else
+			{
+				flavor = "Hit! ("+"+"+bonusDamageReduction+" Extra DR) ";
+				damageSoundFile = "Hit%20Normal%20Damage.mp3";
+			}
+
+			let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+
+			if(token.actor.data.data.effectiveness)
+			{
+				effectiveness = token.actor.data.data.effectiveness.All;
+			}
+
+			let this_moves_effectiveness = effectiveness[damage_type];
+			if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
+			{
+				this_moves_effectiveness = 1;
+				damage_type = "Untyped";
+			}
+			if(mode=="resist")
+			{
+				flavor+="(resisted 1 step) "
+				let old_effectiveness=this_moves_effectiveness;
+				if(old_effectiveness > 1)
+				{
+					this_moves_effectiveness=this_moves_effectiveness - .5;
+				}
+				else
+				{
+					this_moves_effectiveness=Number(this_moves_effectiveness /2);
+				}
+			}
+
+			if(damage_category == "Physical")
+			{
+				var DR = def + extraDR + bonusDamageReduction;
+			}
+			if(damage_category == "Special")
+			{
+				var DR = spdef + extraDR + bonusDamageReduction;
+			}
+			if(mode=="half")
+			{
+				flavor+="(1/2 damage) ";
+				initial_damage_total=Number(initial_damage_total/2);
+			}
+
+			var defended_damage = Number(Number(initial_damage_total) - Number(DR));
+			var final_effective_damage = Math.max(Math.floor(Number(defended_damage)*Number(this_moves_effectiveness)), 0);
+
+			if(mode=="flat")
+			{
+				flavor+="(flat damage) ";
+				final_effective_damage = initial_damage_total;
+				defended_damage = 0;
+				this_moves_effectiveness = 1;
+			}
+			// ui.notifications.info(flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
+
+			chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense (after extra DR)" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + this_moves_effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
+
+			// token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
+			token.actor.modifyTokenAttribute("health", (-final_effective_damage), true, true);
+
+			ApplyInjuries(token.actor, final_effective_damage);
+			
+		}
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+	}
 
 
 
@@ -5340,7 +5482,7 @@ export function GetTargetTypingHeader(target, actor)
 		
 		if(!target.actor.data.data.effectiveness)
 		{
-			targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(Trainer)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
+			targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(Trainer)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 		}
 		else
 		{
@@ -5350,22 +5492,22 @@ export function GetTargetTypingHeader(target, actor)
 			{
 				if(targetType1 == "???")
 				{
-					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 				}
 				else
 				{
-					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+"'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div></div>";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+"'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 				}
 			}
 			else
 			{
 				if(targetType1 == "???")
 				{
-					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+"/"+targetType2+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div></div>";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+"/"+targetType2+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 				}
 				else
 				{
-					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+" height=auto' style='border:none;'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div></div>";
+					targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+" height=auto' style='border:none;'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 				}
 			}
 		}
@@ -5379,7 +5521,7 @@ export function GetTargetTypingHeader(target, actor)
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
-		targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>No current target<br></div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'></div></div>";
+		targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>No current target<br></div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'></div></div>";
 	}
 	else
 	{
@@ -5396,7 +5538,7 @@ export function GetTargetTypingHeader(target, actor)
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
-		targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(???/???)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
+		targetTypingText = "<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(???/???)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
 	}
 
 	return targetTypingText;
