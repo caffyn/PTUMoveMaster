@@ -10,3 +10,23 @@
 .ptu-sidebar .window-content {
   background: unset;
 }
+
+#combat-carousel.wrapper {
+  /* position: fixed;
+  top: 0;
+  left: 120px; */
+  max-width: calc(100% - 630px) !important;
+  /* margin: 0;
+  padding: 0;
+  box-shadow: none;
+  border: none; */
+}
+
+.confetti-buttons {
+  right: 505px !important;
+}
+/* 
+.fpsCounter {
+  position: fixed;
+  right: 505px;
+} */

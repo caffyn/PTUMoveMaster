@@ -127,8 +127,8 @@ Hooks.once('init', async function()
 		SidebarForm,
 	};
 
-	// let sidebar = new game.PTUMoveMaster.SidebarForm();
-	// sidebar.render(true);
+	let sidebar = new game.PTUMoveMaster.SidebarForm();
+	sidebar.render(true);
 	//debug(sidebar);
 });
 
@@ -165,16 +165,38 @@ Hooks.on("controlToken", async (token, selected) => {
 		console.log("CONTROL TOKEN HOOK FIRED: "+token);
 		console.log(token);
 	}
+	else
+	{
+		let sidebar = new game.PTUMoveMaster.SidebarForm();
+		sidebar.render(true);
+	}
 });
 
 
 Hooks.on("targetToken", async (user, token, targeted) => {
 
-	let selected_token = canvas.tokens.controlled[0];
-	PTUAutoFight().ChatWindow(selected_token.actor);
-	console.log("TARGET TOKEN HOOK FIRED: "+token);
-	console.log(token);
+	console.log("________________Hooks.on(targetToken: user________________");
+	console.log(user);
+	console.log("game.user._id");
+	console.log(game.user._id);
 
+
+
+	if(user.data._id == game.user._id)
+	{
+		let selected_token = canvas.tokens.controlled[0];
+		if(selected_token)
+		{
+			PTUAutoFight().ChatWindow(selected_token.actor);
+			console.log("TARGET TOKEN HOOK FIRED: "+token);
+			console.log(token);
+		}
+		// else
+		// {
+		// 	let sidebar = new game.PTUMoveMaster.SidebarForm();
+		// 	sidebar.render(true);
+		// }
+	}
 });
 
 
@@ -510,6 +532,8 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 			if(game.combat)
 			{
 				target_token.toggleCombat().then(() => game.combat.rollAll({rollMode: 'gmroll'}));
+				// game.combat.rollAll({rollMode: 'gmroll'});
+
 			}
 		}
 	}, 100);
