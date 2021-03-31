@@ -2545,7 +2545,12 @@ export function PTUAutoFight()
 		}
 		else if(actor.data.data.owner!= "0")
 		{
-			let trainer_token_on_field = ((game.actors.get(actor.data.data.owner)).getActiveTokens().slice(-1)[0]);
+			let trainer_token_on_field 
+			
+			if(game.actors.get(actor.data.data.owner))
+			{
+				trainer_token_on_field = ((game.actors.get(actor.data.data.owner)).getActiveTokens().slice(-1)[0]);
+			}
 			if(trainer_token_on_field)
 			{
 				buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"🔎 Select Trainer 🔍"+"</div></center>",
