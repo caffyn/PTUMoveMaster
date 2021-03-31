@@ -135,6 +135,7 @@ Hooks.once('init', async function()
 		GetTargetTypingHeader,
 		cureActorAffliction,
 		ResetStagesToDefault,
+		ThisPokemonsTrainerCommandCheck,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 	};
@@ -174,8 +175,6 @@ Hooks.on("controlToken", async (token, selected) => {
 	if(selected)
 	{
 		PTUAutoFight().ChatWindow(token.actor);
-		console.log("CONTROL TOKEN HOOK FIRED: "+token);
-		console.log(token);
 	}
 	else
 	{
@@ -186,22 +185,12 @@ Hooks.on("controlToken", async (token, selected) => {
 
 
 Hooks.on("targetToken", async (user, token, targeted) => {
-
-	console.log("________________Hooks.on(targetToken: user________________");
-	console.log(user);
-	console.log("game.user._id");
-	console.log(game.user._id);
-
-
-
 	if(user.data._id == game.user._id)
 	{
 		let selected_token = canvas.tokens.controlled[0];
 		if(selected_token)
 		{
 			PTUAutoFight().ChatWindow(selected_token.actor);
-			console.log("TARGET TOKEN HOOK FIRED: "+token);
-			console.log(token);
 		}
 		// else
 		// {
@@ -1304,7 +1293,6 @@ export function PTUAutoFight()
 		let key_shift = keyboard.isDown("Shift");
 		if (key_shift) 
 		{
-			console.log("KEYBOARD SHIFT IS DOWN!");
 			let form = new game.PTUMoveMaster.MoveMasterBonusDamageReductionOptions({event}, {"submitOnChange": false, "submitOnClose": true});
 			form.render(true);
 		}
@@ -1341,7 +1329,6 @@ export function PTUAutoFight()
 	
 				if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
 				{
-					console.log("DEBUG: ApplyDamage TypeStrategist Conditional Triggered!")
 					extraDR = token.actor.data.data.TypeStrategistDR;
 					extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
 					extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
@@ -1470,14 +1457,10 @@ export function PTUAutoFight()
 			if(item.name.search("Type Strategist \\(") > -1)
 			{
 				typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-				console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-				console.log(typeStrategist);
-				console.log(typeStrategist.length);
 			}
 			if(item.name.search("Technician") > -1)
 			{
 				technician = true;
-				console.log("DEBUG: Technician Ability Found");
 			}
 		} // END Ability Check Loop
 
@@ -1503,7 +1486,6 @@ export function PTUAutoFight()
 				{
 					if (search_item._id == item._id)
 					{
-						console.log("updating item",search_item);
 						await search_item.update({ "data.LastRoundUsed" : -2});
 						await search_item.update({ "data.LastEncounterUsed": 0});
 					}
@@ -1539,8 +1521,6 @@ export function PTUAutoFight()
 
 			else if(currentFrequency == "EOT")
 			{
-				console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
-
 				if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 				{
 					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
@@ -1549,7 +1529,6 @@ export function PTUAutoFight()
 				{
 					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 				}
-				console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 			}
 
 			else if(currentFrequency == "Scene")
@@ -1661,8 +1640,6 @@ export function PTUAutoFight()
 			if(!target)
 			{
 				target = game.actors.get(actor.id).getActiveTokens()[0];
-				console.log("NO TARGET, SELECTING ACTOR________________");
-				console.log(target);
 			}
 
 			if(target.actor.data.data.effectiveness)
@@ -1721,7 +1698,6 @@ export function PTUAutoFight()
 				let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 				if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
 				{
-					// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 					currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 				}
 
@@ -1745,11 +1721,7 @@ export function PTUAutoFight()
 					}
 					else if(currentMoveRange.search("Burst") > -1)
 					{
-						console.log("currentMoveRange = "+currentMoveRange);
-						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
 						currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
-						console.log("currentMoveRange = "+currentMoveRange);
-						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
 					}
 					else if(currentMoveRange.search("Cone") > -1)
 					{
@@ -1852,9 +1824,6 @@ export function PTUAutoFight()
 						currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
 						currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
 					}
-
-					console.log("FINAL currentMoveRange = "+currentMoveRange);
-					console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
 				}
 
 
@@ -1871,10 +1840,10 @@ export function PTUAutoFight()
 							return;
 						}
 						let key_shift = keyboard.isDown("Shift");
-						if (key_shift) 
-						{
-							console.log("KEYBOARD SHIFT IS DOWN!");
-						}
+						// if (key_shift) 
+						// {
+						// 	console.log("KEYBOARD SHIFT IS DOWN!");
+						// }
 
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 						let diceRoll = PerformFullAttack (actor,item);
@@ -1889,8 +1858,6 @@ export function PTUAutoFight()
 							var currentEncounterID = game.combat.data._id;
 						}
 
-						console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
-						console.log(item);
 						if(item.data.UseCount == null)
 						{
 							for(let search_item of item_entities)
@@ -1898,7 +1865,6 @@ export function PTUAutoFight()
 								if (search_item._id == item._id)
 								{
 									await search_item.update({ "data.UseCount": 0});
-									console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
 								}
 							}
 							// item.update({ "data.UseCount": Number(0)});
@@ -1911,7 +1877,6 @@ export function PTUAutoFight()
 								if (search_item._id == item._id)
 								{
 									await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
-									console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
 								}
 							}
 							// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
@@ -1927,7 +1892,7 @@ export function PTUAutoFight()
 									{
 										let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
 										let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-										console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+										// console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
 										await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
 									}
 								}
@@ -1942,11 +1907,11 @@ export function PTUAutoFight()
 								if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
 								{
 									let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
-									console.log("EFFECT THRESHOLD"+effectThreshold);
-									console.log("DICE ROLL"+diceRoll);
+									// console.log("EFFECT THRESHOLD"+effectThreshold);
+									// console.log("DICE ROLL"+diceRoll);
 									if(diceRoll >= effectThreshold) // Effect Range Hit
 									{
-										console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
+										// console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
 										
 										for (let searched_stat of stats)
 										{
@@ -1966,7 +1931,7 @@ export function PTUAutoFight()
 									}
 									else // Effect Range Missed
 									{
-										console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
+										// console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
 									}
 								}
 								else // No Effect Range
@@ -2019,7 +1984,6 @@ export function PTUAutoFight()
 				{
 					if (search_item._id == item._id)
 					{
-						console.log("updating item",search_item);
 						await search_item.update({ "data.LastRoundUsed" : -2});
 						await search_item.update({ "data.LastEncounterUsed": 0});
 					}
@@ -2056,8 +2020,6 @@ export function PTUAutoFight()
 
 			else if(currentFrequency == "EOT")
 			{
-				console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
-
 				if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 				{
 					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_0" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
@@ -2066,7 +2028,6 @@ export function PTUAutoFight()
 				{
 					currentCooldownLabel = "<img src='" + AlternateIconPath + "EOT_1" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 				}
-				console.log(item.name + "currentCooldownLabel = " + currentCooldownLabel);
 			}
 
 			else if(currentFrequency == "Scene")
@@ -2257,11 +2218,7 @@ export function PTUAutoFight()
 					}
 					else if(currentMoveRange.search("Burst") > -1)
 					{
-						console.log("currentMoveRange = "+currentMoveRange);
-						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
 						currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
-						console.log("currentMoveRange = "+currentMoveRange);
-						console.log("currentMoveRangeIcon = "+currentMoveRangeIcon);
 					}
 					else if(currentMoveRange.search("Cone") > -1)
 					{
@@ -2364,9 +2321,6 @@ export function PTUAutoFight()
 						currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
 						currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
 					}
-
-					console.log("FINAL currentMoveRange = "+currentMoveRange);
-					console.log("FINAL currentMoveRangeIcon = "+currentMoveRangeIcon);
 				}
 
 				if(currentMoveRange.search("Five Strike") > -1)
@@ -2440,19 +2394,16 @@ export function PTUAutoFight()
 		
 					if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
 					{
-						console.log("DEBUG: TECHNICIAN APPLIES");
 						technicianDBBonus = 2;
 					}
 		
 					if(userHasAdaptability)
 					{
-						console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
 						STABBonus = 3;
 					}
 
 					if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
 					{
-						console.log("DEBUG: STORED POWER ROLLED!")
 						let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
 						let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
 						let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
@@ -2460,7 +2411,6 @@ export function PTUAutoFight()
 						let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
 
 						let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
-						console.log("db_from_stages = " + db_from_stages );
 
 						damageBase = (
 							moveData.type == actorType1 || moveData.type == actorType2) ? 
@@ -2477,7 +2427,6 @@ export function PTUAutoFight()
 					}
 					else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
 					{
-						console.log("DEBUG: PUNISHMENT ROLLED!")
 						let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
 						let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
 						let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
@@ -2485,7 +2434,6 @@ export function PTUAutoFight()
 						let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
 
 						let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
-						console.log("db_from_stages = " + db_from_stages );
 
 						damageBase = (
 							moveData.type == actorType1 || moveData.type == actorType2) ? 
@@ -2512,16 +2460,10 @@ export function PTUAutoFight()
 							db + STABBonus + technicianDBBonus : 
 							db + technicianDBBonus;
 
-						console.log("DEBUG: db = " + db);
-						console.log("DEBUG: STABBonus = " + STABBonus);
-						console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
-
 						dbRoll = game.ptu.DbData[damageBase];
 						dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
 					}
 
-					console.log("damageBase = " + damageBase);
-					console.log("damageBaseOriginal = " + damageBaseOriginal);
 					finalDB = damageBase;
 
 					DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+finalDB+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
@@ -2544,8 +2486,6 @@ export function PTUAutoFight()
 				buttons[currentid]={id:currentid, label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 					//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 				callback: async () => {
-
-					console.log("_____________________ INSIDE BUTTON CALL _____________________");
 					if(!ThisPokemonsTrainerCommandCheck(actor))
 					{
 						game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
@@ -2554,7 +2494,6 @@ export function PTUAutoFight()
 					let key_shift = keyboard.isDown("Shift");
 					if (key_shift) 
 					{
-						console.log("KEYBOARD SHIFT IS DOWN!");
 						rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
 					}
 					else
@@ -2574,25 +2513,25 @@ export function PTUAutoFight()
 
 		let menuButtonWidth = "200px";
 
-		buttons["struggleMenu"] = {id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
+		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
 			callback: () => {
 				game.PTUMoveMaster.ShowStruggleMenu(actor);
 			}};
 
-		buttons["maneuverMenu"] = {id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
+		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
 		callback: () => {
 			game.PTUMoveMaster.ShowManeuverMenu(actor);
 		}};
 
 		if(actor.data.type == "character")
 		{
-			buttons["itemMenu"] = {id:"itemMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
+			buttons["itemMenu"] = {noRefresh: true, id:"itemMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
 			callback: () => {
 				game.PTUMoveMaster.ShowInventoryMenu(actor);
 			}};
 
 
-			buttons["pokeballMenu"] = {id:"pokeballMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
+			buttons["pokeballMenu"] = {noRefresh: true, id:"pokeballMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowPokeballMenu(actor);
 			}};
@@ -2604,14 +2543,28 @@ export function PTUAutoFight()
 				await game.PTUMoveMaster.PokedexScan(actor_token, target);
 			}};
 		}
-		else
+		else if(actor.data.data.owner!= "0")
 		{
-			buttons["trainerMenu"] = {id:"trainerMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Trainer 💬"+"</div></center>",
-			callback: () => {
-		
-				//PerformStruggleAttack ("Normal", "Physical");
-		
-			}};
+			let trainer_token_on_field = ((game.actors.get(actor.data.data.owner)).getActiveTokens().slice(-1)[0]);
+			if(trainer_token_on_field)
+			{
+				buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"🔎 Select Trainer 🔍"+"</div></center>",
+				callback: () => {
+			
+					trainer_token_on_field.control(true);
+					//PerformStruggleAttack ("Normal", "Physical");
+			
+				}};
+			}
+			else
+			{
+				buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<center><div style='background-color:lightred;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"❌ Trainer Unavailable ❌"+"</div></center>",
+				callback: () => {
+			
+					ui.notifications.warn("Trainer is not on the field.")
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, false);
+				}};
+			}
 		}
 
 		for(let item of items)
@@ -2622,7 +2575,6 @@ export function PTUAutoFight()
 
 			if(currenttype=="ability")
 			{
-				console.log("ABILITY: " + item.name + ", Type = " + item.type)
 				var currentlabel=item.name;
 				var respdata=item.data;
 				respdata['category']='details';
@@ -2733,8 +2685,6 @@ export function PTUAutoFight()
 		let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2></div></center>";
 		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID});
 		
-		console.log("========buttons========");
-		console.log(buttons);
 		sidebar.render(true);
 		//dialogEditor.render(true, {"left":500, "top":500, "width":200, "height":1000,});
 	};
@@ -2817,7 +2767,6 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 
 			if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
 			{
-				console.log("DEBUG: ApplyDamage TypeStrategist Conditional Triggered!")
 				extraDR = token.actor.data.data.TypeStrategistDR;
 				extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
 				extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
@@ -2902,8 +2851,6 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 
 export async function ResetStagesToDefault(actor)
 {
-	console.log("RESET STAGES TO DEFAULT actor");
-	console.log(actor);
 	var stats = ["atk", "def", "spatk", "spdef", "spd"];
 
 	var default_stages = {
@@ -2965,8 +2912,6 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 			var currentEncounterID = game.combat.data._id;
 		}
 
-		console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
-		console.log(item);
 		if(item.data.UseCount == null)
 		{
 			for(let search_item of item_entities)
@@ -2974,7 +2919,6 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 				if (search_item._id == item._id)
 				{
 					await search_item.update({ "data.UseCount": 0});
-					console.log("DEBUG: item.data.UseCount = " + item.data.UseCount);
 				}
 			}
 			// item.update({ "data.UseCount": Number(0)});
@@ -2987,7 +2931,6 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 				if (search_item._id == item._id)
 				{
 					await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
-					console.log('await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)}); =' + search_item.data.data.UseCount);
 				}
 			}
 			// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
@@ -3003,7 +2946,7 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 					{
 						let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
 						let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-						console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+						// console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
 						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
 					}
 				}
@@ -3020,11 +2963,11 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 				if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
 				{
 					let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
-					console.log("EFFECT THRESHOLD"+effectThreshold);
-					console.log("DICE ROLL"+diceRoll);
+					// console.log("EFFECT THRESHOLD"+effectThreshold);
+					// console.log("DICE ROLL"+diceRoll);
 					if(diceRoll >= effectThreshold) // Effect Range Hit
 					{
-						console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
+						// console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
 						
 						for (let searched_stat of stats)
 						{
@@ -3044,7 +2987,7 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 					}
 					else // Effect Range Missed
 					{
-						console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
+						// console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
 					}
 				}
 				else // No Effect Range
@@ -3073,7 +3016,6 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 
 export async function sendMoveMessage(messageData = {}) 
 {
-	console.log("send debug",messageData);
 		messageData = mergeObject({
 			user: game.user._id,
 			templateType: MoveMessageTypes.DAMAGE,
@@ -3084,7 +3026,6 @@ export async function sendMoveMessage(messageData = {})
 			console.error("Can't display move chat message without move data.")
 			return;
 		}
-	console.log("alt path");
 		messageData.content = await renderTemplate('modules/PTUMoveMaster/move-combined.hbs', messageData)
 
 		return ChatMessage.create(messageData, {});
@@ -3124,14 +3065,11 @@ export function adjustActorStage(actor, stat, change)
 		}
 	});
 
-  	console.log(AE_changes);
-
 	let stage_AE_sum = 0;
 
 	for(let AE_change of AE_changes)
 	{
 		stage_AE_sum += Number(AE_change.value);
-		console.log(stat+" stage_AE_sum = "+stage_AE_sum);
 	}
 
 	if(change > 0)
@@ -3225,14 +3163,12 @@ export async function cureActorAffliction(actor, affliction_name)
 		lowercase_affliction_name = affliction_table[affliction_name.toLowerCase()];
 	}
 	let effects = actor.effects;
-	console.log("actor.effects");
-	console.log(actor.effects);
 
 	if(actor.data.flags.ptu)
 	{
 		if(eval('actor.data.flags.ptu.'+lowercase_affliction_name) == true)
 		{
-			console.log(actor.name+" has effect: "+lowercase_affliction_name);
+			// console.log(actor.name+" has effect: "+lowercase_affliction_name);
 			
 			// await actor.effects.filter(x => x.data.label == affliction_name).forEach(x => await x.delete());
 
@@ -3247,13 +3183,13 @@ export async function cureActorAffliction(actor, affliction_name)
 		}
 		else
 		{
-			console.log(actor.name+" does NOT have effect: "+lowercase_affliction_name);
+			// console.log(actor.name+" does NOT have effect: "+lowercase_affliction_name);
 			return false;
 		}
 	}
 	else
 	{
-		console.log(actor.name+" does not have any flags set.");
+		// console.log(actor.name+" does not have any flags set.");
 		return false;
 	}
 }
@@ -3290,7 +3226,6 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 
 	for(let search_item of actor.items)
 	{
-		// console.log(search_item.name);
 		if(search_item.name == "Technician")
 		{
 			userHasTechnician = true;
@@ -3304,9 +3239,7 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 	if(move.data.range.search("Five Strike") > -1)
 	{
 		isFiveStrike = true;
-		// console.log("DEBUG: ROLLING FIVE STRIKE");
 		let fiveStrikeD8 = Math.floor(Math.random() * (8 - 1 + 1)) + 1;
-		// console.log("DEBUG: FIVE STRIKE D8 = " + fiveStrikeD8);
 		let fiveStrikeHitsDictionary = {
 			1: 1,
 			2: 2,
@@ -3318,13 +3251,11 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 			8: 5
 		}
 		let fiveStrikeHits = fiveStrikeHitsDictionary[fiveStrikeD8];
-		// console.log("DEBUG: FIVE STRIKE HITS = " + fiveStrikeHits);
 		fiveStrikeCount = fiveStrikeHits-1;
 	}
 	if( (move.data.range.search("Doublestrike") > -1) || (move.data.range.search("Double Strike") > -1) )
 	{
 		isDoubleStrike = true;
-		console.log("DEBUG: ROLLING DOUBLE STRIKE");
 	}
 
 	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move.data, actor.data.data);
@@ -3336,7 +3267,6 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 	let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
 	let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= 20 - actor.data.data.modifiers.critRange ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
 
-	// console.log("DEBUG: isDoubleStrike = " + isDoubleStrike);
 	let damageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
 	if(damageRoll) damageRoll.roll();
 	let critDamageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
@@ -3383,15 +3313,11 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 		if(item.name.search("Type Strategist \\(") > -1)
 		{
 			typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-			// console.log("DEBUG: Type Strategist: " + item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
-			// console.log(typeStrategist);
-			// console.log(typeStrategist.length);
 		}
 	} // END Ability Check Loop
 
 	if( (typeStrategist.length > 0) && (typeStrategist.indexOf(move.data.type) > -1) )
 	{
-		// console.log("DEBUG: PerformFullAttack function TypeStrategist trigger!")
 		currentExtraEffectText = currentExtraEffectText+ "<br>Type Strategist (" + move.data.type + ") activated!";
 		currentHasExtraEffect = true;
 	}
@@ -3441,7 +3367,7 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 		isDoubleStrike: isDoubleStrike,
 		hasSTAB: hasSTAB,
 		finalDB: finalDB,
-	}).then(data => console.log(data));
+	});//.then(data => console.log(data));
 
 	var moveSoundFile = ((move.data.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
 
@@ -3465,7 +3391,6 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 
 	moveSoundFile.replace(/ /g,"%20");
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
-	console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
 
 	game.PTUMoveMaster.TakeStandardAction(actor)
 
@@ -3502,7 +3427,7 @@ export function PerformStruggleAttack (move) // TODO: Implement Struggles
 		critDamageRoll: critDamageRoll,
 		templateType: MoveMessageTypes.FULL_ATTACK,
 		crit: crit
-	}).then(data => console.log(data));
+	});//.then(data => console.log(data));
 
 	var moveSoundFile = (move.data.name + ".mp3");
 
@@ -3514,8 +3439,6 @@ export function PerformStruggleAttack (move) // TODO: Implement Struggles
 	moveSoundFile.replace(/ /g,"%20");
 
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
-	console.log(move.data.name + " attempting to play move sound = " + moveSoundFile);
-
 };
 
 
@@ -3542,9 +3465,6 @@ export function GetDiceResult(roll)
 
 export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, hitCount, critCount, bonusDamage) 
 {
-	console.log("DEBUG: fiveStrikeCount = " + fiveStrikeCount)
-	console.log("DEBUG: hitCount = " + hitCount)
-	// console.log("DEBUG: final DB = " + (parseInt(moveData.damageBase)*fiveStrikeCount))
 	if (moveData.category === "Status") return;
 
 	if (moveData.damageBase.toString().match(/^[0-9]+$/) != null) 
@@ -3567,19 +3487,16 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 
 		if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (moveData.damageBase <= 6) ) )
 		{
-			console.log("DEBUG: TECHNICIAN APPLIES");
 			technicianDBBonus = 2;
 		}
 
 		if(userHasAdaptability)
 		{
-			console.log("DEBUG: ADAPTABILITY POTENTIALLY APPLIES");
 			STABBonus = 3;
 		}
 
 		if(moveData.name.toString().match(/Stored Power/) != null) // Increase DB if move is one that scales like Stored Power, et. al.
 		{
-			console.log("DEBUG: STORED POWER ROLLED!")
 			let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
 			let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
 			let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
@@ -3587,7 +3504,6 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 			let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
 
 			let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 2 );
-			console.log("db_from_stages = " + db_from_stages );
 
 			damageBase = (
 				moveData.type == actorType1 || moveData.type == actorType2) ? 
@@ -3604,7 +3520,6 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 		}
 		else if(moveData.name.toString().match(/Punishment/) != null) // Increase DB if move is one that scales like Punishment, et. al.
 		{
-			console.log("DEBUG: STORED POWER ROLLED!")
 			let atk_stages = actorData.stats.atk.stage < 0 ? 0 : actorData.stats.atk.stage;
 			let spatk_stages = actorData.stats.spatk.stage < 0 ? 0 : actorData.stats.spatk.stage;
 			let def_stages = actorData.stats.def.stage < 0 ? 0 : actorData.stats.def.stage;
@@ -3612,7 +3527,6 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 			let spd_stages = actorData.stats.spd.stage < 0 ? 0 : actorData.stats.spd.stage;
 
 			let db_from_stages = ( (atk_stages + spatk_stages + def_stages + spdef_stages + spd_stages) * 1 );
-			console.log("db_from_stages = " + db_from_stages );
 
 			damageBase = (
 				moveData.type == actorType1 || moveData.type == actorType2) ? 
@@ -3639,23 +3553,15 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 				db + STABBonus + technicianDBBonus : 
 				db + technicianDBBonus;
 
-			console.log("DEBUG: db = " + db);
-			console.log("DEBUG: STABBonus = " + STABBonus);
-			console.log("DEBUG: technicianDBBonus = " + technicianDBBonus);
-
 			dbRoll = game.ptu.DbData[damageBase];
 			dbRollOriginal = game.ptu.DbData[damageBaseOriginal];
 		}
-
-		console.log("damageBase = " + damageBase);
-		console.log("damageBaseOriginal = " + damageBaseOriginal);
 
 		let bonus = Math.max(moveData.category === "Physical" ? actorData.stats.atk.total : actorData.stats.spatk.total, 0)+bonusDamage;
 		let rollString = '@roll+@bonus';
 		let rollStringCrit = '@roll+@roll+@bonus';
 		if(isDoubleStrike)
 		{
-			// console.log("DEBUG: IS DOUBLE STRIKE DB CALC!");
 			if(critCount == 1)
 			{
 				rollStringCrit = '@roll+@originalRoll+@bonus';
@@ -3670,8 +3576,7 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 		{
 			return;
 		}
-		console.log("DEBUG: DB ROLL: " + dbRoll);
-		console.log("DEBUG: DB ROLL ORIGINAL: " + dbRollOriginal);
+
 		return new Roll(isCrit == CritOptions.CRIT_HIT ? rollStringCrit : rollString, {
 			roll: dbRoll,
 			originalRoll: dbRollOriginal,
@@ -3725,9 +3630,6 @@ export async function ApplyInjuries(target, final_effective_damage)
 {
 	let targetHealthCurrent = target.data.data.health.value;
 	let targetHealthMax = target.data.data.health.total;
-	
-	console.log("targetHealthCurrent" + targetHealthCurrent);
-	console.log("targetHealthMax" + targetHealthMax);
 
 	let hitPoints50Pct = targetHealthMax*0.50;
 	let hitPoints0Pct = 0;
@@ -3737,10 +3639,6 @@ export async function ApplyInjuries(target, final_effective_damage)
 	let hitPointsNegative200Pct = targetHealthMax*(-2.00);
 
 	let massiveDamageThreshold = hitPoints50Pct+1;
-
-	console.log("final_effective_damage" + final_effective_damage);
-	console.log("hitPoints50Pct" + hitPoints50Pct);
-	console.log("massiveDamageThreshold" + massiveDamageThreshold);
 
 	let injuryCount = 0;
 
@@ -3851,8 +3749,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 		let dieSize = "d20";
 
 		let roll= new Roll(`${numDice}${dieSize}-${6}`).roll()
-		console.log("THROW ROLL! ----------------");
-		console.log(roll);
+
 		roll.toMessage()
 
 		function castSpell(effect) {
@@ -3871,14 +3768,6 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 		let TargetSpeedEvasion = target_token.actor.data.data.evasion.speed;
 
 		// roll = Math.floor(Math.random() * (20 - 1 + 1)) + 1;
-		console.log("roll.results[0] = ");
-		console.log(roll.results[0]);
-		console.log("roll.results[1] = ");
-		console.log(roll.results[1]);
-		console.log("roll.results[2] = ");
-		console.log(roll.results[2]);
-		console.log("roll.results[3] = ");
-		console.log(roll.results[3]);
 
 		if(Number(roll.results[0]-roll.results[2]) >= TargetSpeedEvasion)
 		{
@@ -4009,8 +3898,6 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 			{
 				let transitionType = 9;
 				let targetImagePath = "/item_icons/"+pokeball+".png";
-				console.log("POKEBALL targetImagePath: __________________________");
-				console.log(targetImagePath);
 				let polymorphFilterId = "pokeball";
 				let polymorph_params;
 				
@@ -4209,7 +4096,6 @@ export function PokedexScan(trainer_token, target_pokemon_token)
 export function TakeStandardAction(actor)
 {
 	let actorInjuries = actor.data.data.health.injuries;
-	console.log("actorInjuries = "+actorInjuries);
 
 	if(actorInjuries >=5)
 	{
@@ -4235,7 +4121,6 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 	let TargetMovementAtLeast7 = false;
 	let TargetLevel = target.data.data.level.current;
 
-	console.log(TargetMovementCapabilities);
 	if( (TargetMovementCapabilities["Overland"] >= 7) || (TargetMovementCapabilities["Swim"] >= 7) || (TargetMovementCapabilities["Sky"] >= 7) || (TargetMovementCapabilities["Burrow"] >= 7) || (TargetMovementCapabilities["Levitate"] >= 7) || (TargetMovementCapabilities["Teleporter"] >= 7) )
 	{
 		TargetMovementAtLeast7 = true;
@@ -4606,13 +4491,9 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 				let users = trainer.getUsers(CONST.ENTITY_PERMISSIONS.OWNER, true)
 				let non_gm_user;
 				let pokemon_parent_actor = game.actors.get(target_token.data.actorId);
-				console.log("pokemon_parent_actor.data.permission");
-				console.log(pokemon_parent_actor.data.permission);
 
 				for(let user in users)
 				{
-					console.log("users[user]");
-					console.log(users[user]);
 					if(users[user].data.role < 4)
 					{
 						non_gm_user = users[user];
@@ -4621,9 +4502,6 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 				}
 
 				game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.id]: CONST.ENTITY_PERMISSIONS.OWNER}});
-
-				console.log("pokemon_parent_actor.data.permission");
-				console.log(pokemon_parent_actor.data.permission);
 
 				setTimeout(() => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
 				setTimeout(() => {  
@@ -4767,17 +4645,6 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 			{
 				if((item.type == "edge" || item.type == "feat") && item.name == alternate_commanding_skill_feature)
 				{
-					console.log(item.name);
-					console.log(alternate_commanding_skill_feature);
-					console.log('alternate_commanding_skill_features[alternate_commanding_skill_feature]');
-					console.log(alternate_commanding_skill_features[alternate_commanding_skill_feature]);
-					console.log('trainer_actor.data.data.skills.'+alternate_commanding_skill_features[alternate_commanding_skill_feature]);
-					console.log(
-						eval(
-							'trainer_actor.data.data.skills.'+alternate_commanding_skill_features[alternate_commanding_skill_feature]
-							)
-					);
-
 					if(eval(
 						'trainer_actor.data.data.skills.'+alternate_commanding_skill_features[alternate_commanding_skill_feature]
 						).value > commanding_skill_rank)
@@ -4795,8 +4662,6 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 		let dieModifier = (trainer_actor.data.data.skills[commanding_skill].modifier);
 
 		let roll= new Roll(`${numDice}${dieSize}+${dieModifier}`).roll()
-		console.log("COMMANDING SKILL ROLL! ----------------");
-		console.log(roll);
 		roll.toMessage(
 			{flavor: `${trainer_actor.name} attempts a ${commanding_skill} check to control a disloyal pokemon.`,
 			speaker: ChatMessage.getSpeaker({token: trainer_actor}),}
@@ -4832,11 +4697,8 @@ export async function ShowPokeballMenu(actor)
 		}
 	}
 
-	console.log(pokeball_inventory);
-
 	for(let pokeball of pokeball_inventory)
 	{
-		console.log(pokeball);
 		let pokeball_image = "";
 		let pokeball_count = pokeball.data.quantity;
 
@@ -4862,18 +4724,6 @@ export async function ShowPokeballMenu(actor)
 			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +"; padding-left: 0px ;width:167px;height:"+Number(ButtonHeight)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:2px'>"+pokeball.name+" ("+pokeball_count+")</div>"+"</h3>"+pokeball_image+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+"</h6>"+"</div></center>",
 			callback: async () => {
 
-				// let key_shift = keyboard.isDown("Shift");
-				// if (key_shift) 
-				// {
-				// 	console.log("KEYBOARD SHIFT IS DOWN!");
-				// 	rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
-				// }
-				// else
-				// {
-				// 	game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
-				// }
-				console.log("target_pokemon_token.actor.data.data.owner");
-				console.log(target_pokemon_token.actor.data.data.owner);
 				if(!target_pokemon_token || target_pokemon_token.actor.data.type != "pokemon" || target_pokemon_token.actor.data.data.owner != "0")
 				{
 					ui.notifications.warn("You must target an unowned Pokemon to throw a Pokeball");
@@ -4923,8 +4773,6 @@ export async function ShowInventoryMenu(actor)
 	if(!target)
 	{
 		target = game.actors.get(actor.id).getActiveTokens()[0];
-		console.log("NO TARGET, SELECTING ACTOR________________");
-		console.log(target);
 	}
 
 	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor);
@@ -4948,11 +4796,8 @@ export async function ShowInventoryMenu(actor)
 		}
 	// }
 
-	console.log(item_inventory);
-
 	for(let inventory_item of item_inventory)
 	{
-		console.log(inventory_item);
 		let item_base_image = await game.PTUMoveMaster.GetItemArt(inventory_item.name);
 		let item_image = "";
 		let item_count = inventory_item.data.quantity;
@@ -5284,24 +5129,312 @@ export function ShowStruggleMenu(actor)
 
 	console.log(struggle_list);
 
+	let struggle_buttons = {};
+
+	let target = Array.from(game.user.targets)[0];
+	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
+
+	var currentType;
+	var currentCategory;
+	let currentlabel;
+	let currentMoveTypeLabel;
+	let currentDamageBase;
+	let currentRange;
+	let currentMoveRangeIcon = "";
+	let effectivenessBackgroundColor = "lightgrey";
+	var effectivenessTextColor = "black";
+	let currentEffectivenessLabel = "x1";
+	var effectivenessText = "";
+	let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+	let STABBorderImage = "";
+	let DBBorderImage = "";
+	let finalDB;
+
+	let currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+
+	struggle_buttons["backToMainSidebar"] = {id:"backToMainSidebar", label: "🔙",
+			callback: async () => {
+
+				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				PTUAutoFight().ChatWindow(actor);
+				}
+			};
+
 	for(let struggle in struggle_list)
 	{
 		console.log(struggle);
+
+		currentType=struggle_list[struggle]["Type"];
+		currentCategory=struggle_list[struggle]["Class"];
+		currentlabel = struggle;
+		currentMoveTypeLabel = struggle_list[struggle]["Type"];
+		currentDamageBase = struggle_list[struggle]["DB"];
+		currentRange = struggle_list[struggle]["Range"];
+		currentMoveRangeIcon = "";
+		effectivenessBackgroundColor = "lightgrey";
+		effectivenessTextColor = "black";
+		currentEffectivenessLabel = "x1";
+		effectivenessText = "";
+		effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+		STABBorderImage = "";
+		finalDB = currentDamageBase;
+		DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+finalDB+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
+
+		currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
+
+		if(!target)
+		{
+			target = game.actors.get(actor.id).getActiveTokens()[0];
+		}
+
+		if(target.actor.data.data.effectiveness)
+		{
+			effectiveness = target.actor.data.data.effectiveness.All;
+		}
+		
+		if(currentCategory == "Physical" || currentCategory == "Special")
+		{
+			if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(currentDamageBase)) && (currentDamageBase != "") && effectiveness)
+			{
+				if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+				{
+					currentEffectivenessLabel = " (x"+effectiveness[currentType]+")";
+					if (effectiveness[currentType] == 0.5)
+					{
+						effectivenessBackgroundColor = "#cc6666";
+					}
+					else if (effectiveness[currentType] == 1)
+					{
+						effectivenessBackgroundColor = "white";
+						effectivenessTextColor = "black";
+					}
+					else if (effectiveness[currentType] == 0.25)
+					{
+						effectivenessBackgroundColor = "red";
+						effectivenessTextColor = "white";
+					}
+					else if (effectiveness[currentType] == 0)
+					{
+						effectivenessBackgroundColor = "black";
+						effectivenessTextColor = "white";
+					}
+					else if (effectiveness[currentType] < 0.25)
+					{
+						effectivenessBackgroundColor = "darkred";
+						effectivenessTextColor = "white";
+					}
+					else if (effectiveness[currentType] == 1.5)
+					{
+						effectivenessBackgroundColor = "#6699cc";//"#3399ff";
+						effectivenessTextColor = "black";
+					}
+					else if (effectiveness[currentType] > 1.5)
+					{
+						effectivenessBackgroundColor = "blue";
+						effectivenessTextColor = "white";
+					}
+					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
+					{
+						effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[currentType].toString())+"</span>";
+					}
+				}
+			}
+
+			currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + currentType + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+			if(currentType == "Untyped" || currentType == "" || currentType == null)
+			{
+				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+			}
+
+			let currentMoveRange = currentRange;
+			console.log("DEBUG: currentMoveRange");
+			console.log(currentMoveRange);
+
+			let currentMoveFiveStrike = false;
+			let currentMoveDoubleStrike = false;
+
+			if (currentMoveRange != "")
+			{
+				if(currentMoveRange.search("See Effect") > -1)
+				{
+					currentMoveRangeIcon = currentMoveRange;
+				}
+				else if(currentMoveRange.search("Blessing") > -1)
+				{
+					currentMoveRangeIcon = BlessingIcon + currentMoveRange.slice(currentMoveRange.search("Blessing")+9).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Self") > -1)
+				{
+					currentMoveRangeIcon = SelfIcon + currentMoveRange.slice(currentMoveRange.search("Self")+5).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Burst") > -1)
+				{
+					currentMoveRangeIcon = BurstIcon + currentMoveRange.slice(currentMoveRange.search("Burst")+6).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Cone") > -1)
+				{
+					currentMoveRangeIcon = ConeIcon + currentMoveRange.slice(currentMoveRange.search("Cone")+5).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Line") > -1)
+				{
+					currentMoveRangeIcon = LineIcon + currentMoveRange.slice(currentMoveRange.search("Line")+5).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Close Blast") > -1)
+				{
+					currentMoveRangeIcon = MeleeIcon+BlastIcon + currentMoveRange.slice(currentMoveRange.search("Close Blast")+9).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Ranged Blast") > -1)
+				{
+					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")) + BlastIcon + currentMoveRange.slice(currentMoveRange.search("Ranged Blast")+13).replace(/[, ]+/g, " ").trim();
+				}
+				else if(currentMoveRange.search("Melee") > -1)
+				{
+					currentMoveRangeIcon = MeleeIcon;
+				}
+				else
+				{
+					currentMoveRangeIcon = RangeIcon + currentMoveRange.slice(0, currentMoveRange.search(",")).replace(/[, ]+/g, " ").trim();
+				}
+
+				if(currentMoveRange.search("Healing") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Healing", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Healing", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + HealingIcon;
+				}
+
+				if(currentMoveRange.search("Friendly") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Friendly", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Friendly", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FriendlyIcon;
+				}
+
+				if(currentMoveRange.search("Sonic") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Sonic", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Sonic", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + SonicIcon;
+				}
+
+				if(currentMoveRange.search("Interrupt") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Interrupt", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Interrupt", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + InterruptIcon;
+				}
+				
+				if(currentMoveRange.search("Shield") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Shield", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Shield", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + ShieldIcon;
+				}
+
+				if(currentMoveRange.search("Trigger") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Trigger", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Trigger", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + TriggerIcon;
+				}
+
+				if(currentMoveRange.search("Social") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Social", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Social", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + SocialIcon;
+				}
+
+				if(currentMoveRange.search("Five Strike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Five Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Five Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Fivestrike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Fivestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Fivestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + FiveStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Double Strike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Double Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Double Strike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+				}
+
+				if(currentMoveRange.search("Doublestrike") > -1)
+				{
+					currentMoveRange = currentMoveRange.replace("Doublestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon.replace("Doublestrike", "");
+					currentMoveRangeIcon = currentMoveRangeIcon + " " + DoubleStrikeIcon;
+				}
+			}
+		}
+
+		let created_move_item = {
+			name:struggle,
+			data:{
+				ac: struggle_AC,
+				category: currentCategory,
+				damageBase: struggle_DB,
+				effect: "--",
+				frequency: "At-Will",
+				name: struggle,
+				range: currentRange,
+				type: currentType
+			}
+		};
+		let this_actor = canvas.tokens.controlled[0].actor;
+
+		var moveSoundFile = ("struggle.mp3");
+
+		struggle_buttons[struggle] = {
+			noRefresh: false,
+			id: struggle,
+			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+			callback: async () => {
+
+				if(!game.PTUMoveMaster.ThisPokemonsTrainerCommandCheck(this_actor))
+				{
+					game.PTUMoveMaster.chatMessage(this_actor, "But they did not obey!")
+					return;
+				}
+				let key_shift = keyboard.isDown("Shift");
+				if (key_shift) 
+				{
+					console.log("KEYBOARD SHIFT IS DOWN!");
+					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, finalDB, false);
+				}
+				else
+				{
+					game.PTUMoveMaster.RollDamageMove(this_actor, created_move_item, finalDB, false, 0);
+				}
+
+				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+			}
+		};
 	}
+
+	console.log("______________ STRUGGLE BUTTONS ______________");
+	console.log(struggle_buttons);
+
+
+	let background_field = 'background-image: url("background_fields/BG_Field.png"); background-repeat: repeat-x; background-position: left bottom';
+
+	let dialogueID = "ptu-sidebar";
+	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2></div></center>";
+	let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons: struggle_buttons, dialogueID});
+	sidebar.render(true);
 }
 
 
 export async function UseInventoryItem(actor_token, target_token, inventory_item)
 {
-	// console.log("actor_token = ");
-	// console.log(actor_token);
-
-	// console.log("target_token = ");
-	// console.log(target_token);
-
-	// console.log("inventory_item = ");
-	// console.log(inventory_item);
-
 	let item_properties = {
 		"Blank Template":	{
 			"healing":			0,
@@ -5433,7 +5566,6 @@ export async function GetItemArt(item_name)
 {
 	let item_base_image = ("item_icons/"+item_name+".webp");
     let result = await fetch(item_base_image);
-	console.log(result.status);
 	if(result.status === 404) 
 	{
 		item_base_image = ("item_icons/"+item_name+".png");
@@ -5547,11 +5679,6 @@ export function GetTargetTypingHeader(target, actor)
 
 export async function ExpendItem(owning_actor, item_object) 
 {
-	console.log("EXPENDING ITEM: ");
-	console.log(item_object);
-
-	console.log(duplicate(item_object).name);
-
 	if(item_object.data.quantity < 1)
 	{
 		ui.notifications.warn("You do not have any of this item left to use!");

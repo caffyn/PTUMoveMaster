@@ -27,11 +27,11 @@ export class SidebarForm extends FormApplication {
             obj.setPosition({left: $(window).width() - 515})
         })
 
-        console.log("______________this.object_______________");
-        console.log(this.object);
+        // console.log("______________this.object_______________");
+        // console.log(this.object);
 
-        console.log("______________this.object.buttons_______________");
-        console.log(this.object.buttons);
+        // console.log("______________this.object.buttons_______________");
+        // console.log(this.object.buttons);
         // Return data
         return {
             // isGM: game.user.isGM,
@@ -62,10 +62,10 @@ export class SidebarForm extends FormApplication {
 	 */
 	_onClickButton(event) {
         const id = event.currentTarget.dataset.button;
-        console.log("___________ event _________________");
-        console.log(event);
-        console.log("___________ event.currentTarget _________________");
-        console.log(event.currentTarget);
+        // console.log("___________ event _________________");
+        // console.log(event);
+        // console.log("___________ event.currentTarget _________________");
+        // console.log(event.currentTarget);
         const button = this.object.buttons[id];
         this.submit(button);
       }
@@ -80,8 +80,12 @@ export class SidebarForm extends FormApplication {
         try {
           if (button.callback) button.callback(this.options.jQuery ? this.element : this.element[0]);
           //this.close(true);
-          let current_actor = canvas.tokens.controlled[0].actor;
-          setTimeout(() => {  PTUAutoFight().ChatWindow(current_actor); }, 100);
+
+          if(!button.noRefresh)
+          {
+            let current_actor = canvas.tokens.controlled[0].actor;
+            setTimeout(() => {  PTUAutoFight().ChatWindow(current_actor); }, 100);
+          }
           
         } catch(err) {
           ui.notifications.error(err);
