@@ -4,8 +4,9 @@
   max-height: 50px;
 }
 
-body.sidebar-tab.dark-theme .tabs .item {
-  width:20px;
+#sidebar-tabs.dark-theme > .item {
+  /* width: 20px !important; */
+  flex: 0 0 24px !important;
 }
 
 .ptu-sidebar .window-header {
@@ -160,3 +161,7 @@ body.messages-dark-theme .chat-controls .roll-type-select {
 /* #chat-message .message {
   padding:0px !important;
 } */
+
+#chat-log.dark-theme {
+  margin-bottom: 5px;
+}
