@@ -1,5 +1,4 @@
 {{#if move}}
-
 <div class="content flexrow pt-1" style="font-variant: normal; padding: 0px ! important;">
     <div class="swsh-box">
         <div class="swsh-header" style="border-bottom: 0px solid #272727; text-align: center; padding: 0px ! important; background-color: #b3b3b3;">
@@ -10,11 +9,11 @@
         
 
 
-        <div class="swsh-header" style="padding: 0px ! important;background-color: #b3b3b3;">
+        <div class="swsh-header" style="padding: 0px ! important; background-color:#272727 ! important;">
             {{#if isAbility}}
                 <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/Ability.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
             {{else}}
-                <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important;background-color: #b3b3b3;">
+                <div class="d-flex w-100 mt-0 mb-0 h-100" style="padding: 0px ! important; background-color:#272727 ! important;">
                     <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/{{move.category}}.png" style="width: 124px; height: auto; padding: 0px ! important;"></span></div>
                 {{#if isUntyped}}
                     <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/UntypedIC.png" style="width: 124px; height: auto; padding: 0px ! important;"></span></div>
@@ -46,7 +45,7 @@
         {{#if hasAC}}
         <div class="swsh-header" style="padding: 0px ! important;background-color: #b3b3b3;">
             <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important;">
-                <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/AttackDivider_Blend50.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                <div class="col" style="padding: 0px ! important; background-color:#272727 ! important;"><span class="type-img" style=" background-color:#272727 ! important;"><img src="/modules/PTUMoveMaster/images/icons/AttackDivider_Blend50.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
             </div>
         </div>
         {{/if}}
@@ -135,20 +134,20 @@
             
             {{#if damageRoll}}
             </div>
-                <div class="swsh-header" style="padding: 0px ! important; background-color: #b3b3b3;">
-                    <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important; background-color: #b3b3b3;">
-                        <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DamageDivider_Blend50.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                <div class="swsh-header" style="padding: 0px ! important;  background-color:#272727 ! important;">
+                    <div class="d-flex w-100 mt-1 mb-0 h-100" style="padding: 0px ! important; background-color:#272727 ! important;">
+                        <div class="col" style="padding: 0px ! important; background-color:#272727 ! important;"><span class="type-img" style=" background-color:#272727 ! important;"><img src="/modules/PTUMoveMaster/images/icons/DamageDivider_Blend50.png" style="width: 248px; height: auto; padding: 0px ! important; background-color:#272727 ! important;"></span></div>
                     </div>
                 </div>
             
                 {{#if hasSTAB}}
                 {{#if damageRoll}}
-                    <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border_Roll.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                    <div class="col" style="padding: 0px ! important; background-color:#272727 ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border_Roll.png" style="width: 248px; height: auto; padding: 0px ! important; background-color:#272727 ! important;"></span></div>
                 {{/if}}
                 {{/if}}
 
                 {{#if damageRoll}}
-                    <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB{{finalDB}}.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+                    <div class="col" style="padding: 0px ! important; background-color:#272727 ! important;"><span class="type-img" style=" background-color:#272727 ! important;"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB{{finalDB}}.png" style="width: 248px; height: auto; padding: 0px ! important; background-color:#272727 ! important;"></span></div>
                 {{/if}}
 
                 
@@ -250,7 +249,7 @@
             {{/if}}
 
         </div>
-    <div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/EffectDivider_Blend50.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
+    <div class="col" style="padding: 0px ! important; background-color:#272727 ! important;"><span class="type-img" style=" background-color:#272727 ! important;"><img src="/modules/PTUMoveMaster/images/icons/EffectDivider_Blend50.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>
 
             <div class="swsh-body col-sm-12" style="background-color: #b3b3b3;">
                 <div class="d-flex w-100 mt-1 mb-1 fs-11" style="align-items: center;text-align: center; background-color: #b3b3b3;">

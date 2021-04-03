@@ -92,7 +92,18 @@ function _loadModuleSettings() {
 		type: Boolean,
 		default: true
 	});
+
+	game.settings.register("PTUMoveMaster", "useAlternateChatStyling", {
+		name: "Player Setting: Styles the chat to have (what I think is) a more readable font, compact size, and low-contrast look.",
+		hint: "Disable this if you are having compatibility issues with the chat pane styling, or if you just don't like it.",
+		scope: "client",
+		config: true,
+		type: Boolean,
+		default: true
+	});
 } 
+
+var MoveMasterSidebar;
 
 Hooks.once('init', async function() 
 {
@@ -138,13 +149,65 @@ Hooks.once('init', async function()
 		ThisPokemonsTrainerCommandCheck,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
+		MoveMasterSidebar
 	};
 
-	let sidebar = new game.PTUMoveMaster.SidebarForm();
-	sidebar.render(true);
-	//debug(sidebar);
+	Handlebars.registerHelper('ifeq', function (a, b, options) {
+		if (a == b) { return options.fn(this); }
+		return options.inverse(this);
+	});
+	
+	Handlebars.registerHelper('ifnoteq', function (a, b, options) {
+		if (a != b) { return options.fn(this); }
+		return options.inverse(this);
+	});
+
+	Handlebars.registerHelper('ifincludes', function (a, b, options) {
+		if (a.includes(b)) { return options.fn(this); }
+		return options.inverse(this);
+	});
+
+
+	
 });
 
+Hooks.on("ready", async () => {
+	loadTemplates(["./modules/PTUMoveMaster/move-combined.hbs"]);
+
+	if(game.settings.get("PTUMoveMaster", "useAlternateChatStyling"))
+	{
+		$("body").addClass('messages-dark-theme');
+		$("#combat-carousel.wrapper").addClass('dark-theme');
+		$("#sidebar").addClass('dark-theme');
+	}
+	else
+	{
+		$("body").removeClass('messages-dark-theme');
+		$("#combat-carousel.wrapper").removeClass('dark-theme');
+		$("#sidebar").removeClass('dark-theme');
+	}
+
+	game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
+	game.PTUMoveMaster.MoveMasterSidebar.render(true);
+	ui.sidebar.render();
+});
+
+Hooks.on("closeSettingsConfig", async (ExtendedSettingsConfig, S) => {
+	if(game.settings.get("PTUMoveMaster", "useAlternateChatStyling"))
+	{
+		$("body").addClass('messages-dark-theme');
+		$("#combat-carousel.wrapper").addClass('dark-theme');
+		$("#sidebar").addClass('dark-theme');
+	}
+	else
+	{
+		$("body").removeClass('messages-dark-theme');
+		$("#combat-carousel.wrapper").removeClass('dark-theme');
+		$("#sidebar").removeClass('dark-theme');
+	}
+	ui.sidebar.render();
+	game.PTUMoveMaster.MoveMasterSidebar.render(true);
+});
 
 Hooks.on("updateCombat", async (combat, update, options, userId) => {
 
@@ -178,8 +241,8 @@ Hooks.on("controlToken", async (token, selected) => {
 	}
 	else
 	{
-		let sidebar = new game.PTUMoveMaster.SidebarForm();
-		sidebar.render(true);
+		game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
+		game.PTUMoveMaster.MoveMasterSidebar.render(true);
 	}
 });
 
@@ -825,13 +888,16 @@ const AlternateIconPath = "modules/PTUMoveMaster/images/icons/";
 // const DailyExpendedMark = "<img title='Daily (Ready)' src='" + AlternateIconPath + "daily_expended" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 
 
-const ResetEOTMark = "🔁⏳";
-const ResetSceneMark = "🔁❌";
-const ResetDailyMark = "🔁💤";
+// const ResetEOTMark = "🔁⏳";
+// const ResetSceneMark = "🔁❌";
+// const ResetDailyMark = "🔁💤";
 
-const AbilityIcon = "Ability: ";
+const ResetEOTMark = "<img title='Reset EOT Frequency' src='"+AlternateIconPath+"FrequencyIcon_ResetEOT.png' style='border:none; width:55px;'>";
+const ResetSceneMark = "<img title='Reset Scene Frequency' src='"+AlternateIconPath+"FrequencyIcon_ResetScene.png' style='border:none; width:55px;'>";
+const ResetDailyMark = "<img title='Reset Daily Frequency' src='"+AlternateIconPath+"FrequencyIcon_ResetDaily.png' style='border:none; width:55px;'>";
 
-
+// const AbilityIcon = "Ability: ";
+const AbilityIcon = "";
 
 const RangeIcon = "<img title='Ranged' src='" + AlternateIconPath + "ranged" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 const MeleeIcon = "<img title='Melee' src='" + AlternateIconPath + "melee" + CategoryIconSuffix + "' style='height: "+Number(RangeFontSize+RangeIconFontSizeOffset)+"px ;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
@@ -1451,6 +1517,7 @@ export function PTUAutoFight()
 
 		var typeStrategist = [];
 		var technician = false;
+		var hasPokedex = false;
 
 		for(let item of items) // START Ability Check Loop
 		{
@@ -1462,10 +1529,129 @@ export function PTUAutoFight()
 			{
 				technician = true;
 			}
+			if(item.name.search(/[Pp]ok[eé]dex/) > -1)
+			{
+				hasPokedex = true;
+			}
 		} // END Ability Check Loop
 
 		let dialogEditor;
 		var buttons={};
+
+		let menuButtonWidth = "90px";
+		let bigButtonWidth = "191px";
+
+		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
+			callback: () => {
+				game.PTUMoveMaster.ShowStruggleMenu(actor);
+			}};
+
+		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
+		callback: () => {
+			game.PTUMoveMaster.ShowManeuverMenu(actor);
+		}};
+
+		if(actor.data.type == "character")
+		{
+			buttons["itemMenu"] = {noRefresh: true, id:"itemMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
+			callback: () => {
+				game.PTUMoveMaster.ShowInventoryMenu(actor);
+			}};
+
+
+			buttons["pokeballMenu"] = {noRefresh: true, id:"pokeballMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
+			callback: async () => {
+				await game.PTUMoveMaster.ShowPokeballMenu(actor);
+			}};
+
+			if(hasPokedex)
+			{
+				buttons["pokedexScanBigButton"] = {id:"pokedexScanBigButton", label: "<center><div style='background-color:none;color:black;border-bottom:2px solid black;width:"+bigButtonWidth+";height:35px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"<img title='Pokedex Scan!' src='"+AlternateIconPath+"Gen_I_dex.png' style='height:33px; border:none'></div></center>",
+				callback: async () => {
+					let trainer_tokens = actor.getActiveTokens();
+					let actor_token = trainer_tokens[0];
+					await game.PTUMoveMaster.PokedexScan(actor_token, target);
+				}};
+			}
+			else
+			{
+				buttons["pokedexScanBigButton"] = {noRefresh:true, id:"pokedexScanBigButton", label: "<center><div style='background-color:none;color:black;border-bottom:2px solid black;width:"+bigButtonWidth+";height:35px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"<img title='No Pokedex to Use' src='"+AlternateIconPath+"Gen_I_dex_No.png' style='height:33px; border:none'></div></center>",
+				callback: async () => {
+					ui.notifications.warn("You have no Pokedex in your inventory!");
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+			}};
+			}
+			
+		}
+		else if(actor.data.data.owner!= "0")
+		{
+			let trainer_token_on_field 
+			
+			if(game.actors.get(actor.data.data.owner))
+			{
+				trainer_token_on_field = ((game.actors.get(actor.data.data.owner)).getActiveTokens().slice(-1)[0]);
+			}
+			if(trainer_token_on_field)
+			{
+				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+bigButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"🔎 Select Trainer 🔍"+"</div></center>",
+				callback: () => {
+			
+					trainer_token_on_field.control(true);
+					//PerformStruggleAttack ("Normal", "Physical");
+			
+				}};
+			}
+			else
+			{
+				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<center><div style='background-color:lightred;color:black;border:2px solid black;width:"+bigButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"❌ Trainer Unavailable ❌"+"</div></center>",
+				callback: () => {
+			
+					ui.notifications.warn("Trainer is not on the field.")
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, false);
+				}};
+			}
+		}
+
+		buttons["abilityDivider"] = {noRefresh: true, id:"abilityDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Abilities.png' style='border:none; width:200px;'>",
+		callback: () => {
+
+		}};
+	
+
+		for(let item of items)
+		{
+			var currenttype = item.type;
+			var currentid=item._id;
+			var currentlabel=item.data.name;
+
+			if(currenttype=="ability")
+			{
+				var currentlabel=item.name;
+				var respdata=item.data;
+				respdata['category']='details';
+				buttons[currentid]={id:currentid, label: "<center><div style='background-color: #333333; color:#cccccc; border-left:5px solid darkgray; width:200px; height:25px;font-size:20px;font-family:Modesto Condensed;line-height:1.4'>"+AbilityIcon+currentlabel+"</div></center>",
+					callback: async () => {
+						
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+
+
+						
+						sendMoveMessage({
+							move: item.data,
+							templateType: MoveMessageTypes.DETAILS,
+							category: "details", 
+							hasAC: (!isNaN(item.data.ac)),
+							isAbility: true
+						});
+				}
+				}
+			}
+		}
+
+		buttons["statusDivider"] = {noRefresh: true, id:"statusDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Moves.png' style='border:none; width:200px;'>",
+		callback: () => {
+
+		}};
 
 		for(let item of items) // START STATUS MOVE LOOP
 		{
@@ -2511,97 +2697,6 @@ export function PTUAutoFight()
 			i++;
 		} // END DAMAGE MOVE LOOP
 
-		let menuButtonWidth = "200px";
-
-		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
-			callback: () => {
-				game.PTUMoveMaster.ShowStruggleMenu(actor);
-			}};
-
-		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
-		callback: () => {
-			game.PTUMoveMaster.ShowManeuverMenu(actor);
-		}};
-
-		if(actor.data.type == "character")
-		{
-			buttons["itemMenu"] = {noRefresh: true, id:"itemMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
-			callback: () => {
-				game.PTUMoveMaster.ShowInventoryMenu(actor);
-			}};
-
-
-			buttons["pokeballMenu"] = {noRefresh: true, id:"pokeballMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
-			callback: async () => {
-				await game.PTUMoveMaster.ShowPokeballMenu(actor);
-			}};
-
-			buttons["pokedexScan"] = {id:"pokedexScan", label: "<center><div style='background-color:darkred;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"Pokedex Scan!"+"</div></center>",
-			callback: async () => {
-				let trainer_tokens = actor.getActiveTokens();
-				let actor_token = trainer_tokens[0];
-				await game.PTUMoveMaster.PokedexScan(actor_token, target);
-			}};
-		}
-		else if(actor.data.data.owner!= "0")
-		{
-			let trainer_token_on_field 
-			
-			if(game.actors.get(actor.data.data.owner))
-			{
-				trainer_token_on_field = ((game.actors.get(actor.data.data.owner)).getActiveTokens().slice(-1)[0]);
-			}
-			if(trainer_token_on_field)
-			{
-				buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"🔎 Select Trainer 🔍"+"</div></center>",
-				callback: () => {
-			
-					trainer_token_on_field.control(true);
-					//PerformStruggleAttack ("Normal", "Physical");
-			
-				}};
-			}
-			else
-			{
-				buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<center><div style='background-color:lightred;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"❌ Trainer Unavailable ❌"+"</div></center>",
-				callback: () => {
-			
-					ui.notifications.warn("Trainer is not on the field.")
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, false);
-				}};
-			}
-		}
-
-		for(let item of items)
-		{
-			var currenttype = item.type;
-			var currentid=item._id;
-			var currentlabel=item.data.name;
-
-			if(currenttype=="ability")
-			{
-				var currentlabel=item.name;
-				var respdata=item.data;
-				respdata['category']='details';
-				buttons[currentid]={id:currentid, label: "<center><div style='background-color:gray;color:black;border:2px solid darkgray;width:200px;height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+AbilityIcon+currentlabel+"</div></center>",
-					callback: async () => {
-						
-						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-
-
-						
-						sendMoveMessage({
-							move: item.data,
-							templateType: MoveMessageTypes.DETAILS,
-							category: "details", 
-							hasAC: (!isNaN(item.data.ac)),
-							isAbility: true
-						});
-				}
-				}
-			}
-		}
-
 
 		buttons["resetEOT"] = {id:"resetEOT", label: ResetEOTMark,
 			callback: async () => {
@@ -2676,7 +2771,10 @@ export function PTUAutoFight()
 				}
 			};
 
+		buttons["refreshersDivider"] = {noRefresh: true, id:"refreshersDivider", label: "<img src='"+AlternateIconPath+"Divider.png' style='border:none; width:200px;'>",
+		callback: () => {
 
+		}};
 
 		let dialogueID = "ptu-sidebar";
 		// let dialogOptions = game.users.filter(u => u.data.role < 3).map(u => `<option value=${u.id}> ${u.data.name} </option>`).join(``);
@@ -2688,7 +2786,7 @@ export function PTUAutoFight()
 		// },{id: dialogueID});
 		
 		let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2></div></center>";
-		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID});
+		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID, classes: "ptu-sidebar"});
 		
 		sidebar.render(true);
 		//dialogEditor.render(true, {"left":500, "top":500, "width":200, "height":1000,});
@@ -5157,7 +5255,7 @@ export function ShowStruggleMenu(actor)
 
 	let currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 
-	struggle_buttons["backToMainSidebar"] = {id:"backToMainSidebar", label: "🔙",
+	struggle_buttons["backToMainSidebar"] = {noRefresh:true, id:"backToMainSidebar", label: "🔙",
 			callback: async () => {
 
 				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
@@ -5433,8 +5531,8 @@ export function ShowStruggleMenu(actor)
 
 	let dialogueID = "ptu-sidebar";
 	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2>"+ targetTypingText+"</h2></div></center>";
-	let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons: struggle_buttons, dialogueID});
-	sidebar.render(true);
+	game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({content, buttons: struggle_buttons, dialogueID, classes: "ptu-sidebar"});
+	game.PTUMoveMaster.MoveMasterSidebar.render(true);
 }
 
 
