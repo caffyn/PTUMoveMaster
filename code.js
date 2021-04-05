@@ -101,6 +101,22 @@ function _loadModuleSettings() {
 		type: Boolean,
 		default: true
 	});
+
+	game.settings.register("PTUMoveMaster", "currentWeather", {
+		name: "Current Weather",
+		hint: "This is usually set via internal scripts, but it's exposed here if you need to change it manually.",
+		scope: "world",
+		config: true,
+		type: String,
+		choices: {
+		  "Clear": "Clear Weather is the default weather, conferring no innate bonuses or penalties of any sort.",
+		  "Sunny": "While Sunny, Fire-Type Attacks gain a +5 bonus to Damage Rolls, and Water-Type Attacks suffer a -5 Damage penalty.",
+		  "Rainy": "While Rainy, Water-Type Attacks gain a +5 bonus to Damage Rolls, and Fire-Type Attacks suffer a -5 Damage penalty.",
+		  "Hail": "While it is Hailing, all non-Ice Type Pokémon lose a Tick of Hit Points at the beginning of their turn.",
+		  "Sandstorm": "While it is Sandstorming, all non-Ground, Rock, or Steel Type Pokémon lose a Tick of Hit Points at the beginning of their turn.",
+		},
+		default: "Clear"
+	  });
 } 
 
 var MoveMasterSidebar = {};
@@ -147,6 +163,10 @@ Hooks.once('init', async function()
 		cureActorAffliction,
 		ResetStagesToDefault,
 		ThisPokemonsTrainerCommandCheck,
+		GetCurrentWeather,
+		damageActorTick,
+		healActorTick,
+		SetCurrentWeather,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar
@@ -221,12 +241,92 @@ Hooks.on("closeSettingsConfig", async (ExtendedSettingsConfig, S) => {
 
 Hooks.on("updateCombat", async (combat, update, options, userId) => {
 
-	let current_token = game.combat.current.tokenId;
-	let current_token_species = canvas.tokens.get(current_token).actor.data.data.species;
-
-	if(current_token_species)
+	if(userId != game.user._id)
 	{
-		game.ptu.PlayPokemonCry(current_token_species);
+		return;
+	}
+
+	let this_round = combat.current.round;
+	let this_turn = combat.current.turn;
+	let previous_round = options.prevRound;
+	let previous_turn = options.prevTurn;
+	
+
+	if( (this_turn != (previous_turn+1)) && (this_round != (previous_round+1)) )
+	{
+		return;
+	}
+
+	console.log("combat");
+	console.log(combat);
+
+	console.log("update");
+	console.log(update);
+
+	console.log("options");
+	console.log(options);
+
+	console.log("userId");
+	console.log(userId);
+
+	if (!("turn" in update)) {
+        return;
+    }
+	if(options.diff)
+		{
+		let current_token = game.combat.current.tokenId;
+		let current_actor = canvas.tokens.get(current_token).actor;
+		let current_token_species = current_actor.data.data.species;
+		let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
+		let actor_type_1 = "Untyped";
+		let actor_type_2 = "Untyped";
+
+		console.log("currentWeather");
+		console.log(currentWeather);
+
+		if(current_token_species)
+		{
+			game.ptu.PlayPokemonCry(current_token_species);
+		}
+
+		if(current_actor.data.data.typing)
+		{
+			actor_type_1 = current_actor.data.data.typing[0];
+			actor_type_2 = current_actor.data.data.typing[1];
+
+			console.log("actor_type_1");
+			console.log(actor_type_1);
+			console.log("actor_type_2");
+			console.log(actor_type_2);
+		}
+
+		setTimeout(() => {
+
+			if(currentWeather == "Sandstorm")
+			{
+				if(actor_type_1 != "Ground" && actor_type_1 != "Rock" && actor_type_1 != "Steel" && actor_type_2 != "Ground" && actor_type_2 != "Rock" && actor_type_2 != "Steel")
+				{
+					game.PTUMoveMaster.damageActorTick(current_actor, "Sandstorm");
+				}
+				else
+				{
+					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' is immune to the Sandstorm\'s effects!');
+				}
+			}
+
+			if(currentWeather == "Hail")
+			{
+				if(actor_type_1 != "Ice" && actor_type_2 != "Ice")
+				{
+					game.PTUMoveMaster.damageActorTick(current_actor, "Hail");
+				}
+				else
+				{
+					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' is immune to the Hail\'s effects!');
+				}
+			}
+
+		}, 800);
 	}
 });
 
@@ -660,7 +760,8 @@ var move_stage_changes = {
 		"pct-self-damage": 0,
 		"recoil": 0,
 		"crit-range": 20,
-		"effect-range": 20
+		"effect-range": 20,
+		"weather": "Clear"
 	},
 	"Calm Mind"  :   {
 		"spatk" : 1,
@@ -868,6 +969,21 @@ var move_stage_changes = {
 		"roll-trigger": 15,
 		"def"   : 1,
 	},
+	"Hail"  :   {
+		"weather"   : "Hail"
+	},
+	"Sunny Day"  :   {
+		"weather"   : "Sunny"
+	},
+	"Defog"  :   {
+		"weather"   : "Clear"
+	},
+	"Sandstorm"  :   {
+		"weather"   : "Sandstorm"
+	},
+	"Rain Dance"  :   {
+		"weather"   : "Rainy"
+	},
 };
 
 const ButtonHeight = 100;
@@ -945,7 +1061,7 @@ const stat_up_sound_file = "Stat%20Rise%20Up.mp3";
 const stat_zero_sound_file = "Stat%20Fall%20Down.mp3";
 const stat_down_sound_file = "Stat%20Fall%20Down.mp3";
 const heal_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
-const damage_sound_file = "In-Battle%20Held%20Item%20Activate.mp3";
+const damage_sound_file = "Hit%20Weak%20Not%20Very%20Effective.mp3";
 
 const PhysicalIcon = "Physical.png";
 const SpecialIcon = "Special.png";
@@ -1395,6 +1511,55 @@ export function PTUAutoFight()
 				var postEffectNotes = "";
 				var extraDRNotes = "";
 	
+				let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+	
+				if(token.actor.data.data.effectiveness)
+				{
+					effectiveness = token.actor.data.data.effectiveness.All;
+				}
+	
+				let this_moves_effectiveness = effectiveness[damage_type];
+				if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
+				{
+					this_moves_effectiveness = 1;
+					damage_type = "Untyped";
+				}
+
+				// for(let item in token.actor.items)
+				// {
+				// 	console.log("FILTER PLAYTEST DEBUG: item: ");
+				// 	console.log(item);
+				// 	if(item.type == "ability")
+				// 	{
+				// 		console.log("FILTER PLAYTEST DEBUG: item.name: ");
+				// 		console.log(item.name);
+				// 		if(item.name == "Filter")
+				// 		{ // Resist super effective by 1 stage
+				// 			if(this_moves_effectiveness == 1.5)
+				// 			{
+				// 				this_moves_effectiveness = 1.25;
+				// 			}
+				// 			else if(this_moves_effectiveness == 2)
+				// 			{
+				// 				this_moves_effectiveness = 1.5;
+				// 			}
+				// 		}
+				// 		if(item.name == "Filter [Playtest]")
+				// 		{
+				// 			console.log("FILTER PLAYTEST DEBUG: this_moves_effectiveness");
+				// 			console.log(this_moves_effectiveness);
+				// 			if(this_moves_effectiveness >= 1.5)
+				// 			{ // +5 DR vs super effective
+				// 				extraDR = Number(Number(extraDR) + Number(5));
+				// 				extraDRSource = extraDRSource + "Filter [Playtest], ";
+				// 				console.log("FILTER PLAYTEST DEBUG: Extra DR");
+				// 				console.log(extraDR);
+				// 			}
+				// 		}
+				// 	}
+				// }
+
+
 				if(game.combat == null)
 				{
 					var currentRound = 0;
@@ -1424,19 +1589,7 @@ export function PTUAutoFight()
 					damageSoundFile = "Hit%20Normal%20Damage.mp3";
 				}
 	
-				let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
-	
-				if(token.actor.data.data.effectiveness)
-				{
-					effectiveness = token.actor.data.data.effectiveness.All;
-				}
-	
-				let this_moves_effectiveness = effectiveness[damage_type];
-				if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
-				{
-					this_moves_effectiveness = 1;
-					damage_type = "Untyped";
-				}
+				
 				if(mode=="resist")
 				{
 					flavor+="(resisted 1 step) "
@@ -2128,6 +2281,10 @@ export function PTUAutoFight()
 										{
 											damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 										}
+										if(move_stage_changes[searched_move]["weather"] != null)
+										{
+											game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+										}
 									}
 									else // Effect Range Missed
 									{
@@ -2150,6 +2307,10 @@ export function PTUAutoFight()
 									if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 									{
 										damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+									}
+									if(move_stage_changes[searched_move]["weather"] != null)
+									{
+										game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
 									}
 								}
 								
@@ -2871,6 +3032,52 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 			var postEffectNotes = "";
 			var extraDRNotes = "";
 
+			let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+
+			if(token.actor.data.data.effectiveness)
+			{
+				effectiveness = token.actor.data.data.effectiveness.All;
+			}
+
+			let this_moves_effectiveness = effectiveness[damage_type];
+			if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
+			{
+				this_moves_effectiveness = 1;
+				damage_type = "Untyped";
+			}
+
+			// for(let item in token.actor.items)
+			// {
+			// 	if(item.type == "ability")
+			// 	{
+			// 		console.log("FILTER PLAYTEST DEBUG: item.name: ");
+			// 		console.log(item.name);
+			// 		if(item.name == "Filter")
+			// 		{ // Resist super effective by 1 stage
+			// 			if(this_moves_effectiveness == 1.5)
+			// 			{
+			// 				this_moves_effectiveness = 1.25;
+			// 			}
+			// 			else if(this_moves_effectiveness == 2)
+			// 			{
+			// 				this_moves_effectiveness = 1.5;
+			// 			}
+			// 		}
+			// 		if(item.name == "Filter [Playtest]")
+			// 		{
+			// 			console.log("FILTER PLAYTEST DEBUG: this_moves_effectiveness");
+			// 			console.log(this_moves_effectiveness);
+			// 			if(this_moves_effectiveness >= 1.5)
+			// 			{ // +5 DR vs super effective
+			// 				extraDR = Number(Number(extraDR) + Number(5));
+			// 				extraDRSource = extraDRSource + "Filter [Playtest], ";
+			// 				console.log("FILTER PLAYTEST DEBUG: Extra DR");
+			// 				console.log(extraDR);
+			// 			}
+			// 		}
+			// 	}
+			// }
+
 			if(game.combat == null)
 			{
 				var currentRound = 0;
@@ -2884,8 +3091,8 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 
 			if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
 			{
-				extraDR = token.actor.data.data.TypeStrategistDR;
-				extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
+				extraDR = Number(Number(extraDR) + Number(token.actor.data.data.TypeStrategistDR));
+				extraDRSource = extraDRSource + "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed + ", ";
 				extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
 			}
 
@@ -2900,19 +3107,7 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 				damageSoundFile = "Hit%20Normal%20Damage.mp3";
 			}
 
-			let effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
-
-			if(token.actor.data.data.effectiveness)
-			{
-				effectiveness = token.actor.data.data.effectiveness.All;
-			}
-
-			let this_moves_effectiveness = effectiveness[damage_type];
-			if (isNaN(this_moves_effectiveness) || this_moves_effectiveness == null)
-			{
-				this_moves_effectiveness = 1;
-				damage_type = "Untyped";
-			}
+			
 			if(mode=="resist")
 			{
 				flavor+="(resisted 1 step) "
@@ -3211,7 +3406,7 @@ export function adjustActorStage(actor, stat, change)
 export function healActorPercent(actor,pct_healing)
 {
 	let difference_to_max = Number(actor.data.data.health.max - actor.data.data.health.value);
-	let final_healing_amount = Math.min(Math.floor(pct_healing*actor.data.data.health.max), difference_to_max)
+	let final_healing_amount = Math.min(Math.floor(pct_healing*actor.data.data.health.total), difference_to_max)
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	actor.modifyTokenAttribute("health", (final_healing_amount), true, true);
@@ -3243,7 +3438,7 @@ export function setActorHealthPercent(actor, new_health_percent) // Percent expr
 {
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
-	actor.modifyTokenAttribute("health", (new_health_percent*actor.data.data.health.max), false, true);
+	actor.modifyTokenAttribute("health", (new_health_percent*actor.data.data.health.total), false, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + '\'s health was set to '+ new_health_percent*100 +'% of their max hit points!');
 }
 
@@ -3252,11 +3447,48 @@ export function damageActorPercent(actor,pct_damage)
 {
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
-	let finalDamage = (Math.floor(pct_damage*actor.data.data.health.max));
+	let finalDamage = (Math.floor(pct_damage*actor.data.data.health.total));
 
 	actor.modifyTokenAttribute("health", -finalDamage, true, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took damage equal to '+ pct_damage*100 +'% of their max hit points!');
 	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
+}
+
+
+export function damageActorTick(actor, source="")
+{
+	let tick_DR = 0;
+
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	let finalDamage = Math.max((Math.floor(0.10*actor.data.data.health.total)) - tick_DR, 0);
+	let source_string = "";
+
+	if(source != "")
+	{
+		source_string = " from "+source;
+	}
+
+	actor.modifyTokenAttribute("health", -finalDamage, true, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a tick of damage ('+ finalDamage +' Hit Points)'+source_string+'!');
+	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
+}
+
+
+export function healActorTick(actor, source="")
+{
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	let finalhealing = (Math.floor(0.10*actor.data.data.health.total));
+	let source_string = "";
+
+	if(source != "")
+	{
+		source_string = " from "+source;
+	}
+
+	actor.modifyTokenAttribute("health", finalhealing, true, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed a tick of damage ('+ finalhealing +' Hit Points)'+source_string+'!');
 }
 
 
@@ -5858,4 +6090,56 @@ export async function ExpendItem(owning_actor, item_object)
 		await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.quantity-1) });
 		return true;
 	}
+}
+
+
+export async function GetCurrentWeather()
+{
+	let currentWeather = game.settings.get("PTUMoveMaster", "currentWeather");
+	return currentWeather;
+}
+
+
+export async function SetCurrentWeather(new_weather)
+{
+	let current_weather = game.settings.get("PTUMoveMaster", "currentWeather");
+	if(current_weather == new_weather)
+	{
+		ui.notifications.info("The weather remains " + current_weather + ".");
+	}
+	else
+	{
+		game.settings.set("PTUMoveMaster", "currentWeather", new_weather);
+		ui.notifications.info("The weather changes from " + current_weather + " to " + new_weather + "!");
+
+		let FXMaster_module = game.modules.get("fxmaster");
+		if(FXMaster_module)
+		{
+			let fxmaster_weather_presets = {
+				"Clear":{  },
+				"Sunny":{ type: "embers", options: {} },
+				"Rainy":{ type: "rain", options: {} },
+				"Hail":{ type: "snowstorm", options: {speed:100, density:100, direction:25} },
+				"Sandstorm":{ type: "fog", options: {speed:100, density:50, direction:69, apply_tint:true, tint:"0xFFC675"} },
+			}
+			console.log("fxmaster_weather_presets[new_weather]");
+			console.log(fxmaster_weather_presets[new_weather]);
+
+			Hooks.call("updateWeather", [
+				fxmaster_weather_presets[new_weather]
+			]);
+			
+		}
+	}
+}
+
+
+export async function GetWeatherHeader()
+{
+	let currentWeather = game.settings.get("PTUMoveMaster", "currentWeather");
+	let weatherHeader = "";
+
+	
+
+	return weatherHeader;
 }
