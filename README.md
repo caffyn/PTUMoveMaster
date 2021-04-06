@@ -1,5 +1,6 @@
 # PTUMoveMaster
-This is an automation assistant for Foundry PTU. 
+This is an automation assistant for Foundry PTU. (Currently this requires the *development* branch of https://github.com/dylanpiera/Foundry-Pokemon-Tabletop-United-System, not the stable release.)
+
 
 You no longer have to use the script described below! Now, just select a token and the Move Master sidebar will appear. Target a token as well to get effectiveness info (if enabled) throw pokeballs, or apply items. If you have no target, you are assumed to be targeting yourself.
 
@@ -37,6 +38,13 @@ Module GM Settings:
 
 - Automatically reset stages when ending an encounter: This will make all active combatants reset their combat stages when you end an encounter.
 
+- Use Pokeball Animation On Drag Out: Use an animated pokeball effect when dragging an owned pokemon onto a field with their trainer present. Disable this if you are having problems with the effects.
+
+- Current Weather: This is usually set via internal scripts, but it's exposed here if you need to change it manually.
+
+- Auto-skip Turns: Automatically skip turns when no actions possible, due to failing certain saves or being fainted. Disable this if you are a coward. (Or if you want to manually advance turns all the time).
 
 Module Per-Player Settings:
 - Show Effectiveness as Text: This allows players to choose whether they would prefer to see actual numbers for type effectiveness within Move Master's move buttons, as opposed to just the color of the left border. True by default.
+
+- Use Alternate Chat Styling: Styles the chat to have (what I think is) a more readable font, compact size, and low-contrast look. Disable this if you are having compatibility issues with the chat pane styling, or if you just don't like it.

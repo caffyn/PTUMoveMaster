@@ -117,6 +117,15 @@ function _loadModuleSettings() {
 		},
 		default: "Clear"
 	  });
+
+	game.settings.register("PTUMoveMaster", "autoSkipTurns", {
+		name: "GM Setting: Auto-skip turns when no actions possible, due to failing certain saves or being fainted.",
+		hint: "Disable this if you are a coward. (Or if you want to manually advance turns all the time)",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
 } 
 
 var MoveMasterSidebar = {};
@@ -165,6 +174,7 @@ Hooks.once('init', async function()
 		ThisPokemonsTrainerCommandCheck,
 		GetCurrentWeather,
 		damageActorTick,
+		damageActorFlatValue,
 		healActorTick,
 		SetCurrentWeather,
 		applyDamageWithBonus: applyDamageWithBonusDR,
@@ -235,6 +245,7 @@ Hooks.on("closeSettingsConfig", async (ExtendedSettingsConfig, S) => {
 		$("#chat-log").removeClass('dark-theme');
 	}
 	ui.sidebar.render();
+	game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
 	game.PTUMoveMaster.MoveMasterSidebar.render(true);
 
 });
@@ -250,84 +261,346 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	let this_turn = combat.current.turn;
 	let previous_round = options.prevRound;
 	let previous_turn = options.prevTurn;
-	
 
 	if( (this_turn != (previous_turn+1)) && (this_round != (previous_round+1)) )
 	{
 		return;
 	}
 
-	console.log("combat");
-	console.log(combat);
+	let current_token = game.combat.current.tokenId;
+	let current_actor = canvas.tokens.get(current_token).actor;
+	let current_token_species = current_actor.data.data.species;
+	let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
+	let actor_type_1 = "Untyped";
+	let actor_type_2 = "Untyped";
 
-	console.log("update");
-	console.log(update);
-
-	console.log("options");
-	console.log(options);
-
-	console.log("userId");
-	console.log(userId);
-
-	if (!("turn" in update)) {
-        return;
-    }
-	if(options.diff)
+	
+	if( (this_turn == 0) && (this_round == (previous_round+1)) )
+	{
+		console.log("-------- NEW ROUND TRIGGER ---------");
+		for(let combatant of game.combat.combatants)
 		{
-		let current_token = game.combat.current.tokenId;
-		let current_actor = canvas.tokens.get(current_token).actor;
-		let current_token_species = current_actor.data.data.species;
-		let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
-		let actor_type_1 = "Untyped";
-		let actor_type_2 = "Untyped";
+			let this_actor = combatant.actor;
 
-		console.log("currentWeather");
-		console.log(currentWeather);
-
-		if(current_token_species)
+			for(let effect of this_actor.effects)
+			{
+				await effect.setFlag("ptu", "roundsElapsed", Number(effect.getFlag("ptu", "roundsElapsed"))+1);
+			}
+		}
+	}
+	
+	console.log("-------- NEW TURN TRIGGER ---------");
+	let queue_turn_skip = false;
+	if(current_actor.data.flags.ptu)
+	{
+		if(current_actor.data.flags.ptu.is_paralyzed)
 		{
-			game.ptu.PlayPokemonCry(current_token_species);
+			setTimeout(() => {  
+				let numDice=1;
+				let dieSize = "d20";
+				let paralyzed_DC = 5;
+				let save_roll_modifier = current_actor.data.data.modifiers.saveChecks;
+
+				let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
+				roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${paralyzed_DC} to resist the paralyzed condition at the beginning of their turn...`,
+				speaker: ChatMessage.getSpeaker({token: current_actor}),});
+
+				setTimeout(() => {  
+					if(Number(roll._total) < paralyzed_DC)
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Paralysis and cannot take any Standard, Shift, or Swift Actions this turn - automatically skipping to next turn.");
+						game.PTUMoveMaster.TakeStandardAction(current_actor);
+						queue_turn_skip = true;
+					}
+					else
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Paralysis and may act normally!");
+					}
+				}, 500);
+			}, 750);
 		}
 
-		if(current_actor.data.data.typing)
+		if(current_actor.data.flags.ptu.is_frozen)
 		{
-			actor_type_1 = current_actor.data.data.typing[0];
-			actor_type_2 = current_actor.data.data.typing[1];
+			setTimeout(() => {  
+				let numDice=1;
+				let dieSize = "d20";
+				let weather_modifier = 0;
 
-			console.log("actor_type_1");
-			console.log(actor_type_1);
-			console.log("actor_type_2");
-			console.log(actor_type_2);
+				if(currentWeather == "Sunny")
+				{
+					weather_modifier = 4;
+				}
+				else if (currentWeather == "Hail")
+				{
+					weather_modifier = -2;
+				}
+
+				let save_roll_modifier = Number(current_actor.data.data.modifiers.saveChecks + weather_modifier);
+				let frozen_DC = 16;
+				if(current_actor.data.data.typing)
+				{
+					if(current_actor.data.data.typing[0] == "Fire" || current_actor.data.data.typing[1] == "Fire")
+					{
+						frozen_DC = 11;
+					}
+				}
+				
+				let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
+				roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${frozen_DC} to break free from the frozen condition at the end of their turn...`,
+					speaker: ChatMessage.getSpeaker({token: current_actor}),});
+
+				setTimeout(() => {  
+					if(Number(roll._total) < frozen_DC)
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Frozen and remains frozen - automatically skipping to next turn.");
+						game.PTUMoveMaster.TakeStandardAction(current_actor);
+						queue_turn_skip = true;
+					}
+					else
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Frozen and broke free! Automatically skipping to next turn.");
+						game.PTUMoveMaster.TakeStandardAction(current_actor);
+
+						for(let effect of current_actor.effects)
+						{
+							if(effect.data.label == "Frozen")
+							{
+								effect.delete();
+								break;
+							}
+						}
+						queue_turn_skip = true;
+					}
+				}, 750);
+			}, 750);
 		}
+
+		if(current_actor.data.flags.ptu.is_sleeping)
+		{
+			setTimeout(() => {  
+				let numDice=1;
+				let dieSize = "d20";
+
+				let save_roll_modifier = Number(current_actor.data.data.modifiers.saveChecks);
+				let sleep_DC = 16;
+				
+				let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
+
+				if(current_actor.data.flags.ptu.is_badly_sleeping)
+				{
+					game.PTUMoveMaster.damageActorTick(current_actor, "Bad Sleep", 2);
+				}
+
+				roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${sleep_DC} to wake up from the sleeping condition at the end of their turn...`,
+					speaker: ChatMessage.getSpeaker({token: current_actor}),});
+
+				setTimeout(() => {  
+					if(Number(roll._total) < sleep_DC)
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Sleep and remains asleep - automatically skipping to next turn.");
+						game.PTUMoveMaster.TakeStandardAction(current_actor);
+						queue_turn_skip = true;
+					}
+					else
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Sleep and woke up! Automatically skipping to next turn.");
+						game.PTUMoveMaster.TakeStandardAction(current_actor);
+
+						for(let effect of current_actor.effects)
+						{
+							if(effect.data.label == "Sleep")
+							{
+								effect.delete();
+								break;
+							}
+						}
+						for(let effect of current_actor.effects)
+						{
+							if(effect.data.label == "BadSleep")
+							{
+								effect.delete();
+								break;
+							}
+						}
+						queue_turn_skip = true;
+					}
+				}, 750);
+			}, 750);
+		}
+
+		if(current_actor.data.flags.ptu.is_confused)
+		{
+			setTimeout(() => {  
+				let numDice=1;
+				let dieSize = "d20";
+				let confused_normal_action_DC = 9;
+				let confused_cured_DC = 16;
+				let save_roll_modifier = current_actor.data.data.modifiers.saveChecks;
+
+				let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
+				roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${confused_normal_action_DC} to resist the confused condition (or DC ${confused_cured_DC} to cure it) at the beginning of their turn...`,
+				speaker: ChatMessage.getSpeaker({token: current_actor}),});
+
+				setTimeout(() => {  
+					if(Number(roll._total) >= confused_cured_DC)
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save to cure their Confusion and may act normally!");
+
+						for(let effect of current_actor.effects)
+						{
+							if(effect.data.label == "Confused")
+							{
+								effect.delete();
+								break;
+							}
+						}
+					}
+					else if(Number(roll._total) >= confused_normal_action_DC)
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Confusion and may act normally!");
+					}
+					else
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Confusion and hit themselves using a Typeless Physical Struggle Attack as a Standard Action and may take no other actions this turn. This attack automatically hits, and deals damage as if it’s resisted 1 Step. Automatically skipping to next turn.");
+						game.PTUMoveMaster.TakeStandardAction(current_actor);
+
+						// TODO: Struggle self, resisted 1 step
+
+						queue_turn_skip = true;
+					}
+				}, 500);
+			}, 750);
+		}
+
+		if(current_actor.data.flags.ptu.is_infatuated)
+		{
+			setTimeout(() => {  
+				let numDice=1;
+				let dieSize = "d20";
+				let infatuated_normal_action_DC = 11;
+				let infatuated_cured_DC = 19;
+				let save_roll_modifier = current_actor.data.data.modifiers.saveChecks;
+
+				let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
+				roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${infatuated_normal_action_DC} to resist the Infatuated condition (or DC ${infatuated_cured_DC} to cure it) at the beginning of their turn...`,
+				speaker: ChatMessage.getSpeaker({token: current_actor}),});
+
+				setTimeout(() => {  
+					if(Number(roll._total) >= infatuated_cured_DC)
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save to cure their Infatuation and may act normally!");
+
+						for(let effect of current_actor.effects)
+						{
+							if(effect.data.label == "Infatuation")
+							{
+								effect.delete();
+								break;
+							}
+						}
+					}
+					else if(Number(roll._total) >= infatuated_normal_action_DC)
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Infatuation and may act normally!");
+					}
+					else
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+						game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Infatuation and may not target the Pokémon or Trainer that they are Infatuated towards with a Move or Attack, but may otherwise Shift and use actions normally.");
+					}
+				}, 500);
+			}, 750);
+		}
+
+		if(current_actor.data.flags.ptu.is_fainted)
+		{
+			setTimeout(() => {  
+				if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
+				{
+					// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is fainted - automatically skipping to next turn.");
+					game.combat.nextTurn();
+				}
+			}, 100);
+		}
+
+		// TODO: Cursed: If a Cursed Target takes a Standard Action, they lose two ticks of Hit Points at the end of that turn.
+
+		// TODO: Rage: While enraged, the target must use a Damaging Physical or Special Move or Struggle Attack. At the end of each turn, roll a DC15 Save Check; if they succeed, they are cured of Rage.
+
+		// TODO: Flinch: (Actually, probably use the homebrew one the system assumes) You may not take actions during your next turn that round. The Flinched Status does not carry over onto the next round.
 
 		setTimeout(() => {
-
-			if(currentWeather == "Sandstorm")
+			if(queue_turn_skip)
 			{
-				if(actor_type_1 != "Ground" && actor_type_1 != "Rock" && actor_type_1 != "Steel" && actor_type_2 != "Ground" && actor_type_2 != "Rock" && actor_type_2 != "Steel")
+				if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
 				{
-					game.PTUMoveMaster.damageActorTick(current_actor, "Sandstorm");
-				}
-				else
-				{
-					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' is immune to the Sandstorm\'s effects!');
+					game.combat.nextTurn();
 				}
 			}
-
-			if(currentWeather == "Hail")
-			{
-				if(actor_type_1 != "Ice" && actor_type_2 != "Ice")
-				{
-					game.PTUMoveMaster.damageActorTick(current_actor, "Hail");
-				}
-				else
-				{
-					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' is immune to the Hail\'s effects!');
-				}
-			}
-
-		}, 800);
+		}, 2500);
 	}
+	
+	let not_fainted = true;
+	if(current_actor.data.flags.ptu)
+	{
+		if(current_actor.data.flags.ptu.is_fainted)
+		{
+			not_fainted = false;
+		}
+	}
+
+	if(current_token_species && not_fainted)
+	{
+		game.ptu.PlayPokemonCry(current_token_species);
+	}
+
+	if(current_actor.data.data.typing)
+	{
+		actor_type_1 = current_actor.data.data.typing[0];
+		actor_type_2 = current_actor.data.data.typing[1];
+	}
+
+	setTimeout(() => {
+
+		if(currentWeather == "Sandstorm")
+		{
+			if(actor_type_1 != "Ground" && actor_type_1 != "Rock" && actor_type_1 != "Steel" && actor_type_2 != "Ground" && actor_type_2 != "Rock" && actor_type_2 != "Steel")
+			{
+				game.PTUMoveMaster.damageActorTick(current_actor, "Sandstorm");
+			}
+			else
+			{
+				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' is immune to the Sandstorm\'s effects!');
+			}
+		}
+
+		if(currentWeather == "Hail")
+		{
+			if(actor_type_1 != "Ice" && actor_type_2 != "Ice")
+			{
+				game.PTUMoveMaster.damageActorTick(current_actor, "Hail");
+			}
+			else
+			{
+				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' is immune to the Hail\'s effects!');
+			}
+		}
+
+	}, 800);
+	
 });
 
 
@@ -1077,407 +1350,6 @@ const MoveMessageTypes = {
 	DETAILS: 'details',
 	FULL_ATTACK: 'full-attack'
 };
-
-
-
-
-
-
-/**
- * @typedef {Object} MoveMasterSidebarDialogButton
- * @property {string} icon            A Font Awesome icon for the button
- * @property {string} label           The label for the button
- * @property {Function} [callback]    A callback function that fires when the button is clicked
- */
-/**
- * Create a dialog window displaying a title, a message, and a set of buttons which trigger callback functions.
- * @implements {Application}
- *
- * @param {Object} data               An object of dialog data which configures how the modal window is rendered
- * @param {string} data.title         The window title
- * @param {string} data.content       HTML content
- * @param {Function} [data.render]    A callback function invoked when the dialog is rendered
- * @param {Function} [data.close]     Common callback operations to perform when the dialog is closed
- * @param {Object<string, MoveMasterSidebarDialogButton>} data.buttons The buttons which are displayed as action choices for the dialog
- *
- * @param {Object} options            MoveMasterSidebarDialog rendering options, see :class:`Application`
- * @param {string} options.default    The name of the default button which should be triggered on Enter
- * @param {boolean} options.jQuery    Whether to provide jQuery objects to callback functions (if true) or plain
- *                                    HTMLElement instances (if false). This is currently true by default but in the
- *                                    future will become false by default.
- *
- * @example <caption>Constructing a custom dialog instance</caption>
- * let d = new MoveMasterSidebarDialog({
- *  title: "Test MoveMasterSidebarDialog",
- *  content: "<p>You must choose either Option 1, or Option 2</p>",
- *  buttons: {
- *   one: {
- *    icon: '<i class="fas fa-check"></i>',
- *    label: "Option One",
- *    callback: () => console.log("Chose One")
- *   },
- *   two: {
- *    icon: '<i class="fas fa-times"></i>',
- *    label: "Option Two",
- *    callback: () => console.log("Chose Two")
- *   }
- *  },
- *  default: "two",
- *  render: html => console.log("Register interactivity in the rendered dialog"),
- *  close: html => console.log("This always is logged no matter which option is chosen")
- * });
- * d.render(true);
- */
- class MoveMasterSidebarDialog extends Application {
-	constructor(data, options) {
-	  super(options);
-	  this.data = data;
-	}
-	  /* -------------------------------------------- */
-	/** @override */
-	  static get defaultOptions() {
-		return mergeObject(super.defaultOptions, {
-		  template: "templates/hud/dialog.html",
-		classes: ["MoveMasterSidebarDialog"],
-		width: 200,
-		jQuery: true
-	  });
-	}
-	/* -------------------------------------------- */
-	/** @override */
-	get title() {
-	  return this.data.title || "MoveMasterSidebarDialog";
-	}
-	/* -------------------------------------------- */
-	/** @override */
-	getData(options) {
-	  let buttons = Object.keys(this.data.buttons).reduce((obj, key) => {
-		let b = this.data.buttons[key];
-		b.cssClass = [key, this.data.default === key ? "default" : ""].filterJoin(" ");
-		if ( b.condition !== false ) obj[key] = b;
-		return obj;
-	  }, {});
-	  return {
-		content: this.data.content,
-		buttons: buttons
-	  }
-	}
-	/* -------------------------------------------- */
-	/** @override */
-	activateListeners(html) {
-	  html.find(".dialog-button").click(this._onClickButton.bind(this));
-	  $(document).on('keydown.chooseDefault', this._onKeyDown.bind(this));
-	  if ( this.data.render instanceof Function ) this.data.render(this.options.jQuery ? html : html[0]);
-	}
-	/* -------------------------------------------- */
-	/**
-	 * Handle a left-mouse click on one of the dialog choice buttons
-	 * @param {MouseEvent} event    The left-mouse click event
-	 * @private
-	 */
-	_onClickButton(event) {
-	  const id = event.currentTarget.dataset.button;
-	  const button = this.data.buttons[id];
-	  this.submit(button);
-	}
-	/* -------------------------------------------- */
-	/**
-	 * Handle a keydown event while the dialog is active
-	 * @param {KeyboardEvent} event   The keydown event
-	 * @private
-	 */
-	_onKeyDown(event) {
-	  // Close dialog
-	  if ( event.key === "Escape" ) {
-		event.preventDefault();
-		event.stopPropagation();
-		return this.close();
-	  }
-	  // Confirm default choice
-	  if ( (event.key === "Enter") && this.data.default ) {
-		event.preventDefault();
-		event.stopPropagation();
-		const defaultChoice = this.data.buttons[this.data.default];
-		return this.submit(defaultChoice);
-	  }
-	}
-	/* -------------------------------------------- */
-	/**
-	 * Submit the MoveMasterSidebarDialog by selecting one of its buttons
-	 * @param {Object} button     The configuration of the chosen button
-	 * @private
-	 */
-	submit(button) {
-	  try {
-		if (button.callback) button.callback(this.options.jQuery ? this.element : this.element[0]);
-		//this.close(true);
-		let current_actor = canvas.tokens.controlled[0].actor;
-		setTimeout(() => {  PTUAutoFight().ChatWindow(current_actor); }, 100);
-		
-	  } catch(err) {
-		ui.notifications.error(err);
-		throw new Error(err);
-	  }
-	}
-	/* -------------------------------------------- */
-	/** @override */
-	close() {
-	  if ( this.data.close ) this.data.close(this.options.jQuery ? this.element : this.element[0]);
-	  super.close();
-	  $(document).off('keydown.chooseDefault');
-	}
-	/* -------------------------------------------- */
-	/*  Factory Methods                             */
-	/* -------------------------------------------- */
-	/**
-	 * A helper factory method to create simple confirmation dialog windows which consist of simple yes/no prompts.
-	 * If you require more flexibility, a custom MoveMasterSidebarDialog instance is preferred.
-	 *
-	 * @param {string} title          The confirmation window title
-	 * @param {string} content        The confirmation message
-	 * @param {Function} yes          Callback function upon yes
-	 * @param {Function} no           Callback function upon no
-	 * @param {Function} render       A function to call when the dialog is rendered
-	 * @param {boolean} defaultYes    Make "yes" the default choice?
-	 * @param {boolean} rejectClose   Reject the Promise if the MoveMasterSidebarDialog is closed without making a choice.
-	 * @param {Object} options        Additional rendering options passed to the MoveMasterSidebarDialog
-	 *
-	 * @return {Promise<*>}           A promise which resolves once the user makes a choice or closes the window
-	 *
-	 * @example
-	 * let d = MoveMasterSidebarDialog.confirm({
-	 *  title: "A Yes or No Question",
-	 *  content: "<p>Choose wisely.</p>",
-	 *  yes: () => console.log("You chose ... wisely"),
-	 *  no: () => console.log("You chose ... poorly"),
-	 *  defaultYes: false
-	 * });
-	 */
-	static async confirm({title, content, yes, no, render, defaultYes=true, rejectClose=false, options={}}={}, old) {
-	  // TODO: Support the old second-paramter options until 0.8.x release
-	  if ( old ) {
-		console.warn("You are passing an options object as a second parameter to MoveMasterSidebarDialog.confirm. This should now be passed in as the options key of the first parameter.")
-		options = old;
-	  }
-	  return new Promise((resolve, reject) => {
-		const dialog = new this({
-		  title: title,
-		  content: content,
-		  buttons: {
-			yes: {
-			  icon: '<i class="fas fa-check"></i>',
-			  label: game.i18n.localize("Yes"),
-			  callback: html => {
-				const result = yes ? yes(html) : true;
-				resolve(result);
-			  }
-			},
-			no: {
-			  icon: '<i class="fas fa-times"></i>',
-			  label: game.i18n.localize("No"),
-			  callback: html => {
-				const result = no ? no(html) : false;
-				resolve(result);
-			  }
-			}
-		  },
-		  default: defaultYes ? "yes" : "no",
-		  render: render,
-		  close: () => {
-			if ( rejectClose ) reject("The confirmation MoveMasterSidebarDialog was closed without a choice being made");
-			else resolve(null);
-		  },
-		}, options);
-		dialog.render(true);
-	  });
-	}
-	/* -------------------------------------------- */
-	/**
-	 * A helper factory method to display a basic "prompt" style MoveMasterSidebarDialog with a single button
-	 * @param {string} title          The confirmation window title
-	 * @param {string} content        The confirmation message
-	 * @param {string} label          The confirmation button text
-	 * @param {Function} callback     A callback function to fire when the button is clicked
-	 * @param {Function} render       A function that fires after the dialog is rendered
-	 * @param {object} options        Additional rendering options
-	 * @return {Promise<*>}           A promise which resolves when clicked, or rejects if closed
-	 */
-	static async prompt({title, content, label, callback, render, options={}}={}) {
-	  return new Promise((resolve, reject) => {
-		const dialog = new this({
-		  title: title,
-		  content: content,
-		  buttons: {
-			ok: {
-			  icon: '<i class="fas fa-check"></i>',
-			  label: label,
-			  callback: html => {
-				const result = callback(html);
-				resolve(result);
-			  }
-			},
-		  },
-		  default: "ok",
-		  render: render,
-		  close: () => reject,
-		}, options);
-		dialog.render(true);
-	  });
-	}
-  }
-  /**
-   * A UI utility to make an element draggable.
-   */
-  class Draggable {
-	constructor(app, element, handle, resizable) {
-	  // Setup element data
-	  this.app = app;
-	  this.element = element[0];
-	  this.handle = handle || this.element;
-	  this.resizable = resizable || false;
-	  /**
-	   * Duplicate the application's starting position to track differences
-	   * @type {Object}
-	   */
-	  this.position = null;
-	  /**
-	   * Remember event handlers associated with this Draggable class so they may be later unregistered
-	   * @type {Object}
-	   */
-	  this.handlers = {};
-	  /**
-	   * Throttle mousemove event handling to 60fps
-	   * @type {number}
-	   */
-	  this._moveTime = 0;
-	  // Activate interactivity
-	  this.activateListeners();
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Activate event handling for a Draggable application
-	 * Attach handlers for floating, dragging, and resizing
-	 */
-	activateListeners() {
-	  // Float to top
-	  this.handlers["click"] = ["mousedown", this._onClickFloatTop.bind(this), {capture: true, passive: true}];
-	  this.element.addEventListener(...this.handlers.click);
-	  // Drag handlers
-	  this.handlers["dragDown"] = ["mousedown", e => this._onDragMouseDown(e), false];
-	  this.handlers["dragMove"] = ["mousemove", e => this._onDragMouseMove(e), false];
-	  this.handlers["dragUp"] = ["mouseup", e => this._onDragMouseUp(e), false];
-	  this.handle.addEventListener(...this.handlers.dragDown);
-	  this.handle.classList.add("draggable");
-	  // Resize handlers
-	  if ( !this.resizable ) return;
-	  let handle = $('<div class="window-resizable-handle"><i class="fas fa-arrows-alt-h"></i></div>')[0];
-	  this.element.appendChild(handle);
-	  // Register handlers
-	  this.handlers["resizeDown"] = ["mousedown", e => this._onResizeMouseDown(e), false];
-	  this.handlers["resizeMove"] = ["mousemove", e => this._onResizeMouseMove(e), false];
-	  this.handlers["resizeUp"] = ["mouseup", e => this._onResizeMouseUp(e), false];
-	  // Attach the click handler and CSS class
-	  handle.addEventListener(...this.handlers.resizeDown);
-	  this.handle.classList.add("resizable");
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Handle left-mouse down events to float the window to the top of the rendering stack
-	 * @param {MouseEvent} event      The mousedown event on the application element
-	 * @private
-	 */
-	_onClickFloatTop(event) {
-	  let z = Number(window.document.defaultView.getComputedStyle(this.element).zIndex);
-	  if ( z <= _maxZ ) {
-		this.element.style.zIndex = Math.min(++_maxZ, 9999);
-	  }
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Handle the initial mouse click which activates dragging behavior for the application
-	 * @private
-	 */
-	_onDragMouseDown(event) {
-	  event.preventDefault();
-	  // Record initial position
-	  this.position = duplicate(this.app.position);
-	  this._initial = {x: event.clientX, y: event.clientY};
-	  // Add temporary handlers
-	  window.addEventListener(...this.handlers.dragMove);
-	  window.addEventListener(...this.handlers.dragUp);
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Move the window with the mouse, bounding the movement to ensure the window stays within bounds of the viewport
-	 * @private
-	 */
-	_onDragMouseMove(event) {
-	  event.preventDefault();
-	  // Limit dragging to 60 updates per second
-	  const now = Date.now();
-	  if ( (now - this._moveTime) < (1000/60) ) return;
-	  this._moveTime = now;
-	  // Update application position
-	  this.app.setPosition({
-		left: this.position.left + (event.clientX - this._initial.x),
-		top: this.position.top + (event.clientY - this._initial.y)
-	  });
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Conclude the dragging behavior when the mouse is release, setting the final position and removing listeners
-	 * @private
-	 */
-	_onDragMouseUp(event) {
-	  event.preventDefault();
-	  window.removeEventListener(...this.handlers.dragMove);
-	  window.removeEventListener(...this.handlers.dragUp);
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Handle the initial mouse click which activates dragging behavior for the application
-	 * @private
-	 */
-	_onResizeMouseDown(event) {
-	  event.preventDefault();
-	  // Limit dragging to 60 updates per second
-	  const now = Date.now();
-	  if ( (now - this._moveTime) < (1000/60) ) return;
-	  this._moveTime = now;
-	  // Record initial position
-	  this.position = duplicate(this.app.position);
-	  if ( this.position.height === "auto" ) this.position.height = this.element.clientHeight;
-	  if ( this.position.width === "auto" ) this.position.width = this.element.clientWidth;
-	  this._initial = {x: event.clientX, y: event.clientY};
-	  // Add temporary handlers
-	  window.addEventListener(...this.handlers.resizeMove);
-	  window.addEventListener(...this.handlers.resizeUp);
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Move the window with the mouse, bounding the movement to ensure the window stays within bounds of the viewport
-	 * @private
-	 */
-	_onResizeMouseMove(event) {
-	  event.preventDefault();
-	  this.app.setPosition({
-		width: this.position.width + (event.clientX - this._initial.x),
-		height: this.position.height + (event.clientY - this._initial.y)
-	  });
-	}
-	/* ----------------------------------------- */
-	/**
-	 * Conclude the dragging behavior when the mouse is release, setting the final position and removing listeners
-	 * @private
-	 */
-	_onResizeMouseUp(event) {
-	  event.preventDefault();
-	  window.removeEventListener(...this.handlers.resizeMove);
-	  window.removeEventListener(...this.handlers.resizeUp);
-	  this.app._onResize(event);
-	}
-  }
-
 
 
 export function PTUAutoFight()
@@ -3455,13 +3327,11 @@ export function damageActorPercent(actor,pct_damage)
 }
 
 
-export function damageActorTick(actor, source="")
+export function damageActorFlatValue(actor, damage_value, source="")
 {
-	let tick_DR = 0;
-
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
-	let finalDamage = Math.max((Math.floor(0.10*actor.data.data.health.total)) - tick_DR, 0);
+	let finalDamage = damage_value;
 	let source_string = "";
 
 	if(source != "")
@@ -3470,7 +3340,27 @@ export function damageActorTick(actor, source="")
 	}
 
 	actor.modifyTokenAttribute("health", -finalDamage, true, true);
-	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a tick of damage ('+ finalDamage +' Hit Points)'+source_string+'!');
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' lost '+ finalDamage +' Hit Points'+source_string+'!');
+	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
+}
+
+
+export function damageActorTick(actor, source="", tick_count=1)
+{
+	let tick_DR = 0;
+
+	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+
+	let finalDamage = Math.max((Math.floor(0.10*actor.data.data.health.total*tick_count)) - (tick_DR*tick_count), 0);
+	let source_string = "";
+
+	if(source != "")
+	{
+		source_string = " from "+source;
+	}
+
+	actor.modifyTokenAttribute("health", -finalDamage, true, true);
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took '+tick_count+' tick of damage ('+ finalDamage +' Hit Points)'+source_string+'!');
 	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
 }
 
@@ -4444,14 +4334,65 @@ export function PokedexScan(trainer_token, target_pokemon_token)
 
 export function TakeStandardAction(actor)
 {
-	let actorInjuries = actor.data.data.health.injuries;
+	setTimeout(() => {  
+		let actorInjuries = actor.data.data.health.injuries;
 
-	if(actorInjuries >=5)
-	{
-		game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
-		actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
-		game.PTUMoveMaster.ApplyInjuries(actor, actorInjuries);
-	}
+		if(actorInjuries >=5)
+		{
+			game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
+			actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
+			game.PTUMoveMaster.ApplyInjuries(actor, actorInjuries);
+		}
+
+		let actor_active_effects = actor.effects;
+		console.log("actor_active_effects");
+		console.log(actor_active_effects);
+
+		if (actor.data.flags.ptu)
+		{
+			if (actor.data.flags.ptu.is_badly_poisoned)
+			{
+				let round_of_badly_poisoned = 0;
+
+				for(let active_effect of actor_active_effects)
+				{
+					console.log("active_effect");
+					console.log(active_effect);
+
+					if(active_effect.data.changes[1])
+					{
+						if(active_effect.data.changes[1].key == "flags.ptu.is_badly_poisoned")
+						{
+							console.log('active_effect.getFlag("ptu", "roundsElapsed")');
+							console.log(active_effect.getFlag("ptu", "roundsElapsed"));
+	
+							round_of_badly_poisoned = active_effect.getFlag("ptu", "roundsElapsed");									
+							console.log("round_of_badly_poisoned");
+							console.log(round_of_badly_poisoned);
+	
+							break;
+						}
+					}
+				}
+	
+				let badly_poisoned_damage = 5*(2**round_of_badly_poisoned);
+	
+				game.PTUMoveMaster.damageActorFlatValue(actor, badly_poisoned_damage, ("round "+Number(round_of_badly_poisoned+1)+" of Badly Poisoned"));
+			}
+			else if(actor.data.flags.ptu.is_poisoned)
+			// if(actor.data.flags.ptu.is_poisoned)
+			{
+				game.PTUMoveMaster.damageActorTick(actor, "Poisoned");
+			}
+	
+			if(actor.data.flags.ptu.is_burned)
+			{
+				game.PTUMoveMaster.damageActorTick(actor, "Burned");
+			}
+		}
+		
+
+	}, 800);
 };
 
 
