@@ -1,4 +1,3 @@
-
 .sidebar-tab .action-buttons button {
   height: unset;
   max-height: 50px;
@@ -45,14 +44,15 @@
   border: none; */
 }
 
-.confetti-buttons {
-  right: 505px !important;
-  /* right: 455px !important; */
-}
-
 body.messages-dark-theme .confetti-buttons {
   /* right: 505px !important; */
   right: 455px !important;
+}
+
+body.confetti-hidden .confetti-buttons {
+  /* right: 505px !important; */
+  /* right: 455px !important; */
+  display: none !important;
 }
 
 #navigation {
