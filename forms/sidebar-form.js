@@ -99,7 +99,8 @@ export class SidebarForm extends FormApplication {
 
           if(!button.noRefresh)
           {
-            let current_actor = canvas.tokens.controlled[0].actor;
+            let current_actor = game.actors.get(canvas.tokens.controlled[0].actor.data._id);
+            // let current_actor = canvas.tokens.controlled[0].actor;
             setTimeout(() => {  PTUAutoFight().ChatWindow(current_actor); }, 150);
           }
           

@@ -1110,7 +1110,15 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 Hooks.on("controlToken", async (token, selected) => {
 	if(selected)
 	{
-		PTUAutoFight().ChatWindow(token.actor);
+		// console.log("token");
+		// console.log(token);
+
+		// console.log("selected");
+		// console.log(selected);
+
+		let current_actor = game.actors.get(token.actor.data._id);
+		PTUAutoFight().ChatWindow(current_actor);
+		// PTUAutoFight().ChatWindow(token.actor);
 	}
 	else
 	{
@@ -1126,7 +1134,9 @@ Hooks.on("targetToken", async (user, token, targeted) => {
 		let selected_token = canvas.tokens.controlled[0];
 		if(selected_token)
 		{
-			PTUAutoFight().ChatWindow(selected_token.actor);
+			let current_actor = game.actors.get(token.actor.data._id);
+			PTUAutoFight().ChatWindow(current_actor);
+			// PTUAutoFight().ChatWindow(selected_token.actor);
 		}
 		// else
 		// {
@@ -1137,27 +1147,29 @@ Hooks.on("targetToken", async (user, token, targeted) => {
 });
 
 
-Hooks.on("updateToken", async (scene, token, change, diff, token_id) => {
-	
-	console.log("token");
-	console.log(token);
-
-	let current_actor = game.actors.get(token.actorId);
-
-	console.log("current_actor");
-	console.log(current_actor);
-
-	if(diff.diff)
+Hooks.on("updateToken", async (scene, token, change, diff, user_id) => {
+	if(game.combat && user_id == game.user._id)
 	{
-		if(change.x > 0 || change.y > 0)
+		console.log("token");
+		console.log(token);
+
+		let current_actor = game.actors.get(token.actorId);
+		// let current_actor = game.actors.get(token.actor.data._id);
+
+		console.log("current_actor");
+		console.log(current_actor);
+
+		if(diff.diff)
 		{
-			game.PTUMoveMaster.TakeAction(current_actor, "Shift");
-			setTimeout(() => { 
-				PTUAutoFight().ChatWindow(current_actor);
-			}, 1000);
+			if(change.x > 0 || change.y > 0)
+			{
+				game.PTUMoveMaster.TakeAction(current_actor, "Shift");
+				setTimeout(() => { 
+					PTUAutoFight().ChatWindow(current_actor);
+				}, 1000);
+			}
 		}
 	}
-
 });
 
 
@@ -5075,7 +5087,7 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 	let CaptureRollModifier = 0;
 	let CaptureRate = 100;
 
-	let TargetWeight = target.data.data.weight;
+	let TargetWeight = target.data.data.capabilities["Weight Class"];
 	let TrainerActivePokemon = [];
 
 	let TargetSpecies = target.data.data.species;

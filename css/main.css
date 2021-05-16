@@ -165,3 +165,16 @@ body.messages-dark-theme .chat-controls .roll-type-select {
 #chat-log.dark-theme {
   margin-bottom: 5px;
 }
+
+/* .ptu-sidebar .window-content {
+  overflow-y: hidden !important;
+} */
+
+.ptu-sidebar .window-content::-webkit-scrollbar {
+  display: none;
+}
+
+.ptu-sidebar .window-content {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
