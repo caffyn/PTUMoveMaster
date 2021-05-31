@@ -87,7 +87,7 @@ function _loadModuleSettings() {
 
 	game.settings.register("PTUMoveMaster", "autoResetStagesOnCombatEnd", {
 		name: "GM Setting: Automatically reset stages when ending an encounter.",
-		hint: "This will make all combatants reset their combat stages when you end an encounter.",
+		hint: "This will offer an option to make all combatants reset their combat stages and EOT/Scene moves when you end an encounter.",
 		scope: "world",
 		config: true,
 		type: Boolean,
@@ -128,18 +128,18 @@ function _loadModuleSettings() {
 		default: "Clear"
 	  });
 
-	game.settings.register("PTUMoveMaster", "useErrataConditions", {
-		name: "GM Setting: This determines whether to use the original condition rules, or the errata'd versions.",
-		hint: "",
-		scope: "world",
-		config: true,
-		type: String,
-		choices: {
-		  "Original": "Use the original condition effects.",
-		  "Errata": "Use the errata'd condition effects."
-		},
-		default: "Original"
-	});
+	// game.settings.register("PTUMoveMaster", "useErrataConditions", {
+	// 	name: "GM Setting: This determines whether to use the original condition rules, or the errata'd versions.",
+	// 	hint: "",
+	// 	scope: "world",
+	// 	config: true,
+	// 	type: String,
+	// 	choices: {
+	// 	  "Original": "Use the original condition effects.",
+	// 	  "Errata": "Use the errata'd condition effects."
+	// 	},
+	// 	default: "Original"
+	// });
 
 	game.settings.register("PTUMoveMaster", "autoSkipTurns", {
 		name: "GM Setting: Auto-skip turns when no actions possible, due to failing certain saves or being fainted.",
@@ -231,6 +231,7 @@ Hooks.once('init', async function()
 		resetStandardAction,
 		resetShiftAction,
 		resetSwiftAction,
+		enableCondition,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar
@@ -301,14 +302,16 @@ Hooks.on("ready", async () => {
 		$("#chat-log").removeClass('dark-theme');
 	}
 
-	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user._id+' = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"})');
-	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user._id+'.render(true)');
+	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user.data._id+' = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"})');
+	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user.data._id+'.render(true)');
 	ui.sidebar.render();
 });
 
 Hooks.on("endTurn", async (combat, actor, round_and_turn, diff, id) => {
 
-	let current_actor = game.actors.get(actor.actor.data._id);
+	console.log("endTurn: actor");
+	console.log(actor);
+	let current_actor = game.actors.get(actor.data.actorId);
 
 	// if(current_actor.data.flags.ptu.actions_taken.standard || current_actor.data.flags.ptu.actions_taken.support)
 	// {
@@ -407,10 +410,11 @@ Hooks.on("preDeleteCombat", (combat, misc, tokenID) => {
           let combatants = combat.data.combatants;
           for(let combatant of combatants)
           {
-            await game.PTUMoveMaster.ResetStagesToDefault(combatant.actor);
+            await game.PTUMoveMaster.ResetStagesToDefault(combatant.actor, true);
 			await game.PTUMoveMaster.ResetActionEconomy(combatant.actor);
-            await game.PTUMoveMaster.resetEOTMoves(combatant.actor);
+            await game.PTUMoveMaster.resetEOTMoves(combatant.actor, true);
           }
+		  AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
         },
         defaultYes: false 
       })
@@ -467,22 +471,46 @@ Hooks.on("renderChatMessage", (message, html, data) => {
 
 Hooks.on("updateCombat", async (combat, update, options, userId) => {
 
-	if(userId != game.user._id)
+	console.log("updateCombat: userId: " + userId);
+	console.log("game.user.data._id:");
+	console.log(game.user.data._id);
+
+	console.log("combat:");
+	console.log(combat);
+
+
+	if(userId != game.user.data._id)
 	{
+		console.log("updateCombat: Not the right user! Returning.")
 		return;
 	}
+	console.log("updateCombat: The right user! Proceeding.")
 
 	let this_round = combat.current.round;
 	let this_turn = combat.current.turn;
-	let previous_round = options.prevRound;
-	let previous_turn = options.prevTurn;
+	let previous_round = combat.previous.round;
+	let previous_turn = combat.previous.turn;
+
+	console.log("previous_round:");
+	console.log(previous_round);
+	console.log("this_round:");
+	console.log(this_round);
+
+	console.log("previous_turn:");
+	console.log(previous_turn);
+	console.log("this_turn:");
+	console.log(this_turn);
 
 	if( (this_turn != (previous_turn+1)) && (this_round != (previous_round+1)) )
 	{
+		console.log("updateCombat: Not the turn/round after the previous one! Returning.")
 		return;
 	}
 
 	let current_token = game.combat.current.tokenId;
+	console.log("updateCombat current_token");
+	console.log(current_token);
+
 	let current_actor = canvas.tokens.get(current_token).actor;
 	let current_token_species = current_actor.data.data.species;
 	let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
@@ -521,7 +549,7 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	let queue_turn_skip = false;
 	if(current_actor.data.flags.ptu)
 	{
-		let condition_version = game.settings.get("PTUMoveMaster", "useErrataConditions");
+		// let condition_version = game.settings.get("PTUMoveMaster", "useErrataConditions");
 
 		// if(condition_version == "Original")
 		// {
@@ -1013,17 +1041,17 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 		// 		}, 750);
 		// 	}
 
-		// 	if(current_actor.data.flags.ptu.is_fainted)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
-		// 			{
-		// 				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is fainted - automatically skipping to next turn.");
-		// 				game.combat.nextTurn();
-		// 			}
-		// 		}, 100);
-		// 	}
+	if(current_actor.data.flags.ptu.is_fainted)
+	{
+		setTimeout(() => {  
+			if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
+			{
+				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is fainted - automatically skipping to next turn.");
+				game.combat.nextTurn();
+			}
+		}, 100);
+	}
 
 		// 	// TODO: Cursed: If a Cursed Target takes a Standard Action, they lose two ticks of Hit Points at the end of that turn.
 
@@ -1116,7 +1144,11 @@ Hooks.on("controlToken", async (token, selected) => {
 		// console.log("selected");
 		// console.log(selected);
 
-		let current_actor = game.actors.get(token.actor.data._id);
+		let current_actor = game.actors.get(token.data.actorId);
+		
+		// console.log("current_actor:");
+		// console.log(current_actor);
+
 		PTUAutoFight().ChatWindow(current_actor);
 		// PTUAutoFight().ChatWindow(token.actor);
 	}
@@ -1129,32 +1161,42 @@ Hooks.on("controlToken", async (token, selected) => {
 
 
 Hooks.on("targetToken", async (user, token, targeted) => {
-	if(user.data._id == game.user._id)
+	console.log("HOOK: targetToken, user.data");
+	console.log(user.data);
+
+	console.log("HOOK: targetToken, game.user");
+	console.log(game.user);
+
+	if(user.data._id == game.user.data._id)
 	{
 		let selected_token = canvas.tokens.controlled[0];
 		if(selected_token)
 		{
-			let current_actor = game.actors.get(token.actor.data._id);
+			let current_actor = game.actors.get(selected_token.data.actorId);
 			PTUAutoFight().ChatWindow(current_actor);
-			// PTUAutoFight().ChatWindow(selected_token.actor);
 		}
-		// else
-		// {
-		// 	let sidebar = new game.PTUMoveMaster.SidebarForm();
-		// 	sidebar.render(true);
-		// }
 	}
 });
 
 
-Hooks.on("updateToken", async (scene, token, change, diff, user_id) => {
-	if(game.combat && user_id == game.user._id)
+Hooks.on("updateToken", async (token, change, diff, userid) => {
+
+	console.log("HOOK: updateToken, game.combat");
+	console.log(game.combat);
+
+	console.log("HOOK: updateToken, game.user.id");
+	console.log(game.user.id);
+
+	console.log("HOOK: updateToken, userid");
+	console.log(userid);
+
+	if(game.combat && userid == game.user.id)
 	{
 		console.log("token");
 		console.log(token);
 
-		let current_actor = game.actors.get(token.actorId);
-		// let current_actor = game.actors.get(token.actor.data._id);
+		let current_actor = game.actors.get(token.data.actorId);
+		// let current_actor = game.actors.get(token.actor.data.id);
 
 		console.log("current_actor");
 		console.log(current_actor);
@@ -1173,12 +1215,13 @@ Hooks.on("updateToken", async (scene, token, change, diff, user_id) => {
 });
 
 
-Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and create lightshow
+Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and create lightshow
 
 	if(game.userId == id)
 	{
 		setTimeout(() => {
 			
+			let tokenData = token.data;
 			let actor = game.actors.get(tokenData.actorId);
 	
 			function capitalizeFirstLetter(string) {
@@ -1191,11 +1234,11 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 	
 				if(tokenData.actorLink == false)
 				{
-					target_token = canvas.tokens.get(tokenData._id);//.slice(-1)[0]; // The thrown pokemon
+					target_token = canvas.tokens.get(tokenData.id);//.slice(-1)[0]; // The thrown pokemon
 				}
 				else
 				{
-					target_token = game.actors.get(actor._id).getActiveTokens().slice(-1)[0]; // The thrown pokemon
+					target_token = game.actors.get(actor.id).getActiveTokens().slice(-1)[0]; // The thrown pokemon
 				}
 
 				let pokeball = "Basic Ball"
@@ -1234,7 +1277,7 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 					if(throwRange < rangeToTarget)
 					{
 						ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
-						game.actors.get(actor._id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
+						game.actors.get(actor.id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
 					}
 					else
 					{
@@ -1342,7 +1385,7 @@ Hooks.on("createToken", (scene, tokenData, options, id) => { // If an owned Poke
 							target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
 	
 							function castSpell(effect) {
-								canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor._id).getActiveTokens().slice(-1)[0]);//target_token);
+								canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
 							}
 							
 	
@@ -1849,6 +1892,69 @@ var move_stage_changes = {
 	"Rain Dance"  :   {
 		"weather"   : "Rainy"
 	},
+	"Attack Order"	:	{
+		"crit-range":	18,
+	},
+	"Night Slash"	:	{
+		"crit-range":	18,
+	},
+	// "Spacial Rend"	:	{ // TODO: Implement even/odd effects
+	// 	"crit-range":	"Even",
+	// },
+	"Cross Chop"	:	{
+		"crit-range":	16,
+	},
+	"Karate Chop"	:	{
+		"crit-range":	17,
+	},
+	"Storm Throw"	:	{
+		"crit-range":	2,
+	},
+	"Blaze Kick"	:	{
+		"crit-range":	18,
+	},
+	// "Aeroblast"	:	{ // TODO: Implement even/odd effects
+	// 	"crit-range":	"Even",
+	// },
+	"Air Cutter"	:	{
+		"crit-range":	18,
+	},
+	"Shadow Claw"	:	{
+		"crit-range":	18,
+	},
+	"Leaf Blade"	:	{
+		"crit-range":	18,
+	},
+	"Razor Leaf"	:	{
+		"crit-range":	18,
+	},
+	"Drill Run"	:	{
+		"crit-range":	18,
+	},
+	"Frost Breath"	:	{
+		"crit-range":	2,
+	},
+	"Razor Wind"	:	{
+		"crit-range":	18,
+	},
+	"Slash"	:	{
+		"crit-range":	18,
+	},
+	"Cross Poison"	:	{
+		"crit-range":	18,
+	},
+	"Poison Tail"	:	{
+		"crit-range":	18,
+	},
+	"Psycho Cut"	:	{
+		"crit-range":	18,
+	},
+	"Stone Edge"	:	{
+		"crit-range":	17,
+	},
+	"Crabhammer"	:	{
+		"crit-range":	18,
+	},
 };
 
 const ButtonHeight = 100;
@@ -1937,6 +2043,8 @@ const ShiftActionBackground = AlternateIconPath + "ShiftActionBackground" + Cate
 const FullActionBackground = AlternateIconPath + "FullActionBackground" + CategoryIconSuffix;
 const StaticBackground = AlternateIconPath + "StaticBackground" + CategoryIconSuffix;
 const FreeActionBackground = AlternateIconPath + "FreeActionBackground" + CategoryIconSuffix;
+const ExtendedActionBackground = AlternateIconPath + "ExtendedActionBackground" + CategoryIconSuffix;
+
 
 const bodyBackground = AlternateIconPath + "BodyBackground" + CategoryIconSuffix;
 const mindBackground = AlternateIconPath + "MindBackground" + CategoryIconSuffix;
@@ -2049,7 +2157,7 @@ export function PTUAutoFight()
 				else
 				{
 					var currentRound = game.combat.round;
-					var currentEncounterID = game.combat.data._id;
+					var currentEncounterID = game.combat.data.id;
 				}
 	
 				if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
@@ -2129,7 +2237,7 @@ export function PTUAutoFight()
         // create the message
 		if (messageContent !== '') {
 		        let chatData = {
-			      user: game.user._id,
+			      user: game.user.data._id,
 			      speaker: ChatMessage.getSpeaker(token),
 			      content: messageContent,
 		        };
@@ -2145,7 +2253,7 @@ export function PTUAutoFight()
 
 		let target = Array.from(game.user.targets)[0];
 		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
-		let background_field = 'background-image: url("background_fields/BG_Field.png"); background-repeat: repeat-x; background-position: left bottom';
+		let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
 		
 		var items=actor.data.items;
 		var item_entities=actor.items;
@@ -2168,15 +2276,16 @@ export function PTUAutoFight()
 
 		for(let item of items) // START Ability Check Loop
 		{
-			if(item.name.search("Type Strategist \\(") > -1)
+			var item_data = item.data.data;
+			if(item_data.name.search("Type Strategist \\(") > -1)
 			{
-				typeStrategist.push(item.name.slice(item.name.search('\\(')+1, item.name.search('\\)') ));
+				typeStrategist.push(item_data.name.slice(item_data.name.search('\\(')+1, item_data.name.search('\\)') ));
 			}
-			if(item.name.search("Technician") > -1)
+			if(item_data.name.search("Technician") > -1)
 			{
 				technician = true;
 			}
-			if(item.name.search(/[Pp]ok[eé]dex/) > -1)
+			if(item_data.name.search(/[Pp]ok[eé]dex/) > -1)
 			{
 				hasPokedex = true;
 			}
@@ -2275,46 +2384,55 @@ export function PTUAutoFight()
 
 		for(let item of items)
 		{
-			var currenttype = item.type;
-			var currentid=item._id;
+			var item_data = item.data.data;
+			var currenttype = item.data.type;
+			var currentid=item.id;
+			// console.log("currentid");
+			// console.log(currentid);
+			// console.log("currenttype");
+			// console.log(currenttype);
 			var currentlabel=item.data.name;
 
 			if(currenttype=="ability")
 			{
-				var currentlabel=item.name;
-				var respdata=item.data;
+				var currentlabel=item.data.name;
+				var respdata=item_data;
 				respdata['category']='details';
 				let AbilityActionIcon = "";
 				let AbilityActionBackground = "";
-				if(item.data.frequency.includes("Swift Action"))
+				if(item_data.frequency.includes("Swift Action"))
 				{
 					// AbilityActionIcon = SwiftActionIcon + "&numsp;";
 					AbilityActionBackground = SwiftActionBackground;
 				}
-				else if(item.data.frequency.includes("Standard Action"))
+				else if(item_data.frequency.includes("Standard Action"))
 				{
 					// AbilityActionIcon = StandardActionIcon + "&numsp;";
 					AbilityActionBackground = StandardActionBackground;
 				}
-				else if(item.data.frequency.includes("Shift Action"))
+				else if(item_data.frequency.includes("Shift Action"))
 				{
 					// AbilityActionIcon = ShiftActionIcon + "&numsp;";
 					AbilityActionBackground = ShiftActionBackground;
 				}
-				else if(item.data.frequency.includes("Full Action"))
+				else if(item_data.frequency.includes("Full Action"))
 				{
 					// AbilityActionIcon = FullActionIcon + "&numsp;";
 					AbilityActionBackground = FullActionBackground;
 				}
-				else if(item.data.frequency.includes("Static"))
+				else if(item_data.frequency.includes("Static"))
 				{
 					AbilityActionBackground = StaticBackground;
 				}
-				else if(item.data.frequency.includes("Free Action"))
+				else if(item_data.frequency.includes("Free Action"))
 				{
 					AbilityActionBackground = FreeActionBackground;
 				}
-				buttons[currentid]={id:currentid, label: "<center><div title='"+(item.data.frequency+"\n"+item.data.effect).replace("'","&#39;")+"' style='background-image: url("+AbilityActionBackground+");background-color: #333333; color:#cccccc; border-left:5px solid darkgray; width:200px; height:25px;font-size:20px;font-family:Modesto Condensed;display: flex;justify-content: center;align-items: center;'>"+AbilityIcon+AbilityActionIcon+currentlabel+"</div></center>",
+				else if(item_data.frequency.includes("Extended Action"))
+				{
+					AbilityActionBackground = ExtendedActionBackground;
+				}
+				buttons[currentid]={id:currentid, label: "<center><div title='"+(item_data.frequency+"\n"+item_data.effect).replace("'","&#39;")+"' style='background-image: url("+AbilityActionBackground+");background-color: #333333; color:#cccccc; border-left:5px solid darkgray; width:200px; height:25px;font-size:20px;font-family:Modesto Condensed;display: flex;justify-content: center;align-items: center;'>"+AbilityIcon+AbilityActionIcon+currentlabel+"</div></center>",
 					callback: async () => {
 						
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
@@ -2322,29 +2440,29 @@ export function PTUAutoFight()
 
 						
 						sendMoveMessage({
-							move: item.data,
+							move: item_data,
 							templateType: MoveMessageTypes.DETAILS,
 							category: "details", 
-							hasAC: (!isNaN(item.data.ac)),
+							hasAC: (!isNaN(item_data.ac)),
 							isAbility: true
 						});
 
-						if(item.data.frequency.includes("Swift"))
+						if(item_data.frequency.includes("Swift"))
 						{
 							TakeAction(actor, "Swift");
 						}
 
-						if(item.data.frequency.includes("Standard"))
+						if(item_data.frequency.includes("Standard"))
 						{
 							TakeAction(actor, "Standard");
 						}
 
-						if(item.data.frequency.includes("Shift"))
+						if(item_data.frequency.includes("Shift"))
 						{
 							TakeAction(actor, "Shift");
 						}
 
-						if(item.data.frequency.includes("Full Action"))
+						if(item_data.frequency.includes("Full Action"))
 						{
 							TakeAction(actor, "Full");
 						}
@@ -2361,22 +2479,23 @@ export function PTUAutoFight()
 
 		for(let item of items) // START STATUS MOVE LOOP
 		{
-			var currentid=item._id;
+			var item_data = item.data.data;
+			var currentid=item.id;
 			var currentlabel=item.data.name;
 			var currentCooldownLabel = "";
 			var currentEffectivenessLabel = "";
 
-			var currentFrequency=item.data.frequency;
+			var currentFrequency=item_data.frequency;
 			if(!currentFrequency)
 			{
 				currentFrequency = "";
 			}
 			
-			if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
+			if((item_data.LastRoundUsed == null || item_data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
 			{
 				for(let search_item of item_entities)
 				{
-					if (search_item._id == item._id)
+					if (search_item.id == item.id)
 					{
 						await search_item.update({ "data.LastRoundUsed" : -2});
 						await search_item.update({ "data.LastEncounterUsed": 0});
@@ -2384,21 +2503,21 @@ export function PTUAutoFight()
 				}
 			}
 
-			var currentLastRoundUsed = item.data.LastRoundUsed;
-			var currentLastEncounterUsed = item.data.LastEncounterUsed;
+			var currentLastRoundUsed = item_data.LastRoundUsed;
+			var currentLastEncounterUsed = item_data.LastEncounterUsed;
 
-			if(item.data.UseCount == null)
+			if(item_data.UseCount == null)
 			{
 				for(let search_item of item_entities)
 				{
-					if (search_item._id == item._id)
+					if (search_item.id == item.id)
 					{
 						await search_item.update({ "data.UseCount": 0});
 					}
 				}
 			}
 
-			var currentUseCount = item.data.UseCount;
+			var currentUseCount = item_data.UseCount;
 			var cooldownFileSuffix = "";
 
 			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
@@ -2520,10 +2639,10 @@ export function PTUAutoFight()
 			}
 
 			if(currentlabel == ""){
-			currentlabel=item.name;
+			currentlabel=item.data.name;
 			}
-			var currenttype=item.type;
-			var currentCategory=item.data.category;
+			var currenttype=item_data.type;
+			var currentCategory=item_data.category;
 			var effectivenessBackgroundColor = "darkgrey"
 			var effectivenessTextColor = "black";
 			var effectivenessText = "";
@@ -2541,64 +2660,64 @@ export function PTUAutoFight()
 
 			if(currenttype=="move" && (currentCategory == "Status"))
 			{
-				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
+				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item_data.damageBase)) && (item_data.damageBase != "") && effectiveness)
 				{
 					if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
 					{
-						currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
-						if (effectiveness[item.data.type] == 0.5)
+						currentEffectivenessLabel = " (x"+effectiveness[item_data.type]+")";
+						if (effectiveness[item_data.type] == 0.5)
 						{
 							effectivenessBackgroundColor = "#cc6666";
 						}
-						else if (effectiveness[item.data.type] == 1)
+						else if (effectiveness[item_data.type] == 1)
 						{
 							effectivenessBackgroundColor = "white";
 							effectivenessTextColor = "black";
 						}
-						else if (effectiveness[item.data.type] == 0.25)
+						else if (effectiveness[item_data.type] == 0.25)
 						{
 							effectivenessBackgroundColor = "red";
 							effectivenessTextColor = "white";
 						}
-						else if (effectiveness[item.data.type] == 0)
+						else if (effectiveness[item_data.type] == 0)
 						{
 							effectivenessBackgroundColor = "black";
 							effectivenessTextColor = "white";
 						}
-						else if (effectiveness[item.data.type] < 0.25)
+						else if (effectiveness[item_data.type] < 0.25)
 						{
 							effectivenessBackgroundColor = "darkred";
 							effectivenessTextColor = "white";
 						}
-						else if (effectiveness[item.data.type] == 1.5)
+						else if (effectiveness[item_data.type] == 1.5)
 						{
 							effectivenessBackgroundColor = "#6699cc";//"#3399ff";
 							effectivenessTextColor = "black";
 						}
-						else if (effectiveness[item.data.type] > 1.5)
+						else if (effectiveness[item_data.type] > 1.5)
 						{
 							effectivenessBackgroundColor = "blue";
 							effectivenessTextColor = "white";
 						}
 						if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 						{
-							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
+							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item_data.type].toString())+"</span>";
 						}
 					}
 				}
 
-				let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
-				if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
+				let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item_data.type + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+				if(item_data.type == "Untyped" || item_data.type == "" || item_data.type == null)
 				{
-					currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+					currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:80px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 				}
 				
 				let move_action = "Standard";
-				if(item.data.name == "Splash")
+				if(item_data.name == "Splash")
 				{
 					move_action = "Shift"
 				}
-				let rangeIconReturn = game.PTUMoveMaster.GetRangeIcons(item.data.range, move_action);
+				let rangeIconReturn = game.PTUMoveMaster.GetRangeIcons(item_data.range, move_action);
 				let currentMoveRange = rangeIconReturn[0];
 				let currentMoveRangeIcon = rangeIconReturn[1];
 
@@ -2610,7 +2729,7 @@ export function PTUAutoFight()
 				buttons[currentid]={
 					id:currentid,
 					style:"padding-left: 0px;border-right-width: 0px;border-bottom-width: 0px;border-left-width: 0px;border-top-width: 0px;margin-right: 0px;",
-					label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+ButtonHeight+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item.data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+					label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+ButtonHeight+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item_data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 					callback: async () => {
 
 						if(!ThisPokemonsTrainerCommandCheck(actor))
@@ -2634,14 +2753,14 @@ export function PTUAutoFight()
 						else
 						{
 							var currentRound = game.combat.round;
-							var currentEncounterID = game.combat.data._id;
+							var currentEncounterID = game.combat.data.id;
 						}
 
-						if(item.data.UseCount == null)
+						if(item_data.UseCount == null)
 						{
 							for(let search_item of item_entities)
 							{
-								if (search_item._id == item._id)
+								if (search_item.id == item.id)
 								{
 									await search_item.update({ "data.UseCount": 0});
 								}
@@ -2649,30 +2768,30 @@ export function PTUAutoFight()
 							// item.update({ "data.UseCount": Number(0)});
 						}
 
-						if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3" || item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
+						if(item_data.frequency == "Daily" || item_data.frequency == "Daily x2" || item_data.frequency == "Daily x3" || item_data.frequency == "Scene" || item_data.frequency == "Scene x2" || item_data.frequency == "Scene x3")
 						{
 							for(let search_item of item_entities)
 							{
-								if (search_item._id == item._id)
+								if (search_item.id == item.id)
 								{
-									await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+									await search_item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
 								}
 							}
-							// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+							// item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
 						}
 
 						for(let search_item of item_entities)
 							{
-								if (search_item._id == item._id)
+								if (search_item.id == item.id)
 								{
 									await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 
-									if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
+									if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item_data.type) > -1) )
 									{
 										let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
 										let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-										// console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
-										await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
+										// console.log("DEBUG: Type Strategist: " + item_data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+										await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item_data.type, "data.TypeStrategistDR": currentDR});
 									}
 								}
 							}
@@ -2749,22 +2868,23 @@ export function PTUAutoFight()
 
 		for(let item of items) // START DAMAGE MOVE LOOP
 		{
-			var currentid=item._id;
+			var item_data = item.data.data;
+			var currentid=item.id;
 			var currentlabel=item.data.name;
 			var currentCooldownLabel = "";
 			var currentEffectivenessLabel = "";
 
-			var currentFrequency=item.data.frequency;
+			var currentFrequency=item_data.frequency;
 			if(!currentFrequency)
 			{
 				currentFrequency = "";
 			}
 			
-			if((item.data.LastRoundUsed == null || item.data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
+			if((item_data.LastRoundUsed == null || item_data.LastEncounterUsed == null ) && (currentFrequency.search("EOT") > -1 || currentFrequency.search("Scene") > -1 || currentFrequency.search("Daily") > -1))
 			{
 				for(let search_item of item_entities)
 				{
-					if (search_item._id == item._id)
+					if (search_item.id == item.id)
 					{
 						await search_item.update({ "data.LastRoundUsed" : -2});
 						await search_item.update({ "data.LastEncounterUsed": 0});
@@ -2772,14 +2892,14 @@ export function PTUAutoFight()
 				}
 			}
 
-			var currentLastRoundUsed = item.data.LastRoundUsed;
-			var currentLastEncounterUsed = item.data.LastEncounterUsed;
+			var currentLastRoundUsed = item_data.LastRoundUsed;
+			var currentLastEncounterUsed = item_data.LastEncounterUsed;
 
-			if(item.data.UseCount == null)
+			if(item_data.UseCount == null)
 			{
 				for(let search_item of item_entities)
 				{
-					if (search_item._id == item._id)
+					if (search_item.id == item.id)
 					{
 						await search_item.update({ "data.UseCount": 0});
 					}
@@ -2787,7 +2907,7 @@ export function PTUAutoFight()
 				// item.update({ "data.UseCount": Number(0)});
 			}
 
-			var currentUseCount = item.data.UseCount;
+			var currentUseCount = item_data.UseCount;
 			var cooldownFileSuffix = "";
 
 			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
@@ -2912,7 +3032,7 @@ export function PTUAutoFight()
 			currentlabel=item.name;
 			}
 			var currenttype=item.type;
-			var currentCategory = item.data.category;
+			var currentCategory = item_data.category;
 			var effectivenessBackgroundColor = "darkgrey"
 			var effectivenessTextColor = "black";
 			var effectivenessText = "";
@@ -2924,65 +3044,65 @@ export function PTUAutoFight()
 			}
 			if(currenttype=="move" && (currentCategory == "Physical" || currentCategory == "Special"))
 			{
-				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item.data.damageBase)) && (item.data.damageBase != "") && effectiveness)
+				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item_data.damageBase)) && (item_data.damageBase != "") && effectiveness)
 				{
 					if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
 					{
-						currentEffectivenessLabel = " (x"+effectiveness[item.data.type]+")";
-						if (effectiveness[item.data.type] == 0.5)
+						currentEffectivenessLabel = " (x"+effectiveness[item_data.type]+")";
+						if (effectiveness[item_data.type] == 0.5)
 						{
 							effectivenessBackgroundColor = "#cc6666";
 						}
-						else if (effectiveness[item.data.type] == 1)
+						else if (effectiveness[item_data.type] == 1)
 						{
 							effectivenessBackgroundColor = "white";
 							effectivenessTextColor = "black";
 						}
-						else if (effectiveness[item.data.type] == 0.25)
+						else if (effectiveness[item_data.type] == 0.25)
 						{
 							effectivenessBackgroundColor = "red";
 							effectivenessTextColor = "white";
 						}
-						else if (effectiveness[item.data.type] == 0)
+						else if (effectiveness[item_data.type] == 0)
 						{
 							effectivenessBackgroundColor = "black";
 							effectivenessTextColor = "white";
 						}
-						else if (effectiveness[item.data.type] < 0.25)
+						else if (effectiveness[item_data.type] < 0.25)
 						{
 							effectivenessBackgroundColor = "darkred";
 							effectivenessTextColor = "white";
 						}
-						else if (effectiveness[item.data.type] == 1.5)
+						else if (effectiveness[item_data.type] == 1.5)
 						{
 							effectivenessBackgroundColor = "#6699cc";//"#3399ff";
 							effectivenessTextColor = "black";
 						}
-						else if (effectiveness[item.data.type] > 1.5)
+						else if (effectiveness[item_data.type] > 1.5)
 						{
 							effectivenessBackgroundColor = "blue";
 							effectivenessTextColor = "white";
 						}
 						if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 						{
-							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item.data.type].toString())+"</span>";
+							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item_data.type].toString())+"</span>";
 						}
 					}
 				}
 
-				let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item.data.type + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
-				if(item.data.type == "Untyped" || item.data.type == "" || item.data.type == null)
+				let currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + item_data.type + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+				if(item_data.type == "Untyped" || item_data.type == "" || item_data.type == null)
 				{
-					// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
-					currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
+					// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+					currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 				}
 
 				let move_action = "Standard";
-				if(item.data.name == "Splash")
+				if(item_data.name == "Splash")
 				{
 					move_action = "Shift"
 				}
-				let rangeIconReturn = game.PTUMoveMaster.GetRangeIcons(item.data.range, move_action);
+				let rangeIconReturn = game.PTUMoveMaster.GetRangeIcons(item_data.range, move_action);
 				let currentMoveRange = rangeIconReturn[0];
 				let currentMoveRangeIcon = rangeIconReturn[1];
 
@@ -3005,7 +3125,7 @@ export function PTUAutoFight()
 				let DBBorderImage = "";
 				let finalDB = 0;
 				let actorData = actor.data.data;
-				let moveData = item.data;
+				let moveData = item_data;
 
 				let isFiveStrike = false;
 				let isDoubleStrike = false;
@@ -3142,14 +3262,14 @@ export function PTUAutoFight()
 
 				if(actor.data.data.typing)
 				{
-					if(item.data.type == actor.data.data.typing[0] || item.data.type == actor.data.data.typing[1])
+					if(item_data.type == actor.data.data.typing[0] || item_data.type == actor.data.data.typing[1])
 					{
 						STABBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/STAB_Border.png" style="width: 248px; height: 1px; padding: 0px ! important;"></img></span></div>';
 					}
 				}
 
 				// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-				buttons[currentid]={id:currentid, label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item.data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+				buttons[currentid]={id:currentid, label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item_data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 					//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 				callback: async () => {
 					if(!ThisPokemonsTrainerCommandCheck(actor))
@@ -3307,7 +3427,7 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 			else
 			{
 				var currentRound = game.combat.round;
-				var currentEncounterID = game.combat.data._id;
+				var currentEncounterID = game.combat.data.id;
 			}
 
 			if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
@@ -3382,7 +3502,7 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 
 
 
-export async function ResetStagesToDefault(actor)
+export async function ResetStagesToDefault(actor, silent=false)
 {
 	var stats = ["atk", "def", "spatk", "spdef", "spd"];
 
@@ -3419,7 +3539,10 @@ export async function ResetStagesToDefault(actor)
 		}
 		game.PTUMoveMaster.chatMessage(actor, actor.name + " All Stages Reset!");
 	// }
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+	if(!silent)
+	{
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+	}
 }
 
 
@@ -3430,6 +3553,7 @@ export function GetSoundDirectory()
 
 export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonusDamage)
 	{
+		var item_data = item.data.data;
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 		var item_entities=actor.items;
@@ -3442,14 +3566,14 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 		else
 		{
 			var currentRound = game.combat.round;
-			var currentEncounterID = game.combat.data._id;
+			var currentEncounterID = game.combat.data.id;
 		}
 
-		if(item.data.UseCount == null)
+		if(item_data.UseCount == null)
 		{
 			for(let search_item of item_entities)
 			{
-				if (search_item._id == item._id)
+				if (search_item.id == item.id)
 				{
 					await search_item.update({ "data.UseCount": 0});
 				}
@@ -3457,36 +3581,36 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 			// item.update({ "data.UseCount": Number(0)});
 		}
 
-		if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3" || item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
+		if(item_data.frequency == "Daily" || item_data.frequency == "Daily x2" || item_data.frequency == "Daily x3" || item_data.frequency == "Scene" || item_data.frequency == "Scene x2" || item_data.frequency == "Scene x3")
 		{
 			for(let search_item of item_entities)
 			{
-				if (search_item._id == item._id)
+				if (search_item.id == item.id)
 				{
-					await search_item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+					await search_item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
 				}
 			}
-			// item.update({ "data.UseCount": Number(item.data.UseCount + 1)});
+			// item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
 		}
 
 		for(let search_item of item_entities)
 			{
-				if (search_item._id == item._id)
+				if (search_item.id == item.id)
 				{
 					await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 
-					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.data.type) > -1) )
+					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item_data.type) > -1) )
 					{
 						let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
 						let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-						// console.log("DEBUG: Type Strategist: " + item.data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
-						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.data.type, "data.TypeStrategistDR": currentDR});
+						// console.log("DEBUG: Type Strategist: " + item_data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item_data.type, "data.TypeStrategistDR": currentDR});
 					}
 				}
 			}
 		// item.update({ "data.LastRoundUsed": currentRound});
 		// item.update({ "data.LastEncounterUsed": currentEncounterID});
-		// console.log(item.name + " data.LastRoundUsed = " + item.data.LastRoundUsed);
+		// console.log(item.name + " data.LastRoundUsed = " + item_data.LastRoundUsed);
 		// console.log("search debug",move_stage_changes);
 
 		for(let searched_move in move_stage_changes)
@@ -3550,7 +3674,7 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 export async function sendMoveMessage(messageData = {}) 
 {
 		messageData = mergeObject({
-			user: game.user._id,
+			user: game.user.data._id,
 			templateType: MoveMessageTypes.DAMAGE,
 			verboseChatInfo: game.settings.get("ptu", "verboseChatInfo") ?? false
 		}, messageData);
@@ -3569,7 +3693,7 @@ export function chatMessage(token, messageContent)
 	// create the message
 	if (messageContent !== '') {
 		let chatData = {
-		user: game.user._id,
+		user: game.user.data._id,
 		speaker: ChatMessage.getSpeaker(token),
 		content: messageContent,
 		};
@@ -3952,8 +4076,17 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move.data, actor.data.data);
 	let diceResult2 = game.PTUMoveMaster.GetDiceResult(acRoll2);
 
-	let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= 20 - actor.data.data.modifiers.critRange.total ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
-	let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= 20 - actor.data.data.modifiers.critRange.total ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
+	let move_crit_base = 20;
+	if(move_stage_changes[move.data.name])
+	{
+		if(move_stage_changes[move.data.name]["crit-range"])
+		{
+			move_crit_base = move_stage_changes[move.data.name]["crit-range"];
+		}
+	}
+
+	let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= Number(move_crit_base - actor.data.data.modifiers.critRange.total) ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
+	let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= Number(move_crit_base - actor.data.data.modifiers.critRange.total) ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
 
 	let damageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
 	if(damageRoll) damageRoll.roll();
@@ -4261,7 +4394,7 @@ export async function sendMoveRollMessage(rollData, rollData2, messageData = {})
 	}
 
 	messageData = mergeObject({
-		user: game.user._id,
+		user: game.user.data._id,
 		roll: rollData,
 		roll2: rollData2,
 		sound: CONFIG.sounds.dice,
@@ -4343,6 +4476,20 @@ export async function ApplyInjuries(target, final_effective_damage)
 
 			target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
 		}
+
+	if( Number(targetHealthCurrent - final_effective_damage) <= 0 )
+	{
+		Dialog.confirm({
+			title: "Fainted?",
+			content: "Hit Points are 0 or below; Apply fainted condition?",
+			yes: async () => {
+				await game.PTUMoveMaster.enableCondition(target, "fainted", "other"); // TODO: Implement
+			},
+			defaultYes: false 
+		})
+	}
+	
+	
 }
 
 
@@ -5477,7 +5624,7 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 					}
 				}
 
-				game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.id]: CONST.ENTITY_PERMISSIONS.OWNER}, "data.pokeball":pokeball });
+				game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.data._id]: CONST.ENTITY_PERMISSIONS.OWNER}, "data.pokeball":pokeball });
 
 				setTimeout(() => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
 				setTimeout(() => {  
@@ -5752,7 +5899,7 @@ export async function ShowInventoryMenu(actor)
 	}
 
 	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor);
-	let background_field = "style='background-image: url('background_fields/BG_Field.png');'";
+	let background_field = "style='background-image: url('background_fields/BG_Grass.png');'";
 
 	let trainer_tokens = actor.getActiveTokens();
 	let actor_token = trainer_tokens[0]; // The using actor
@@ -5765,7 +5912,7 @@ export async function ShowInventoryMenu(actor)
 	// {
 		for(let item of actor.data.items)
 		{
-			if(item.type == "item" && !item.name.includes(" Ball"))
+			if(item.data.data.type == "item" && !item.data.data.name.includes(" Ball"))
 			{
 				item_inventory.push(item);
 			}
@@ -5776,7 +5923,7 @@ export async function ShowInventoryMenu(actor)
 	{
 		let item_base_image = await game.PTUMoveMaster.GetItemArt(inventory_item.name);
 		let item_image = "";
-		let item_count = inventory_item.data.quantity;
+		let item_count = inventory_item.data.data.quantity;
 		
 		for(let i=0; (i < item_count) && (i < 10); i++)
 		{
@@ -6115,7 +6262,7 @@ export function ShowManeuverMenu(actor)
 		currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + currentType + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 		if(currentType == "Untyped" || currentType == "" || currentType == null)
 		{
-			// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+			// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 			currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 		}
 
@@ -6284,7 +6431,7 @@ export function ShowManeuverMenu(actor)
 	console.log("______________ MANEUVER BUTTONS ______________");
 	console.log(maneuver_buttons);
 
-	let background_field = 'background-image: url("background_fields/BG_Field.png"); background-repeat: repeat-x; background-position: left bottom';
+	let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
 
 	let dialogueID = "ptu-sidebar";
 	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
@@ -6389,7 +6536,7 @@ export function ShowSkillsMenu(actor)
 	console.log(skill_buttons);
 
 
-	let background_field = 'background-image: url("background_fields/BG_Field.png"); background-repeat: repeat-x; background-position: left bottom';
+	let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
 
 	let dialogueID = "ptu-sidebar";
 	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
@@ -6611,7 +6758,7 @@ export function ShowStruggleMenu(actor)
 			currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + currentType + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			if(currentType == "Untyped" || currentType == "" || currentType == null)
 			{
-				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			}
 
@@ -6671,7 +6818,7 @@ export function ShowStruggleMenu(actor)
 	console.log(struggle_buttons);
 
 
-	let background_field = 'background-image: url("background_fields/BG_Field.png"); background-repeat: repeat-x; background-position: left bottom';
+	let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
 
 	let dialogueID = "ptu-sidebar";
 	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
@@ -6951,7 +7098,7 @@ export async function ExpendItem(owning_actor, item_object)
 		return false;
 	}
 
-	await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.quantity-1) }); // Decrement the spent item count
+	await owning_actor.updateOwnedItem( { id: item_object.id, "data.quantity": Number(item_object.data.quantity-1) }); // Decrement the spent item count
 
 	if(item_object.data.name.includes("Ball")) 	// For balls, create a thrown version that can be picked up after battle (this will be changed to 
 	{										// broken or removed entirely by the capture function if it hits and fails/succeeds to capture a 
@@ -6961,7 +7108,7 @@ export async function ExpendItem(owning_actor, item_object)
 		let item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 		if(item) 
 		{
-			await owning_actor.updateOwnedItem({_id: item._id, "data.quantity": Number(duplicate(item).data.quantity)+1});
+			await owning_actor.updateOwnedItem({id: item.id, "data.quantity": Number(duplicate(item).data.quantity)+1});
 		}
 		else // If we get here, then we never found an existing thrown version to increment, so create new thrown version
 		{
@@ -6981,7 +7128,7 @@ export async function ExpendItem(owning_actor, item_object)
 	}
 	else // Not a ball, just decrement the count
 	{
-		await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.quantity-1) });
+		await owning_actor.updateOwnedItem( { id: item_object.id, "data.quantity": Number(item_object.data.quantity-1) });
 		return true;
 	}
 }
@@ -7315,12 +7462,13 @@ export function GetRangeIcons(currentMoveRange, action="Standard")
 }
 
 
-export async function resetEOTMoves(actor)
+export async function resetEOTMoves(actor, silent=false)
 {
 	let item_entities = actor.items;
 	for(let item of actor.data.items)
 	{
-		let searched_frequency = item.data.frequency;
+		var item_data = item.data.data;
+		let searched_frequency = item_data.frequency;
 		if(!searched_frequency)
 		{
 			searched_frequency = "";
@@ -7329,7 +7477,7 @@ export async function resetEOTMoves(actor)
 		{
 			for(let search_item of item_entities)
 			{
-				if (search_item._id == item._id)
+				if (search_item.id == item.id)
 				{
 					await search_item.update({ "data.LastRoundUsed": Number(-2)});
 				}
@@ -7337,7 +7485,10 @@ export async function resetEOTMoves(actor)
 		}
 	}
 	chatMessage(actor, (actor.name + " refreshes their EOT-frequency moves!"))
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	if(!silent)
+	{
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	}
 }
 
 
@@ -7346,16 +7497,17 @@ export async function resetSceneMoves(actor)
 	let item_entities = actor.items;
 	for(let item of actor.data.items)
 	{
-		let searched_frequency = item.data.frequency;
+		var item_data = item.data.data;
+		let searched_frequency = item_data.frequency;
 		if(!searched_frequency)
 		{
 			searched_frequency = "";
 		}
-		if(item.data.frequency == "Scene" || item.data.frequency == "Scene x2" || item.data.frequency == "Scene x3")
+		if(item_data.frequency == "Scene" || item_data.frequency == "Scene x2" || item_data.frequency == "Scene x3")
 		{
 			for(let search_item of item_entities)
 			{
-				if (search_item._id == item._id)
+				if (search_item.id == item.id)
 				{
 					await search_item.update({ "data.UseCount": Number(0)});
 				}
@@ -7372,16 +7524,17 @@ export async function resetDailyMoves(actor)
 	let item_entities = actor.items;
 	for(let item of actor.data.items)
 	{
-		let searched_frequency = item.data.frequency;
+		var item_data = item.data.data;
+		let searched_frequency = item_data.frequency;
 		if(!searched_frequency)
 		{
 			searched_frequency = "";
 		}
-		if(item.data.frequency == "Daily" || item.data.frequency == "Daily x2" || item.data.frequency == "Daily x3")
+		if(item_data.frequency == "Daily" || item_data.frequency == "Daily x2" || item_data.frequency == "Daily x3")
 		{
 			for(let search_item of item_entities)
 			{
-				if (search_item._id == item._id)
+				if (search_item.id == item.id)
 				{
 					await search_item.update({ "data.UseCount": Number(0)});
 				}
@@ -7424,4 +7577,17 @@ export async function resetSwiftAction(actor)
 	});
 	chatMessage(actor, (actor.name + " resets their swift action!"))
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+}
+
+
+export async function enableCondition(actor, condition, condition_type = "other")
+{
+	chatMessage(actor, (actor.name + " gained the "+condition+" affliction!"));
+
+	let effectData = CONFIG.statusEffects.find(x => x.id == "effect."+condition_type+"."+condition);
+	// token.toggleEffect(effectData);
+	canvas.tokens.get(actor.token.id).toggleEffect(effectData);
+
+	// await actor.createEmbeddedEntity("ActiveEffect", CONFIG.statusEffects.find(x => x.id == "effect."+condition_type+"."+condition));
+	// await canvas.tokens.get(actor.token.id).toggleEffect("icons/svg/skull.svg");
 }
