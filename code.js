@@ -2382,24 +2382,23 @@ export function PTUAutoFight()
 		}};
 	
 
-		for(let item of items)
+		for(let item of items) // START ABILITY BUTTON LOOP
 		{
 			var item_data = item.data.data;
-			var currenttype = item.data.type;
 			var currentid=item.id;
-			// console.log("currentid");
-			// console.log(currentid);
-			// console.log("currenttype");
-			// console.log(currenttype);
 			var currentlabel=item.data.name;
+			var currenttype=item.data.type;
+			var currentCooldownLabel = "";
+			var currentEffectivenessLabel = "";
+			var respdata=item.data;
+			let AbilityActionIcon = "";
+			let AbilityActionBackground = "";
 
 			if(currenttype=="ability")
 			{
-				var currentlabel=item.data.name;
-				var respdata=item_data;
+				currentlabel=item.data.name;
 				respdata['category']='details';
-				let AbilityActionIcon = "";
-				let AbilityActionBackground = "";
+				
 				if(item_data.frequency.includes("Swift Action"))
 				{
 					// AbilityActionIcon = SwiftActionIcon + "&numsp;";
@@ -2441,6 +2440,7 @@ export function PTUAutoFight()
 						
 						sendMoveMessage({
 							move: item_data,
+							moveName: item.name,
 							templateType: MoveMessageTypes.DETAILS,
 							category: "details", 
 							hasAC: (!isNaN(item_data.ac)),
@@ -2477,6 +2477,7 @@ export function PTUAutoFight()
 
 		}};
 
+
 		for(let item of items) // START STATUS MOVE LOOP
 		{
 			var item_data = item.data.data;
@@ -2484,8 +2485,8 @@ export function PTUAutoFight()
 			var currentlabel=item.data.name;
 			var currentCooldownLabel = "";
 			var currentEffectivenessLabel = "";
-
 			var currentFrequency=item_data.frequency;
+			
 			if(!currentFrequency)
 			{
 				currentFrequency = "";
@@ -2639,9 +2640,9 @@ export function PTUAutoFight()
 			}
 
 			if(currentlabel == ""){
-			currentlabel=item.data.name;
+			currentlabel=item.name;
 			}
-			var currenttype=item_data.type;
+			var currenttype=item.type;
 			var currentCategory=item_data.category;
 			var effectivenessBackgroundColor = "darkgrey"
 			var effectivenessTextColor = "black";
@@ -2744,7 +2745,9 @@ export function PTUAutoFight()
 						// }
 
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-						let diceRoll = PerformFullAttack (actor,item);
+						console.log("STATUS MOVE: item.data.data = ");
+						console.log(item.data.data);
+						let diceRoll = PerformFullAttack (actor,item.data.data, item.name);
 						if(game.combat == null)
 						{
 							var currentRound = 0;
@@ -3269,28 +3272,30 @@ export function PTUAutoFight()
 				}
 
 				// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
-				buttons[currentid]={id:currentid, label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item_data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+				buttons[currentid]={
+					id:currentid, 
+					label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item_data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 					//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
-				callback: async () => {
-					if(!ThisPokemonsTrainerCommandCheck(actor))
-					{
-						game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
-						return;
-					}
-					let key_shift = keyboard.isDown("Shift");
-					if (key_shift) 
-					{
-						rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
-					}
-					else
-					{
-						game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, 0);
-					}
-					
+					callback: async () => {
+						if(!ThisPokemonsTrainerCommandCheck(actor))
+						{
+							game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
+							return;
+						}
+						let key_shift = keyboard.isDown("Shift");
+						if (key_shift) 
+						{
+							rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
+						}
+						else
+						{
+							game.PTUMoveMaster.RollDamageMove(actor, item, item.name, finalDB, typeStrategist, 0);
+						}
+						
+
+						}
 
 					}
-
-				}
 
 			}
 
@@ -3551,13 +3556,13 @@ export function GetSoundDirectory()
 	return game.settings.get("ptu", "moveSoundDirectory");
 }
 
-export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonusDamage)
+export async function RollDamageMove(actor, item_initial, moveName, finalDB, typeStrategist, bonusDamage)
 	{
-		var item_data = item.data.data;
+		var item = item_initial.data.data;
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 		var item_entities=actor.items;
-		let diceRoll = game.PTUMoveMaster.PerformFullAttack (actor,item,finalDB, bonusDamage);
+		let diceRoll = game.PTUMoveMaster.PerformFullAttack (actor, item, moveName, finalDB, bonusDamage);
 		if(game.combat == null)
 		{
 			var currentRound = 0;
@@ -3569,7 +3574,7 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 			var currentEncounterID = game.combat.data.id;
 		}
 
-		if(item_data.UseCount == null)
+		if(item.UseCount == null)
 		{
 			for(let search_item of item_entities)
 			{
@@ -3581,16 +3586,16 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 			// item.update({ "data.UseCount": Number(0)});
 		}
 
-		if(item_data.frequency == "Daily" || item_data.frequency == "Daily x2" || item_data.frequency == "Daily x3" || item_data.frequency == "Scene" || item_data.frequency == "Scene x2" || item_data.frequency == "Scene x3")
+		if(item.frequency == "Daily" || item.frequency == "Daily x2" || item.frequency == "Daily x3" || item.frequency == "Scene" || item.frequency == "Scene x2" || item.frequency == "Scene x3")
 		{
 			for(let search_item of item_entities)
 			{
 				if (search_item.id == item.id)
 				{
-					await search_item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
+					await search_item.update({ "data.UseCount": Number(item.UseCount + 1)});
 				}
 			}
-			// item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
+			// item.update({ "data.UseCount": Number(item.UseCount + 1)});
 		}
 
 		for(let search_item of item_entities)
@@ -3599,18 +3604,18 @@ export async function RollDamageMove(actor, item, finalDB, typeStrategist, bonus
 				{
 					await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 
-					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item_data.type) > -1) )
+					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.type) > -1) )
 					{
 						let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
 						let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-						// console.log("DEBUG: Type Strategist: " + item_data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
-						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item_data.type, "data.TypeStrategistDR": currentDR});
+						// console.log("DEBUG: Type Strategist: " + item.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.type, "data.TypeStrategistDR": currentDR});
 					}
 				}
 			}
 		// item.update({ "data.LastRoundUsed": currentRound});
 		// item.update({ "data.LastEncounterUsed": currentEncounterID});
-		// console.log(item.name + " data.LastRoundUsed = " + item_data.LastRoundUsed);
+		// console.log(item.name + " data.LastRoundUsed = " + item.LastRoundUsed);
 		// console.log("search debug",move_stage_changes);
 
 		for(let searched_move in move_stage_changes)
@@ -3957,7 +3962,7 @@ export function CalculateAcRoll (moveData, actorData)   {
 };
 
 
-export function PerformFullAttack (actor, move, finalDB, bonusDamage) 
+export function PerformFullAttack (actor, move, moveName, finalDB, bonusDamage) 
 {
 	let isFiveStrike = false;
 	let isDoubleStrike = false;
@@ -3972,7 +3977,7 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 
 	let currentWeather = game.settings.get("PTUMoveMaster", "currentWeather");
 
-	let lastChanceName = "Last Chance ("+move.data.type+")";
+	let lastChanceName = "Last Chance ("+move.type+")";
 
 	if(actor.data.data.typing)
 	{
@@ -4017,30 +4022,30 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 		}
 	}
 
-	if(!isNaN(move.data.damageBase))
+	if(!isNaN(move.damageBase))
 	{
-		if(currentWeather == "Rainy" && move.data.type == "Water")
+		if(currentWeather == "Rainy" && move.type == "Water")
 		{
 			bonusDamage += 5;
 			currentExtraEffectText = currentExtraEffectText+ "<br> including +5 damage from Rainy weather!";
 			currentHasExtraEffect = true;
 		}
 	
-		if(currentWeather == "Rainy" && move.data.type == "Fire")
+		if(currentWeather == "Rainy" && move.type == "Fire")
 		{
 			bonusDamage -= 5;
 			currentExtraEffectText = currentExtraEffectText+ "<br> including -5 damage from Rainy weather!";
 			currentHasExtraEffect = true;
 		}
 	
-		if(currentWeather == "Sunny" && move.data.type == "Fire")
+		if(currentWeather == "Sunny" && move.type == "Fire")
 		{
 			bonusDamage += 5;
 			currentExtraEffectText = currentExtraEffectText+ "<br> including +5 damage from Sunny weather!";
 			currentHasExtraEffect = true;
 		}
 	
-		if(currentWeather == "Sunny" && move.data.type == "Water")
+		if(currentWeather == "Sunny" && move.type == "Water")
 		{
 			bonusDamage -= 5;
 			currentExtraEffectText = currentExtraEffectText+ "<br> including -5 damage from Sunny weather!";
@@ -4048,7 +4053,9 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 		}
 	}
 
-	if(move.data.range.search("Five Strike") > -1)
+	console.log("move");
+	console.log(move);
+	if(move.range.search("Five Strike") > -1)
 	{
 		isFiveStrike = true;
 		let fiveStrikeD8 = Math.floor(Math.random() * (8 - 1 + 1)) + 1;
@@ -4065,35 +4072,36 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 		let fiveStrikeHits = fiveStrikeHitsDictionary[fiveStrikeD8];
 		fiveStrikeCount = fiveStrikeHits-1;
 	}
-	if( (move.data.range.search("Doublestrike") > -1) || (move.data.range.search("Double Strike") > -1) )
+
+	if( (move.range.search("Doublestrike") > -1) || (move.range.search("Double Strike") > -1) )
 	{
 		isDoubleStrike = true;
 	}
 
-	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move.data, actor.data.data);
+	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move, actor.data.data);
 	let diceResult = game.PTUMoveMaster.GetDiceResult(acRoll);
 
-	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move.data, actor.data.data);
+	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move, actor.data.data);
 	let diceResult2 = game.PTUMoveMaster.GetDiceResult(acRoll2);
 
 	let move_crit_base = 20;
-	if(move_stage_changes[move.data.name])
+	if(move_stage_changes[move.name])
 	{
-		if(move_stage_changes[move.data.name]["crit-range"])
+		if(move_stage_changes[move.name]["crit-range"])
 		{
-			move_crit_base = move_stage_changes[move.data.name]["crit-range"];
+			move_crit_base = move_stage_changes[move.name]["crit-range"];
 		}
 	}
 
 	let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= Number(move_crit_base - actor.data.data.modifiers.critRange.total) ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
 	let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= Number(move_crit_base - actor.data.data.modifiers.critRange.total) ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
 
-	let damageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
+	let damageRoll = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
 	if(damageRoll) damageRoll.roll();
-	let critDamageRoll = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
-	if(!move.data.name)
+	let critDamageRoll = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
+	if(!move.name)
 	{
-		move.data.name=move.name;
+		move.name=move.name;
 	}
 	if(critDamageRoll)
 	{
@@ -4101,29 +4109,29 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 	}
 	if(damageRoll && damageRoll._total)
 	{
-		game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.data.category,move.data.type);
+		game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.category,move.type);
 	}
 
-	let damageRollTwoHits = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 0, bonusDamage);
+	let damageRollTwoHits = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 0, bonusDamage);
 	if(damageRollTwoHits)
 	{
 		damageRollTwoHits.roll();
 	}
 
-	let critDamageRollOneHitOneCrit = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 1, bonusDamage);
+	let critDamageRollOneHitOneCrit = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 1, bonusDamage);
 	if(critDamageRollOneHitOneCrit)
 	{
 		critDamageRollOneHitOneCrit.roll();
 	}
 
-	let critDamageRollTwoCrits = game.PTUMoveMaster.CalculateDmgRoll(move.data, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 2, bonusDamage);
+	let critDamageRollTwoCrits = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 2, bonusDamage);
 	if(critDamageRollTwoCrits)
 	{
 		critDamageRollTwoCrits.roll();
 	}
 
 	let isUntyped = false;
-	if(move.data.type == "Untyped" || move.data.type == "" || move.data.type == null)
+	if(move.type == "Untyped" || move.type == "" || move.type == null)
 	{
 		isUntyped = true;
 	}
@@ -4137,40 +4145,41 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 		}
 	} // END Ability Check Loop
 
-	if( (typeStrategist.length > 0) && (typeStrategist.indexOf(move.data.type) > -1) )
+	if( (typeStrategist.length > 0) && (typeStrategist.indexOf(move.type) > -1) )
 	{
-		currentExtraEffectText = currentExtraEffectText+ "<br>Type Strategist (" + move.data.type + ") activated!";
+		currentExtraEffectText = currentExtraEffectText+ "<br>Type Strategist (" + move.type + ") activated!";
 		currentHasExtraEffect = true;
 	}
 
 	let hasAC = true;
-	if(move.data.ac == "" || move.data.ac == "--")
+	if(move.ac == "" || move.ac == "--")
 	{
 		hasAC = false;
 	}
 
-	if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (move.data.damageBase <= 6) ) )
+	if(userHasTechnician && ( isDoubleStrike || isFiveStrike || (move.damageBase <= 6) ) )
 	{
 		currentExtraEffectText = currentExtraEffectText+ "<br>Technician applied!";
 		currentHasExtraEffect = true;
 	}
 
-	if(userHasAdaptability && (move.data.type == actorType1 || move.data.type == actorType2) )
+	if(userHasAdaptability && (move.type == actorType1 || move.type == actorType2) )
 	{
 		currentExtraEffectText = currentExtraEffectText+ "<br>Adaptability applied!";
 		currentHasExtraEffect = true;
 	}
 
-	if(move.data.type == actorType1 || move.data.type == actorType2)
+	if(move.type == actorType1 || move.type == actorType2)
 	{
 		hasSTAB = true;
 	}
 
-	game.PTUMoveMaster.sendMoveRollMessage(acRoll, acRoll2, {
+	game.PTUMoveMaster.sendMoveRollMessage(moveName, acRoll, acRoll2, {
 		speaker: ChatMessage.getSpeaker({
 			actor: actor
 		}),
-		move: move.data,
+		move: move,
+		moveName: moveName,
 		damageRoll: damageRoll,
 		damageRollTwoHits: damageRollTwoHits,
 		critDamageRoll: critDamageRoll,
@@ -4190,14 +4199,14 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 		finalDB: finalDB,
 	});//.then(data => console.log(data));
 
-	var moveSoundFile = ((move.data.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
+	var moveSoundFile = ((move.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
 
-	if(move.data.name.toString().match(/Hidden Power/) != null)
+	if(move.name.toString().match(/Hidden Power/) != null)
 	{
 		moveSoundFile = ("Hidden Power" + ".mp3");
 	}
 
-	if(move.data.name.toString().match(/Pin Missile/) != null)
+	if(move.name.toString().match(/Pin Missile/) != null)
 	{
 		if((fiveStrikeCount+1) <= 1)
 		{
@@ -4213,17 +4222,17 @@ export function PerformFullAttack (actor, move, finalDB, bonusDamage)
 	moveSoundFile.replace(/ /g,"%20");
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 
-	if(move.data.range.includes("Full Action"))
+	if(move.range.includes("Full Action"))
 	{
-		game.PTUMoveMaster.TakeAction(actor, "Full", move.data.category);
+		game.PTUMoveMaster.TakeAction(actor, "Full", move.category);
 	}
-	else if(move.data.name == "Splash")
+	else if(move.name == "Splash")
 	{
-		game.PTUMoveMaster.TakeAction(actor, "Shift", move.data.category);
+		game.PTUMoveMaster.TakeAction(actor, "Shift", move.category);
 	}
 	else
 	{
-		game.PTUMoveMaster.TakeAction(actor, "Standard", move.data.category);
+		game.PTUMoveMaster.TakeAction(actor, "Standard", move.category);
 	}
 
 	return diceResult;
@@ -4381,7 +4390,7 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 	})
 };
 
-export async function sendMoveRollMessage(rollData, rollData2, messageData = {})
+export async function sendMoveRollMessage(moveName, rollData, rollData2, messageData = {})
 {
 	if (!rollData._rolled) 
 	{
@@ -4395,6 +4404,7 @@ export async function sendMoveRollMessage(rollData, rollData2, messageData = {})
 
 	messageData = mergeObject({
 		user: game.user.data._id,
+		moveName: moveName,
 		roll: rollData,
 		roll2: rollData2,
 		sound: CONFIG.sounds.dice,
@@ -6262,7 +6272,7 @@ export function ShowManeuverMenu(actor)
 		currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + currentType + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 		if(currentType == "Untyped" || currentType == "" || currentType == null)
 		{
-			// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+			// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 			currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 		}
 
@@ -6575,8 +6585,9 @@ export function ShowStruggleMenu(actor)
 
 	for(let struggle_modifying_capability in struggle_modifying_capabilities)
 	{
-		for(let item of actor.data.items)
+		for(let item_initial of actor.data.items)
 		{
+			let item = item_initial.data;
 			if(item.type == "capability")
 			{
 				if(item.name.includes(struggle_modifying_capability))
@@ -6758,7 +6769,7 @@ export function ShowStruggleMenu(actor)
 			currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + currentType + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			if(currentType == "Untyped" || currentType == "" || currentType == null)
 			{
-				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item_data.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
+				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			}
 

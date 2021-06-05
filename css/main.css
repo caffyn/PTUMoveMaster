@@ -178,3 +178,7 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+.MoveMaster-button {
+  background:none !important;
+}

@@ -40,6 +40,6 @@ export class MoveMasterBonusDamageOptions extends FormApplication {
         let finalDB = this.object["finalDB"];
         let typeStrategist = this.object["typeStrategist"];
 
-        game.PTUMoveMaster.RollDamageMove(actor, item, finalDB, typeStrategist, bonusDamage);
+        game.PTUMoveMaster.RollDamageMove(actor, item, item.name, finalDB, typeStrategist, bonusDamage);
     }
 }
