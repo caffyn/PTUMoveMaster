@@ -403,16 +403,31 @@ Hooks.on("endTurn", async (combat, actor, round_and_turn, diff, id) => {
 Hooks.on("preDeleteCombat", (combat, misc, tokenID) => {
     if( (game.user.isGM) && (game.settings.get("PTUMoveMaster", "autoResetStagesOnCombatEnd")) )
     {
+	let volatile_conditions = ["Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed", "Fainted"];
+
       Dialog.confirm({
         title: "End Scene?",
-        content: "Do you wish to end the Scene as well as the combat? This will reset combat stages and refresh per-scene and EOT cooldowns for all combatants.",
+        content: "Do you wish to end the Scene as well as the combat? This will reset combat stages, refresh per-scene and EOT cooldowns, and end volatile conditions for all combatants.",
         yes: async () => {
           let combatants = combat.data.combatants;
+		  let current_actor;
           for(let combatant of combatants)
           {
-            await game.PTUMoveMaster.ResetStagesToDefault(combatant.actor, true);
-			await game.PTUMoveMaster.ResetActionEconomy(combatant.actor);
-            await game.PTUMoveMaster.resetEOTMoves(combatant.actor, true);
+			current_actor = game.actors.get(combatant.actor.id);
+			console.log("END OF SCENE: __________ current_actor");
+			console.log(current_actor);
+
+
+            await game.PTUMoveMaster.ResetStagesToDefault(current_actor, true);
+			await game.PTUMoveMaster.ResetActionEconomy(current_actor);
+            await game.PTUMoveMaster.resetEOTMoves(current_actor, true);
+			await game.PTUMoveMaster.resetSceneMoves(current_actor, true);
+
+			for(let affliction of volatile_conditions)
+			{
+				await game.PTUMoveMaster.cureActorAffliction(current_actor, affliction);
+			}
+
           }
 		  AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
         },
@@ -2266,7 +2281,7 @@ export function PTUAutoFight()
 		}
 		else
 		{
-			var currentRound = game.combat.round;
+			var currentRound = game.combat.current.round;
 			var currentEncounterID = game.combat.data._id;
 		}
 
@@ -2509,6 +2524,7 @@ export function PTUAutoFight()
 
 			if(item_data.UseCount == null)
 			{
+				// console.log("USE COUNT == NULL");
 				for(let search_item of item_entities)
 				{
 					if (search_item.id == item.id)
@@ -2520,6 +2536,21 @@ export function PTUAutoFight()
 
 			var currentUseCount = item_data.UseCount;
 			var cooldownFileSuffix = "";
+
+			// console.log("Move:");
+			// console.log(item.name);
+
+			// console.log("currentRound");
+			// console.log(currentRound);
+
+			// console.log("currentLastRoundUsed");
+			// console.log(currentLastRoundUsed);
+
+			// console.log("currentEncounterID");
+			// console.log(currentEncounterID);
+
+			// console.log("currentLastEncounterUsed");
+			// console.log(currentLastEncounterUsed);
 
 			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 			{
@@ -2747,7 +2778,8 @@ export function PTUAutoFight()
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 						console.log("STATUS MOVE: item.data.data = ");
 						console.log(item.data.data);
-						let diceRoll = PerformFullAttack (actor,item.data.data, item.name);
+						let diceRoll = await PerformFullAttack (actor,item.data.data, item.name);
+
 						if(game.combat == null)
 						{
 							var currentRound = 0;
@@ -2756,7 +2788,7 @@ export function PTUAutoFight()
 						else
 						{
 							var currentRound = game.combat.round;
-							var currentEncounterID = game.combat.data.id;
+							var currentEncounterID = game.combat.data._id;
 						}
 
 						if(item_data.UseCount == null)
@@ -2768,7 +2800,6 @@ export function PTUAutoFight()
 									await search_item.update({ "data.UseCount": 0});
 								}
 							}
-							// item.update({ "data.UseCount": Number(0)});
 						}
 
 						if(item_data.frequency == "Daily" || item_data.frequency == "Daily x2" || item_data.frequency == "Daily x3" || item_data.frequency == "Scene" || item_data.frequency == "Scene x2" || item_data.frequency == "Scene x3")
@@ -2777,10 +2808,10 @@ export function PTUAutoFight()
 							{
 								if (search_item.id == item.id)
 								{
+
 									await search_item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
 								}
 							}
-							// item.update({ "data.UseCount": Number(item_data.UseCount + 1)});
 						}
 
 						for(let search_item of item_entities)
@@ -3562,7 +3593,8 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 		var item_entities=actor.items;
-		let diceRoll = game.PTUMoveMaster.PerformFullAttack (actor, item, moveName, finalDB, bonusDamage);
+		let diceRoll = await game.PTUMoveMaster.PerformFullAttack (actor, item, moveName, finalDB, bonusDamage);
+
 		if(game.combat == null)
 		{
 			var currentRound = 0;
@@ -3570,15 +3602,15 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 		}
 		else
 		{
-			var currentRound = game.combat.round;
-			var currentEncounterID = game.combat.data.id;
+			var currentRound = game.combat.current.round;
+			var currentEncounterID = game.combat.data._id;
 		}
 
 		if(item.UseCount == null)
 		{
 			for(let search_item of item_entities)
 			{
-				if (search_item.id == item.id)
+				if (search_item.data.id == item_initial.id)
 				{
 					await search_item.update({ "data.UseCount": 0});
 				}
@@ -3590,8 +3622,14 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 		{
 			for(let search_item of item_entities)
 			{
-				if (search_item.id == item.id)
+				// console.log("search_item.data.id:");
+				// console.log(search_item.id);
+
+				// console.log("item_initial.id:");
+				// console.log(item_initial.id);
+				if (search_item.id == item_initial.id)
 				{
+					// console.log("DEBUG: search_item.data.id == item_initial.id, updating data.UseCount");
 					await search_item.update({ "data.UseCount": Number(item.UseCount + 1)});
 				}
 			}
@@ -3600,8 +3638,10 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 
 		for(let search_item of item_entities)
 			{
-				if (search_item.id == item.id)
+				if (search_item.id == item_initial.id)
 				{
+					// console.log("DEBUG: search_item.id == item_initial.id, updating data.LastRoundUsed");
+
 					await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 
 					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.type) > -1) )
@@ -3886,6 +3926,21 @@ export function healActorRest(actor, hours=8, bandage_used=false)
 	{
 		injuries_healed += Math.floor(hours/24);
 	}
+	if(hours >= 4)
+	{
+		game.PTUMoveMaster.resetEOTMoves(actor, true);
+		game.PTUMoveMaster.resetSceneMoves(actor, true);
+		game.PTUMoveMaster.resetDailyMoves(actor, true);
+
+		let conditions = ["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned", "Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed",];
+
+		for(let affliction of conditions)
+		{
+			game.PTUMoveMaster.cureActorAffliction(actor, affliction);
+		}
+
+	}
+
 	actor.update({'data.health.injuries': Math.max(Number(actor.data.data.health.injuries - injuries_healed), 0) });
 
 	setTimeout(() => {  
@@ -3962,7 +4017,7 @@ export function CalculateAcRoll (moveData, actorData)   {
 };
 
 
-export function PerformFullAttack (actor, move, moveName, finalDB, bonusDamage) 
+export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDamage) 
 {
 	let isFiveStrike = false;
 	let isDoubleStrike = false;
@@ -3974,6 +4029,18 @@ export function PerformFullAttack (actor, move, moveName, finalDB, bonusDamage)
 
 	let actorType1 = null;
 	let actorType2 = null;
+
+	let sheet_damage_bonus = 0;
+	if(move.category == "Physical")
+	{
+		sheet_damage_bonus = actor.data.data.modifiers.damageBonus.physical.total;
+	}
+	if(move.category == "Special")
+	{
+		sheet_damage_bonus = actor.data.data.modifiers.damageBonus.special.total;
+	}
+
+	bonusDamage += sheet_damage_bonus;
 
 	let currentWeather = game.settings.get("PTUMoveMaster", "currentWeather");
 
@@ -4079,10 +4146,10 @@ export function PerformFullAttack (actor, move, moveName, finalDB, bonusDamage)
 	}
 
 	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move, actor.data.data);
-	let diceResult = game.PTUMoveMaster.GetDiceResult(acRoll);
+	let diceResult = await game.PTUMoveMaster.GetDiceResult(acRoll);
 
 	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move, actor.data.data);
-	let diceResult2 = game.PTUMoveMaster.GetDiceResult(acRoll2);
+	let diceResult2 = await game.PTUMoveMaster.GetDiceResult(acRoll2);
 
 	let move_crit_base = 20;
 	if(move_stage_changes[move.name])
@@ -4239,11 +4306,11 @@ export function PerformFullAttack (actor, move, moveName, finalDB, bonusDamage)
 };
 
 
-export function GetDiceResult(roll)
+export async function GetDiceResult(roll)
 {
-	if (!roll._rolled)
+	if (!roll._evaluated)
 	{
-		roll.evaluate();
+		await roll.evaluate(true);
 	}
 
 	let diceResult = -2;
@@ -4392,12 +4459,12 @@ export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician,
 
 export async function sendMoveRollMessage(moveName, rollData, rollData2, messageData = {})
 {
-	if (!rollData._rolled) 
+	if (!rollData._evaluated) 
 	{
 		rollData.evaluate();
 	}
 
-	if (!rollData2._rolled) 
+	if (!rollData2._evaluated) 
 	{
 		rollData2.evaluate();
 	}
@@ -6184,7 +6251,7 @@ export function ShowManeuverMenu(actor)
 			}
 		}
 
-	console.log(maneuver_list);
+	// console.log(maneuver_list);
 
 	let maneuver_buttons = {};
 
@@ -7503,8 +7570,11 @@ export async function resetEOTMoves(actor, silent=false)
 }
 
 
-export async function resetSceneMoves(actor)
+export async function resetSceneMoves(actor, silent=false)
 {
+	console.log("RESET SCENE MOVES: __________ actor");
+	console.log(actor);
+
 	let item_entities = actor.items;
 	for(let item of actor.data.items)
 	{
@@ -7526,11 +7596,14 @@ export async function resetSceneMoves(actor)
 		}
 	}
 	chatMessage(actor, (actor.name + " refreshes their Scene-frequency moves!"))
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	if(!silent)
+	{
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	}
 }
 
 
-export async function resetDailyMoves(actor)
+export async function resetDailyMoves(actor, silent=false)
 {
 	let item_entities = actor.items;
 	for(let item of actor.data.items)
@@ -7553,7 +7626,10 @@ export async function resetDailyMoves(actor)
 		}
 	}
 	chatMessage(actor, (actor.name + " refreshes their Daily-frequency moves!"))
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	if(!silent)
+	{
+		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	}
 }
 
 
