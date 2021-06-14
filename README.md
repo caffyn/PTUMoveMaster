@@ -2,15 +2,6 @@
 This is an automation assistant for Foundry PTU. (Currently this requires the *development* branch of https://github.com/dylanpiera/Foundry-Pokemon-Tabletop-United-System, not the stable release.)
 
 
-You no longer have to use the script described below! Now, just select a token and the Move Master sidebar will appear. Target a token as well to get effectiveness info (if enabled) throw pokeballs, or apply items. If you have no target, you are assumed to be targeting yourself.
-
-
-OUTDATED BACKUP INSTRUCTIONS: To invoke new menus, create a new script, enter the following, set the type to Script, select the token to use, and run the script. 
-```
-PTUAutoFight.ChatWindow(token.actor);
-```
-END OUTDATED BACKUP INSTRUCTIONS
-
 
 Manifest link:
 https://raw.githubusercontent.com/caffyn/PTUMoveMaster/main/module.json 
