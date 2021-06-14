@@ -159,6 +159,42 @@ function _loadModuleSettings() {
 		default: true
 	});
 
+	game.settings.register("PTUMoveMaster", "enforcePokeballRangeLimits", {
+		name: "GM Setting: Enforce Pokeball Range Limits.",
+		hint: "While enabled, this will prevent throwing out owned pokemon, throwing pokeballs to capture, and recalling owned pokemon, if the trainer is on the field but too far away.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
+
+	game.settings.register("PTUMoveMaster", "PokedexRangeLimit", {
+		name: "GM Setting: Custom Pokedex Range Limit",
+		hint: "By default, Pokedexes have a scan range of 10 m, but GMs can set a custom value here. A value of 0 will be treated as unlimited range.",
+		scope: "world",
+		config: true,
+		type: String,
+		default: "10"
+	});
+
+	game.settings.register("PTUMoveMaster", "CustomPokeballAC", {
+		name: "GM Setting: Custom Pokeball Throw AC",
+		hint: "By default, Pokeball throws have a base AC of 6, but GMs can set a custom value here.",
+		scope: "world",
+		config: true,
+		type: String,
+		default: "6"
+	});
+
+	game.settings.register("PTUMoveMaster", "AthleticsReducesPokeballAC", {
+		name: "GM Setting: Athletics Rank Reduces Pokeball Throw AC",
+		hint: "Enable this to turn on a homebrew option to reduce Pokeball Throw AC by the thrower's Athletics Rank (to a minimum of AC 2).",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: false
+	});
+
 	game.settings.register("PTUMoveMaster", "useExtraActionHomebrew", {
 		name: "GM Setting: Use Kindled Embers' Extra Action homebrew.",
 		hint: "Enable this to give each actor an extra standard action per turn that cannot be used for directly damaging moves (physical, special), nor to repeat the same standard action twice in the same turn. The intent of this change is to diversify action choice and provide more reasons for some of the less popular moves or maneuvers to be used.",
@@ -232,6 +268,9 @@ Hooks.once('init', async function()
 		resetShiftAction,
 		resetSwiftAction,
 		enableCondition,
+		GetActorFromToken,
+		GetTokenFromActor,
+		ActorHasItemWithName,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar
@@ -480,6 +519,9 @@ Hooks.on("renderChatMessage", (message, html, data) => {
 		)});
 		$(html).find(".skill-button-2").click("click", function(){game.PTUMoveMaster.RollSkillCheck(
 			this.dataset.skill
+		)});
+		$(html).find(".skill-button-both").click("click", function(){game.PTUMoveMaster.RollSkillCheck(
+			this.dataset.skill1, this.dataset.skill2
 		)});
     }, 1000);
 });
@@ -1176,11 +1218,11 @@ Hooks.on("controlToken", async (token, selected) => {
 
 
 Hooks.on("targetToken", async (user, token, targeted) => {
-	console.log("HOOK: targetToken, user.data");
-	console.log(user.data);
+	// console.log("HOOK: targetToken, user.data");
+	// console.log(user.data);
 
-	console.log("HOOK: targetToken, game.user");
-	console.log(game.user);
+	// console.log("HOOK: targetToken, game.user");
+	// console.log(game.user);
 
 	if(user.data._id == game.user.data._id)
 	{
@@ -1196,25 +1238,25 @@ Hooks.on("targetToken", async (user, token, targeted) => {
 
 Hooks.on("updateToken", async (token, change, diff, userid) => {
 
-	console.log("HOOK: updateToken, game.combat");
-	console.log(game.combat);
+	// console.log("HOOK: updateToken, game.combat");
+	// console.log(game.combat);
 
-	console.log("HOOK: updateToken, game.user.id");
-	console.log(game.user.id);
+	// console.log("HOOK: updateToken, game.user.id");
+	// console.log(game.user.id);
 
-	console.log("HOOK: updateToken, userid");
-	console.log(userid);
+	// console.log("HOOK: updateToken, userid");
+	// console.log(userid);
 
 	if(game.combat && userid == game.user.id)
 	{
-		console.log("token");
-		console.log(token);
+		// console.log("token");
+		// console.log(token);
 
 		let current_actor = game.actors.get(token.data.actorId);
 		// let current_actor = game.actors.get(token.actor.data.id);
 
-		console.log("current_actor");
-		console.log(current_actor);
+		// console.log("current_actor");
+		// console.log(current_actor);
 
 		if(diff.diff)
 		{
@@ -2286,24 +2328,20 @@ export function PTUAutoFight()
 		}
 
 		var typeStrategist = [];
-		var technician = false;
-		var hasPokedex = false;
+		var technician = game.PTUMoveMaster.ActorHasItemWithName(actor, "Technician", "ability");
+		var hasPokedex = game.PTUMoveMaster.ActorHasItemWithName(actor, "Pokedex", "item");
 
-		for(let item of items) // START Ability Check Loop
+		for(let item of actor.itemTypes.ability) // START Ability Check Loop
 		{
 			var item_data = item.data.data;
-			if(item_data.name.search("Type Strategist \\(") > -1)
+			if(item_data.name)
 			{
-				typeStrategist.push(item_data.name.slice(item_data.name.search('\\(')+1, item_data.name.search('\\)') ));
+				if(item_data.name.search("Type Strategist \\(") > -1)
+				{
+					typeStrategist.push(item_data.name.slice(item_data.name.search('\\(')+1, item_data.name.search('\\)') ));
+				}
 			}
-			if(item_data.name.search("Technician") > -1)
-			{
-				technician = true;
-			}
-			if(item_data.name.search(/[Pp]ok[eé]dex/) > -1)
-			{
-				hasPokedex = true;
-			}
+			
 		} // END Ability Check Loop
 
 		let dialogEditor;
@@ -2395,73 +2433,65 @@ export function PTUAutoFight()
 		callback: () => {
 
 		}};
-	
 
-		for(let item of items) // START ABILITY BUTTON LOOP
+
+		//for(let item of items) // START ABILITY BUTTON LOOP
+		for(let item of actor.itemTypes.ability)
 		{
-			var item_data = item.data.data;
-			var currentid=item.id;
-			var currentlabel=item.data.name;
-			var currenttype=item.data.type;
-			var currentCooldownLabel = "";
-			var currentEffectivenessLabel = "";
-			var respdata=item.data;
-			let AbilityActionIcon = "";
+			// console.log("__ABILITY:__");
+			// console.log(item);
+
+			let item_data = item.data.data;
+			let currentid = item.id;
+
 			let AbilityActionBackground = "";
-
-			if(currenttype=="ability")
+			let currentlabel = item.data.name;
+			
+			if(item_data.frequency.includes("Swift Action"))
 			{
-				currentlabel=item.data.name;
-				respdata['category']='details';
-				
-				if(item_data.frequency.includes("Swift Action"))
-				{
-					// AbilityActionIcon = SwiftActionIcon + "&numsp;";
-					AbilityActionBackground = SwiftActionBackground;
-				}
-				else if(item_data.frequency.includes("Standard Action"))
-				{
-					// AbilityActionIcon = StandardActionIcon + "&numsp;";
-					AbilityActionBackground = StandardActionBackground;
-				}
-				else if(item_data.frequency.includes("Shift Action"))
-				{
-					// AbilityActionIcon = ShiftActionIcon + "&numsp;";
-					AbilityActionBackground = ShiftActionBackground;
-				}
-				else if(item_data.frequency.includes("Full Action"))
-				{
-					// AbilityActionIcon = FullActionIcon + "&numsp;";
-					AbilityActionBackground = FullActionBackground;
-				}
-				else if(item_data.frequency.includes("Static"))
-				{
-					AbilityActionBackground = StaticBackground;
-				}
-				else if(item_data.frequency.includes("Free Action"))
-				{
-					AbilityActionBackground = FreeActionBackground;
-				}
-				else if(item_data.frequency.includes("Extended Action"))
-				{
-					AbilityActionBackground = ExtendedActionBackground;
-				}
-				buttons[currentid]={id:currentid, label: "<center><div title='"+(item_data.frequency+"\n"+item_data.effect).replace("'","&#39;")+"' style='background-image: url("+AbilityActionBackground+");background-color: #333333; color:#cccccc; border-left:5px solid darkgray; width:200px; height:25px;font-size:20px;font-family:Modesto Condensed;display: flex;justify-content: center;align-items: center;'>"+AbilityIcon+AbilityActionIcon+currentlabel+"</div></center>",
-					callback: async () => {
-						
-						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				AbilityActionBackground = SwiftActionBackground;
+			}
+			else if(item_data.frequency.includes("Standard Action"))
+			{
+				AbilityActionBackground = StandardActionBackground;
+			}
+			else if(item_data.frequency.includes("Shift Action"))
+			{
+				AbilityActionBackground = ShiftActionBackground;
+			}
+			else if(item_data.frequency.includes("Full Action"))
+			{
+				AbilityActionBackground = FullActionBackground;
+			}
+			else if(item_data.frequency.includes("Static"))
+			{
+				AbilityActionBackground = StaticBackground;
+			}
+			else if(item_data.frequency.includes("Free Action"))
+			{
+				AbilityActionBackground = FreeActionBackground;
+			}
+			else if(item_data.frequency.includes("Extended Action"))
+			{
+				AbilityActionBackground = ExtendedActionBackground;
+			}
+			buttons[currentid]={id:currentid, label: "<center><div title='"+(item_data.frequency+"\n"+item_data.effect).replace("'","&#39;")+"' style='background-image: url("+AbilityActionBackground+");background-color: #333333; color:#cccccc; border-left:5px solid darkgray; width:200px; height:25px;font-size:20px;font-family:Modesto Condensed;display: flex;justify-content: center;align-items: center;'>"+AbilityIcon+currentlabel+"</div></center>",
+				callback: async () => {
+					
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 
-						
-						sendMoveMessage({
-							move: item_data,
-							moveName: item.name,
-							templateType: MoveMessageTypes.DETAILS,
-							category: "details", 
-							hasAC: (!isNaN(item_data.ac)),
-							isAbility: true
-						});
-
+					
+					sendMoveMessage({
+						move: item_data,
+						moveName: item.name,
+						templateType: MoveMessageTypes.DETAILS,
+						category: "details", 
+						hasAC: (!isNaN(item_data.ac)),
+						isAbility: true
+					});
+					if(item_data.frequency !=null)
+					{
 						if(item_data.frequency.includes("Swift"))
 						{
 							TakeAction(actor, "Swift");
@@ -2481,10 +2511,10 @@ export function PTUAutoFight()
 						{
 							TakeAction(actor, "Full");
 						}
-
 					}
 				}
 			}
+
 		}
 
 		buttons["statusDivider"] = {noRefresh: true, id:"statusDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Moves.png' style='border:none; width:200px;'>",
@@ -2832,7 +2862,7 @@ export function PTUAutoFight()
 
 						for(let searched_move in move_stage_changes)
 						{
-							if(searched_move == item.name)
+							if(item.name.includes(searched_move))
 							{
 								if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
 								{
@@ -3754,42 +3784,88 @@ export const CritOptions = {
 
 export function adjustActorStage(actor, stat, change)
 {
-	let effects = actor.effects;
-	let AE_changes = [];
+	setTimeout(() => {
+		let effects = actor.effects;
+		let AE_changes = [];
+		let is_simple = game.PTUMoveMaster.ActorHasItemWithName(actor, "Simple", "ability");
 
-	effects.forEach((value, key, map) => {	// We check if there are any Active Effects changing the stat and offset them to avoid weird results.
-		for(let change of value.data.changes)
-		{
-			if(change.key == eval("'data.stats."+stat+".stage'"))
+		effects.forEach((value, key, map) => {	// We check if there are any Active Effects changing the stat and offset them to avoid weird results.
+			for(let change of value.data.changes)
 			{
-				AE_changes.push(change);
+				if(change.key == eval("'data.stats."+stat+".stage'"))
+				{
+					AE_changes.push(change);
+				}
 			}
+		});
+
+		let stage_AE_sum = 0;
+
+		for(let AE_change of AE_changes)
+		{
+			stage_AE_sum += Number(AE_change.value);
 		}
-	});
 
-	let stage_AE_sum = 0;
+		if(change > 0)
+		{
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+		}
+		else
+		{
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+		}
 
-	for(let AE_change of AE_changes)
-	{
-		stage_AE_sum += Number(AE_change.value);
-	}
+		let old_stage = eval("(Number(actor.data.data.stats."+stat+".stage))");
+		old_stage -= stage_AE_sum;
 
-	if(change > 0)
-	{
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-	}
-	else
-	{
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-	}
+		let new_stage = eval("Math.max(Math.min((old_stage + Number(change)), 6), -6)");
 
-	let old_stage = eval("(Number(actor.data.data.stats."+stat+".stage))");
-	old_stage -= stage_AE_sum;
+		eval("actor.update({'data.stats."+stat+".stage': Number("+ new_stage +") })");
+		game.PTUMoveMaster.chatMessage(actor, actor.name + ' '+ stat +' Stage +'+ change +'!');
 
-	let new_stage = eval("Math.max(Math.min((old_stage + Number(change)), 6), -6)");
+		if(is_simple)
+		{
+			setTimeout(() => {  
+				let effects = actor.effects;
+				let AE_changes = [];
+				let is_simple = game.PTUMoveMaster.ActorHasItemWithName(actor, "Simple", "ability");
 
-	eval("actor.update({'data.stats."+stat+".stage': Number("+ new_stage +") })");
-	game.PTUMoveMaster.chatMessage(actor, actor.name + ' '+ stat +' Stage +'+ change +'!');
+				effects.forEach((value, key, map) => {	// We check if there are any Active Effects changing the stat and offset them to avoid weird results.
+					for(let change of value.data.changes)
+					{
+						if(change.key == eval("'data.stats."+stat+".stage'"))
+						{
+							AE_changes.push(change);
+						}
+					}
+				});
+
+				let stage_AE_sum = 0;
+
+				for(let AE_change of AE_changes)
+				{
+					stage_AE_sum += Number(AE_change.value);
+				}
+
+				if(change > 0)
+				{
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+				}
+				else
+				{
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+				}
+
+				let old_stage = eval("(Number(actor.data.data.stats."+stat+".stage))");
+				old_stage -= stage_AE_sum;
+
+				let new_stage = eval("Math.max(Math.min((old_stage + Number(change)), 6), -6)");
+
+				eval("actor.update({'data.stats."+stat+".stage': Number("+ new_stage +") })");
+				game.PTUMoveMaster.chatMessage(actor, actor.name + ' '+ stat +' Stage +'+ change +' again, due to Simple!');
+			}, 1000);
+		}
+	}, 100);
 }
 
 
@@ -4612,22 +4688,204 @@ export function CreatePokeballButtonList(actor)
 };
 
 
+export function GetActorFromToken(token)
+{
+	let actor = game.actors.get(token.data.actorId);
+	return actor;
+};
+
+
+export function GetTokenFromActor(actor)
+{
+	let actor_id = actor.id;
+	let scene_tokens = game.scenes.active.data.tokens;
+
+	let token = false;
+
+	for(let searched_token of scene_tokens)
+	{
+		if(searched_token.actor.id == actor_id)
+		{
+			token = searched_token;
+			break;
+		}
+	}
+	
+	return token;
+};
+
+
+export function ActorHasItemWithName(actor, initial_item_name, item_category="Any", precise_naming=false)
+{
+	let item_name = initial_item_name.replace("é", "e");
+	if(item_category == "Any" || item_category == "")
+	{
+		for(let item of actor.items)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+	else if(item_category == "move")
+	{
+		for(let item of actor.itemTypes.move)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+	else if(item_category == "edge")
+	{
+		for(let item of actor.itemTypes.edge)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+	else if(item_category == "pokeedge")
+	{
+		for(let item of actor.itemTypes.pokeedge)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+	else if(item_category == "feat")
+	{
+		for(let item of actor.itemTypes.feat)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+	else if(item_category == "item")
+	{
+		for(let item of actor.itemTypes.item)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+	else if(item_category == "ability")
+	{
+		for(let item of actor.itemTypes.ability)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+
+	
+	return false;
+};
+
+
 export async function ThrowPokeball(actor_token, target_token, pokeball)
 {
-	let throwRange = actor_token.actor.data.data.capabilities["Throwing Range"];
+	let throwing_actor = game.PTUMoveMaster.GetActorFromToken(actor_token);
+
+	let throwRange = throwing_actor.data.data.capabilities["Throwing Range"];
+
+	let trainerHasThrowingMasteries = game.PTUMoveMaster.ActorHasItemWithName(throwing_actor, "Throwing Masteries", "edge");
+	if(trainerHasThrowingMasteries)
+	{
+		throwRange += 2;
+	}
+
 	let rangeToTarget = GetDistanceBetweenTokens(actor_token, target_token);
-	if(throwRange < rangeToTarget)
+
+	let rangeLimitEnabled = game.settings.get("PTUMoveMaster", "enforcePokeballRangeLimits");
+	let AthleticsReducesPokeballAC = game.settings.get("PTUMoveMaster", "AthleticsReducesPokeballAC");
+
+	let pokeballThrowAC = game.settings.get("PTUMoveMaster", "CustomPokeballAC");
+
+	let attack_mod = throwing_actor.data.data.modifiers.acBonus.total;
+	let trainerHasToolsOfTheTrade = game.PTUMoveMaster.ActorHasItemWithName(throwing_actor, "Tools of the Trade", "feat")
+
+	if(trainerHasToolsOfTheTrade)
+	{
+		attack_mod += 2;
+	}
+
+	console.log("_______ DEBUG: ThrowPokeball: throwRange");
+	console.log(throwRange);
+
+	console.log("_______ DEBUG: ThrowPokeball: trainerHasThrowingMasteries");
+	console.log(trainerHasThrowingMasteries);
+
+	console.log("_______ DEBUG: ThrowPokeball: rangeToTarget");
+	console.log(rangeToTarget);
+
+	console.log("_______ DEBUG: ThrowPokeball: rangeLimitEnabled");
+	console.log(rangeLimitEnabled);
+
+	console.log("_______ DEBUG: ThrowPokeball: AthleticsReducesPokeballAC");
+	console.log(AthleticsReducesPokeballAC);
+
+	console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
+	console.log(pokeballThrowAC);
+
+	if(AthleticsReducesPokeballAC)
+	{
+		pokeballThrowAC = Math.max((pokeballThrowAC - actor_token.actor.data.data.skills.athletics.value.total), 2);
+		console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
+		console.log(pokeballThrowAC);
+	}
+
+	if(( throwRange < rangeToTarget) && rangeLimitEnabled )
 	{
 		ui.notifications.warn(`Target is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
 	}
 	else
 	{
-		ui.notifications.info(`Target is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
+		// ui.notifications.info(`Target is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
 
 		let numDice=1;
 		let dieSize = "d20";
 
-		let roll= new Roll(`${numDice}${dieSize}-${6}`).roll()
+		let roll= new Roll(`${numDice}${dieSize}-${pokeballThrowAC}+${attack_mod}`).evaluate()
 
 		roll.toMessage()
 
@@ -4648,7 +4906,10 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 
 		// roll = Math.floor(Math.random() * (20 - 1 + 1)) + 1;
 
-		if(Number(roll.results[0]-roll.results[2]) >= TargetSpeedEvasion)
+		console.log("______________roll");
+		console.log(roll);
+
+		if(Number(roll.total) >= TargetSpeedEvasion)
 		{
 			castSpell({
 				file:
@@ -4664,7 +4925,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 					y: 0.5,
 				},
 			});
-			ui.notifications.info(`Rolled ${roll.results[0]-roll.results[2]} vs ${TargetSpeedEvasion}, hit!`);
+			ui.notifications.info(`Rolled ${roll.total} vs ${TargetSpeedEvasion}, hit!`);
 			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
 			
@@ -4849,7 +5110,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 			}, 1000);
 			
 
-			await RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.results[0], target_token);
+			await RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.terms[0].results[0].result, target_token);
 		}
 		else
 		{
@@ -4906,7 +5167,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 				},
 			});
 			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
-			ui.notifications.info(`Rolled ${roll.results[0]-roll.results[2]} vs ${TargetSpeedEvasion}, miss...`);
+			ui.notifications.info(`Rolled ${roll.total} vs ${TargetSpeedEvasion}, miss...`);
 		}
 		
 	}
@@ -5438,7 +5699,56 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 
 
 	console.log("Pokeball modifier: " + pokeball_stats[pokeball]["Base Modifier"] + " from "+ pokeball +".");
-	CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
+	
+
+	if(pokeball_stats[pokeball]["Conditional Modifier"] && pokeball_stats[pokeball]["Conditions"])
+	{
+
+
+		const result = await new Promise((resolve, reject) => {
+            //Do the blocking action, f.e. 
+            const dialog = new Dialog({
+            title: "Pokeball conditions?",
+            content: ("Is this Pokeball's special condition fulfilled? \n"+pokeball_stats[pokeball]["Conditions"]),
+            buttons: {
+                yes: {
+                    label: "Yes",
+                    callback: () => resolve(true)
+                },
+                no: {
+                    label: "No",
+                    callback: () => resolve(false)
+                }
+            },
+            // Rejects throws an error and will therefore cancel the execution of the rest of the code. In this case, if dialog is exited without selecting an option, don't continue.
+            close: () => reject
+            })
+            dialog.render(true);
+        });
+
+        if(result)
+        {
+            CaptureRollModifier += pokeball_stats[pokeball]["Conditional Modifier"];
+        }
+		else
+		{
+			CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
+		}
+
+
+		// Dialog.confirm({
+		// 	title: "Pokeball special conditions?",
+		// 	content: ("Is this Pokeball's special condition fulfilled? \n"+pokeball_stats[pokeball]["Conditions"]),
+		// 	yes: async () => {
+		// 		CaptureRollModifier += pokeball_stats[pokeball]["Conditional Modifier"];
+		// 	},
+		// 	no: async () => {
+		// 		CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
+		// 	},
+		// 	defaultYes: false 
+		// })
+	}
+
 	console.log("CaptureRollModifier = " + CaptureRollModifier);
 	
 	CaptureRate -= PokemonLevel*2;
@@ -6390,11 +6700,9 @@ export function ShowManeuverMenu(actor)
 
 			if(currentTargetChecks[1] != null)
 			{
-				currentTargetCheckText += (' or <button class="skill-button-2" style="font-family:Segoe UI; font-size: 14; padding:0px !important; margin-top:5px !important; margin-bottom:5px !important; background-color:#808080;" id="Target Check 1" type="button" value="Target Check 1" data-skill='+currentTargetChecks[1]+'>'+(currentTargetChecks[1])+'</button>');
+				currentTargetCheckText += (' or <button class="skill-button-2" style="font-family:Segoe UI; font-size: 14; padding:0px !important; margin-top:5px !important; margin-bottom:5px !important; background-color:#808080;" id="Target Check 1" type="button" value="Target Check 1" data-skill='+currentTargetChecks[1]+'>'+(currentTargetChecks[1])+'</button><button class="skill-button-both" style="font-family:Segoe UI; font-size: 14; padding:0px !important; margin-top:5px !important; margin-bottom:5px !important; background-color:#808080;" id="Target Check Both" type="button" value="Target Check Both" data-skill1='+currentTargetChecks[0]+' data-skill2='+currentTargetChecks[1]+'>Auto Roll Best</button>');
 			}
 	
-			
-
 			currentEffectText = "If the move hits, "+actor.name+" rolled<br><br><center>[["+user_check_roll.result+"]]</center><br><br>on a "+user_check_skill+" check vs the target's opposed "+currentTargetCheckText+" check. If successful,<br>"+currentEffectText;
 
 		}
@@ -6434,20 +6742,22 @@ export function ShowManeuverMenu(actor)
 			console.log("user_check_roll");
 			console.log(user_check_roll);
 
-			currentEffectText = actor.name+" rolled<br><br><center>[["+user_check_roll.result+"]]</center><br><br>on a "+user_check_skill+" check vs the DC.<br>"+currentEffectText;
+			currentEffectText = actor.name+" rolled<br><br><center>[["+user_check_roll+"]]</center><br><br>on a "+user_check_skill+" check vs the DC.<br>"+currentEffectText;
 		}
 
 		let created_move_item = {
 			name:maneuver,
 			data:{
-				ac: maneuver_AC,
-				category: currentCategory,
-				damageBase: finalDB,
-				effect: currentEffectText,
-				frequency: "At-Will",
-				name: maneuver,
-				range: currentRange,
-				type: currentType
+				data:{
+					ac: maneuver_AC,
+					category: currentCategory,
+					damageBase: finalDB,
+					effect: currentEffectText,
+					frequency: "At-Will",
+					name: maneuver,
+					range: currentRange,
+					type: currentType
+				}
 			}
 		};
 		let this_actor = canvas.tokens.controlled[0].actor;
@@ -6469,11 +6779,11 @@ export function ShowManeuverMenu(actor)
 				if (key_shift) 
 				{
 					console.log("KEYBOARD SHIFT IS DOWN!");
-					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, finalDB, false);
+					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, maneuver, finalDB, false);
 				}
 				else
 				{
-					game.PTUMoveMaster.RollDamageMove(this_actor, created_move_item, finalDB, false, 0);
+					game.PTUMoveMaster.RollDamageMove(this_actor, created_move_item, maneuver, finalDB, false, 0);
 				}
 
 				if(maneuver == "Take a Breather")
@@ -6850,17 +7160,26 @@ export function ShowStruggleMenu(actor)
 
 		let created_move_item = {
 			name:struggle,
+			id:struggle,
 			data:{
-				ac: struggle_AC,
-				category: currentCategory,
-				damageBase: struggle_DB,
-				effect: "--",
-				frequency: "At-Will",
-				name: struggle,
-				range: currentRange,
-				type: currentType
+				data:{
+					ac: struggle_AC,
+					category: currentCategory,
+					damageBase: struggle_DB,
+					effect: "--",
+					frequency: "At-Will",
+					name: struggle,
+					range: currentRange,
+					type: currentType,
+					id:struggle
+				},
+				id:struggle
 			}
 		};
+
+		console.log("+++++++ STRUGGLE DEBUG +++++++")
+		console.log(created_move_item);
+
 		let this_actor = canvas.tokens.controlled[0].actor;
 
 		var moveSoundFile = ("struggle.mp3");
@@ -6880,11 +7199,11 @@ export function ShowStruggleMenu(actor)
 				if (key_shift) 
 				{
 					console.log("KEYBOARD SHIFT IS DOWN!");
-					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, finalDB, false);
+					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, struggle, finalDB, false);
 				}
 				else
 				{
-					game.PTUMoveMaster.RollDamageMove(this_actor, created_move_item, finalDB, false, 0);
+					game.PTUMoveMaster.RollDamageMove(this_actor, created_move_item, struggle, finalDB, false, 0);
 				}
 
 				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
@@ -7265,26 +7584,43 @@ export async function GetWeatherHeader()
 
 
 
-export async function RollSkillCheck(skill)
+export async function RollSkillCheck(skill1, skill2="")	// If a second skill is provided, it will roll whichever has a higher rank.
 {
+	
 	let selected_token = canvas.tokens.controlled[0];
 	let selected_actor = selected_token.actor;
+
+	let skill = skill1;
+
+	if(skill2 != "")
+	{
+		let skill1_numDice;
+		let skill2_numDice;
+		eval('skill1_numDice = selected_actor.data.data.skills.'+skill1+'.value.total;');
+		eval('skill2_numDice = selected_actor.data.data.skills.'+skill2+'.value.total;');
+
+		if(skill2_numDice > skill1_numDice)
+		{
+			skill = skill2;
+		}
+	}
 
 	let numDice = 1;
 	let dieSize = 6;
 	let modifier = 0;
 
-	eval('numDice = selected_actor.data.data.skills.'+skill+'.value;');
-	eval('modifier = selected_actor.data.data.skills.'+skill+'.modifier;');
+	eval('numDice = selected_actor.data.data.skills.'+skill+'.value.total;');
+	eval('modifier = selected_actor.data.data.skills.'+skill+'.modifier.total;');
 
-	let roll= new Roll(`${numDice}d${dieSize}+${modifier}`).roll()
+	let roll = await new Roll(`${numDice}d${dieSize}+${modifier}`).evaluate()
+
+	console.log("+++++++++ RollSkillCheck: roll ++++++++++");
+	console.log(roll);
 
 	roll.toMessage(
 		{flavor: `${selected_actor.name}: ${skill} check.`,
 		speaker: ChatMessage.getSpeaker({token: selected_actor}),}
 	);
-
-	// game.PTUMoveMaster.chatMessage(selected_token, "")
 }
 
 
