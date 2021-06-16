@@ -203,6 +203,15 @@ function _loadModuleSettings() {
 		type: Boolean,
 		default: false
 	});
+
+	game.settings.register("PTUMoveMaster", "trackBrokenPokeballs", {
+		name: "GM Setting: Track Broken Pokeballs.",
+		hint: "The trainer edge 'Poke Ball Repair' allows for re-using balls that break upon failing to capture a Pokemon, so Move Master will automatically created a broken version of balls in the thrower's inventory when a Pokemon breaks free. If you have no use for tracking this, you can disable it here.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
 } 
 
 var MoveMasterSidebar = {};
@@ -271,6 +280,10 @@ Hooks.once('init', async function()
 		GetActorFromToken,
 		GetTokenFromActor,
 		ActorHasItemWithName,
+		IsWithinPokeballThrowRange,
+		BreakPokeball,
+		RecoverThrownPokeballs,
+		RemoveThrownPokeball,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar
@@ -4048,15 +4061,17 @@ export async function cureActorAffliction(actor, affliction_name)
 	};
 
 	let lowercase_affliction_name = "is_"+(affliction_name.toLowerCase().replace(" ", "_"));
+
 	if(affliction_table[affliction_name.toLowerCase()])
 	{
 		lowercase_affliction_name = affliction_table[affliction_name.toLowerCase()];
 	}
+
 	let effects = actor.effects;
 
 	if(actor.data.flags.ptu)
 	{
-		if(eval('actor.data.flags.ptu.'+lowercase_affliction_name) == true)
+		if(eval('actor.data.flags.ptu.'+lowercase_affliction_name) == "true")
 		{
 			// console.log(actor.name+" has effect: "+lowercase_affliction_name);
 			
@@ -4822,7 +4837,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 };
 
 
-export async function ThrowPokeball(actor_token, target_token, pokeball)
+export async function IsWithinPokeballThrowRange(actor_token, target_token, pokeball)
 {
 	let throwing_actor = game.PTUMoveMaster.GetActorFromToken(actor_token);
 
@@ -4877,6 +4892,71 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 	if(( throwRange < rangeToTarget) && rangeLimitEnabled )
 	{
 		ui.notifications.warn(`Target is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+
+export async function ThrowPokeball(actor_token, target_token, pokeball, pokeball_item)
+{
+	let throwing_actor = game.PTUMoveMaster.GetActorFromToken(actor_token);
+
+	let throwRange = throwing_actor.data.data.capabilities["Throwing Range"];
+
+	let trainerHasThrowingMasteries = game.PTUMoveMaster.ActorHasItemWithName(throwing_actor, "Throwing Masteries", "edge");
+	if(trainerHasThrowingMasteries)
+	{
+		throwRange += 2;
+	}
+
+	let rangeToTarget = GetDistanceBetweenTokens(actor_token, target_token);
+
+	let rangeLimitEnabled = game.settings.get("PTUMoveMaster", "enforcePokeballRangeLimits");
+	let AthleticsReducesPokeballAC = game.settings.get("PTUMoveMaster", "AthleticsReducesPokeballAC");
+
+	let pokeballThrowAC = game.settings.get("PTUMoveMaster", "CustomPokeballAC");
+
+	let attack_mod = throwing_actor.data.data.modifiers.acBonus.total;
+	let trainerHasToolsOfTheTrade = game.PTUMoveMaster.ActorHasItemWithName(throwing_actor, "Tools of the Trade", "feat")
+
+	if(trainerHasToolsOfTheTrade)
+	{
+		attack_mod += 2;
+	}
+
+	console.log("_______ DEBUG: ThrowPokeball: throwRange");
+	console.log(throwRange);
+
+	console.log("_______ DEBUG: ThrowPokeball: trainerHasThrowingMasteries");
+	console.log(trainerHasThrowingMasteries);
+
+	console.log("_______ DEBUG: ThrowPokeball: rangeToTarget");
+	console.log(rangeToTarget);
+
+	console.log("_______ DEBUG: ThrowPokeball: rangeLimitEnabled");
+	console.log(rangeLimitEnabled);
+
+	console.log("_______ DEBUG: ThrowPokeball: AthleticsReducesPokeballAC");
+	console.log(AthleticsReducesPokeballAC);
+
+	console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
+	console.log(pokeballThrowAC);
+
+	if(AthleticsReducesPokeballAC)
+	{
+		pokeballThrowAC = Math.max((pokeballThrowAC - actor_token.actor.data.data.skills.athletics.value.total), 2);
+		console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
+		console.log(pokeballThrowAC);
+	}
+
+	if(( throwRange < rangeToTarget) && rangeLimitEnabled )
+	{
+		ui.notifications.warn(`Target is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
+		return "Too Far";
 	}
 	else
 	{
@@ -5109,8 +5189,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 				  setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballWiggle_params); }, 3500);
 			}, 1000);
 			
-
-			await RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.terms[0].results[0].result, target_token);
+			await RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.terms[0].results[0].result, target_token, pokeball_item);
 		}
 		else
 		{
@@ -5168,8 +5247,8 @@ export async function ThrowPokeball(actor_token, target_token, pokeball)
 			});
 			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 			ui.notifications.info(`Rolled ${roll.total} vs ${TargetSpeedEvasion}, miss...`);
+			return "Missed"
 		}
-		
 	}
 
 	
@@ -5567,8 +5646,9 @@ export async function ResetActionEconomy(actor)
 }
 
 
-export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target_token)
+export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target_token, pokeball_item)
 {
+	console.log("ROLLING CAPTURE CHANCE");
 	let CaptureRollModifier = 0;
 	let CaptureRate = 100;
 
@@ -5581,6 +5661,8 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 	let TargetMovementCapabilities = target.data.data.capabilities;
 	let TargetMovementAtLeast7 = false;
 	let TargetLevel = target.data.data.level.current;
+	let TargetVolatileConditionCount = 0;
+	let TargetPersistentConditionCount = 0;
 
 	if( (TargetMovementCapabilities["Overland"] >= 7) || (TargetMovementCapabilities["Swim"] >= 7) || (TargetMovementCapabilities["Sky"] >= 7) || (TargetMovementCapabilities["Burrow"] >= 7) || (TargetMovementCapabilities["Levitate"] >= 7) || (TargetMovementCapabilities["Teleporter"] >= 7) )
 	{
@@ -5669,6 +5751,83 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 		TargetIsBelowLevel10 = true;
 	}
 
+	let flags = target.data.flags.ptu;
+
+	if(flags)
+	{
+		if(flags.is_burned == "true")
+		{
+			TargetPersistentConditionCount++;
+		}
+		if(flags.is_frozen == "true")
+		{
+			TargetPersistentConditionCount++;
+		}
+		if(flags.is_paralyzed == "true")
+		{
+			TargetPersistentConditionCount++;
+		}
+		if(flags.is_poisoned == "true")
+		{
+			TargetPersistentConditionCount++;
+		}
+		if(flags.is_badly_poisoned == "true")
+		{
+			TargetPersistentConditionCount++;
+		}
+
+		if(flags.is_confused == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_cursed == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_disabled == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_raging == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_flinched == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_infatuated == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_sleeping == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_badly_sleeping == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+		if(flags.is_suppressed == "true")
+		{
+			TargetVolatileConditionCount++;
+		}
+
+		if(flags.is_stuck == "true")
+		{
+			CaptureRate += 10;
+		}
+
+		if(flags.is_slowed == "true")
+		{
+			CaptureRate += 5;
+		}
+
+	}
+
+	CaptureRate += (TargetVolatileConditionCount * 5);
+	CaptureRate += (TargetPersistentConditionCount * 10);
+
 	let pokeball_stats = {
 		"Basic Ball": {"Base Modifier": 0},
 		"Great Ball": {"Base Modifier": -10},
@@ -5747,6 +5906,10 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 		// 	},
 		// 	defaultYes: false 
 		// })
+	}
+	else
+	{
+		CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
 	}
 
 	console.log("CaptureRollModifier = " + CaptureRollModifier);
@@ -5998,17 +6161,23 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
   				const shootConfettiProps = window.confetti.getShootConfettiProps(strength);
 				
 				// Update permissions
-				let users = trainer.getUsers(CONST.ENTITY_PERMISSIONS.OWNER, true)
+				// let users = trainer.getUsers(CONST.ENTITY_PERMISSIONS.OWNER, true)
+				let users = trainer.data.permission
 				let non_gm_user;
 				let pokemon_parent_actor = game.actors.get(target_token.data.actorId);
 
 				for(let user in users)
 				{
-					if(users[user].data.role < 4)
+					let user_object = game.users.get(user);
+					if(user_object)
 					{
-						non_gm_user = users[user];
-						break;
+						if(user_object.data.role < 4)
+						{
+							non_gm_user = user_object;
+							break;
+						}
 					}
+					
 				}
 
 				game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.data._id]: CONST.ENTITY_PERMISSIONS.OWNER}, "data.pokeball":pokeball });
@@ -6018,6 +6187,8 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true); 
 					// await target.update({"data.owner = "});
 				}, 750);
+
+				game.PTUMoveMaster.RemoveThrownPokeball(trainer, pokeball_item);
 			}
 			else
 			{
@@ -6031,6 +6202,8 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 				chatMessage(target, (target.name + " escaped the "+pokeball+"! Capture DC was " + CaptureRate + ", and you rolled "+Number(roll._total)+"."));
 				target_token.TMFXdeleteFilters("pokeballWiggle");
+
+				game.PTUMoveMaster.BreakPokeball(trainer, pokeball_item);
 			}
 		}, 8000);
 	}, 4000);
@@ -6199,7 +6372,7 @@ export async function ShowPokeballMenu(actor)
 	let trainer_tokens = actor.getActiveTokens();
 	let actor_token = trainer_tokens[0]; // The throwing trainer
 
-	for(let item of actor.data.items)
+	for(let item of actor.items)
 	{
 		if(item.type == "item" && item.name.includes("Ball"))
 		{
@@ -6208,9 +6381,14 @@ export async function ShowPokeballMenu(actor)
 	}
 
 	for(let pokeball of pokeball_inventory)
+	// for(let pokeball of actor.items_categorized.PokeBalls)
 	{
 		let pokeball_image = "";
-		let pokeball_count = pokeball.data.quantity;
+		let pokeball_count = pokeball.data.data.quantity;
+		if(!pokeball_count)
+		{
+			pokeball_count = 0;
+		}
 
 		for(let i=0; (i < pokeball_count) && (i < 10); i++)
 		{
@@ -6241,16 +6419,21 @@ export async function ShowPokeballMenu(actor)
 					return;
 				}
 
-				if(await ExpendItem(actor, pokeball))
+				if(await game.PTUMoveMaster.IsWithinPokeballThrowRange(actor_token, target_pokemon_token, pokeball.name))
 				{
-					await game.PTUMoveMaster.ThrowPokeball(actor_token, target_pokemon_token, pokeball.name);
+					if(await ExpendItem(actor, pokeball))
+					{
+						await game.PTUMoveMaster.ThrowPokeball(actor_token, target_pokemon_token, pokeball.name, pokeball);
+					}
+					else
+					{
+						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+					}
 				}
 				else
 				{
 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 				}
-				
-
 			}
 		};
 	}
@@ -6291,15 +6474,17 @@ export async function ShowInventoryMenu(actor)
 	let trainer_tokens = actor.getActiveTokens();
 	let actor_token = trainer_tokens[0]; // The using actor
 
-	// let relevant_item_types = [
-	// 	"Potion", "Revive", "Antidote", "Repel", "Cure", "Heal", "Bait"
-	// ];
+	let relevant_item_types = [
+		"Potion", "Revive", "Antidote", "Repel", "Cure", "Heal", "Bait"
+	];
 
 	// for(let item_type of relevant_item_types)
 	// {
-		for(let item of actor.data.items)
+		for(let item of actor.items)
 		{
-			if(item.data.data.type == "item" && !item.data.data.name.includes(" Ball"))
+			console.log("item: ");
+			console.log(item);
+			if(item.data.type == "item" && !item.data.name.includes(" Ball"))
 			{
 				item_inventory.push(item);
 			}
@@ -6307,10 +6492,17 @@ export async function ShowInventoryMenu(actor)
 	// }
 
 	for(let inventory_item of item_inventory)
+	// for(let inventory_item of actor.items_categorized.Medical)
 	{
+		console.log("inventory_item: ");
+		console.log(inventory_item);
 		let item_base_image = await game.PTUMoveMaster.GetItemArt(inventory_item.name);
 		let item_image = "";
 		let item_count = inventory_item.data.data.quantity;
+		if(!item_count)
+		{
+			item_count = 0;
+		}
 		
 		for(let i=0; (i < item_count) && (i < 10); i++)
 		{
@@ -7483,7 +7675,7 @@ export function GetTargetTypingHeader(target, actor)
 
 export async function ExpendItem(owning_actor, item_object) 
 {
-	if(item_object.data.quantity < 1)
+	if((item_object.data.data.quantity < 1) || (item_object.data.data.quantity == null))
 	{
 		ui.notifications.warn("You do not have any of this item left to use!");
 		return false;
@@ -7495,7 +7687,8 @@ export async function ExpendItem(owning_actor, item_object)
 		return false;
 	}
 
-	await owning_actor.updateOwnedItem( { id: item_object.id, "data.quantity": Number(item_object.data.quantity-1) }); // Decrement the spent item count
+	await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.data.quantity-1) }); // Decrement the spent item count
+	// await item_object.update( { "data.quantity": Number(item_object.data.quantity-1) }); // Decrement the spent item count
 
 	if(item_object.data.name.includes("Ball")) 	// For balls, create a thrown version that can be picked up after battle (this will be changed to 
 	{										// broken or removed entirely by the capture function if it hits and fails/succeeds to capture a 
@@ -7505,7 +7698,8 @@ export async function ExpendItem(owning_actor, item_object)
 		let item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 		if(item) 
 		{
-			await owning_actor.updateOwnedItem({id: item.id, "data.quantity": Number(duplicate(item).data.quantity)+1});
+			await owning_actor.updateOwnedItem({_id: item._id, "data.quantity": Number(duplicate(item).data.quantity)+1});
+			// await item_object.update({"data.quantity": Number(duplicate(item).data.quantity)+1});
 		}
 		else // If we get here, then we never found an existing thrown version to increment, so create new thrown version
 		{
@@ -7525,9 +7719,94 @@ export async function ExpendItem(owning_actor, item_object)
 	}
 	else // Not a ball, just decrement the count
 	{
-		await owning_actor.updateOwnedItem( { id: item_object.id, "data.quantity": Number(item_object.data.quantity-1) });
+		// await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.data.quantity-1) });
+		// await item_object.update( { "data.quantity": Number(item_object.data.quantity-1) });
 		return true;
 	}
+}
+
+
+export async function BreakPokeball(owning_actor, item_object) 
+{
+	console.log("BreakPokeball: owning_actor");
+	console.log(owning_actor);
+	console.log("BreakPokeball: item_object");
+	console.log(item_object);
+
+	let thrown_item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
+	if(thrown_item)
+	{
+		await owning_actor.updateOwnedItem({_id: thrown_item._id, "data.quantity": Number(duplicate(thrown_item).data.quantity)-1});
+	}
+
+	if(game.settings.get("PTUMoveMaster", "trackBrokenPokeballs"))
+	{
+		let broken_item = owning_actor.items.find(x => x.name == `Broken ${item_object.data.name}`) // Search through existing items to see if we have a broken entry for this item already
+		if(broken_item)
+		{
+			await owning_actor.updateOwnedItem({_id: broken_item._id, "data.quantity": Number(duplicate(broken_item).data.quantity)+1});
+		}
+		else // If we get here, then we never found an existing broken version to increment, so create new broken version
+		{
+			await owning_actor.createOwnedItem({
+				"name": "Broken "+(item_object.data.name),
+				"type": "item",
+				"data": {
+					"cost": item_object.data.cost,
+					"effect": item_object.data.effect,
+					"UseCount": item_object.data.UseCount,
+					"origin": item_object.data.effect,
+					"quantity": 1
+				}
+			});
+		}
+	}
+	
+}
+
+
+export async function RemoveThrownPokeball(owning_actor, item_object) 
+{
+	console.log("RemoveThrownPokeball: owning_actor");
+	console.log(owning_actor);
+	console.log("RemoveThrownPokeball: item_object");
+	console.log(item_object);
+
+	let thrown_item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
+	if(thrown_item)
+	{
+		await owning_actor.updateOwnedItem({_id: thrown_item._id, "data.quantity": Number(duplicate(thrown_item).data.quantity)-1});
+	}
+}
+
+
+export async function RecoverThrownPokeballs(owning_actor) // TODO: Remove all actor's thrown balls, add the same number of regular balls.
+{
+	// let thrown_item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
+	// if(thrown_item)
+	// {
+	// 	await owning_actor.updateOwnedItem({_id: thrown_item._id, "data.quantity": Number(duplicate(thrown_item).data.quantity)-1});
+	// }
+
+	// let broken_item = owning_actor.items.find(x => x.name == `Broken ${item_object.data.name}`) // Search through existing items to see if we have a broken entry for this item already
+	// if(broken_item)
+	// {
+	// 	await owning_actor.updateOwnedItem({_id: broken_item._id, "data.quantity": Number(duplicate(broken_item).data.quantity)+1});
+	// }
+	// else // If we get here, then we never found an existing broken version to increment, so create new broken version
+	// {
+	// 	await owning_actor.createOwnedItem({
+	// 		"name": "Broken "+(item_object.data.name),
+	// 		"type": "item",
+	// 		"data": {
+	// 			"cost": item_object.data.cost,
+	// 			"effect": item_object.data.effect,
+	// 			"UseCount": item_object.data.UseCount,
+	// 			"origin": item_object.data.effect,
+	// 			"quantity": 1
+	// 		}
+	// 	});
+	// }
 }
 
 
