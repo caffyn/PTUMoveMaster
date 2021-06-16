@@ -1285,14 +1285,15 @@ Hooks.on("updateToken", async (token, change, diff, userid) => {
 });
 
 
-Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and create lightshow
+Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and create lightshow
 
 	if(game.userId == id)
 	{
-		setTimeout(() => {
+		setTimeout( async () => {
 			
 			let tokenData = token.data;
 			let actor = game.actors.get(tokenData.actorId);
+			let original_scale = tokenData.scale;
 	
 			function capitalizeFirstLetter(string) {
 				return string[0].toUpperCase() + string.slice(1);
@@ -1304,7 +1305,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 	
 				if(tokenData.actorLink == false)
 				{
-					target_token = canvas.tokens.get(tokenData.id);//.slice(-1)[0]; // The thrown pokemon
+					target_token = canvas.tokens.get(token.id);//.slice(-1)[0]; // The thrown pokemon
 				}
 				else
 				{
@@ -1347,13 +1348,16 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 					if(throwRange < rangeToTarget)
 					{
 						ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
-						game.actors.get(actor.id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
+						await game.actors.get(actor.id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
 					}
 					else
 					{
-						setTimeout(() => { game.ptu.PlayPokemonCry(current_token_species); }, 2000);
+						setTimeout( async () => { game.ptu.PlayPokemonCry(current_token_species); }, 2000);
 						
-						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut")){ target_token.update({"scale": (0.25/target_token.data.width)}); }
+						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
+						{
+							await target_token.update({"scale": (0.25/target_token.data.width)});
+						}
 	
 						ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
@@ -1452,7 +1456,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 	
 						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
 						{ 
-							target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
+							await target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
 	
 							function castSpell(effect) {
 								canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
@@ -1466,7 +1470,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 									x: -0.08,
 									y: 0.5,
 								},
-								speed: 1,
+								speed: "auto",//1,
 								angle: 0,
 								scale: {
 									x: 0.5,
@@ -1475,7 +1479,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 							});
 							
 	
-							setTimeout(() => { target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
+							setTimeout( async () => { await target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
 	
 							let pokeballShoop_params =
 							[
@@ -1548,16 +1552,16 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 								}
 							];
 	
-							setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
+							setTimeout( async () => {  await target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
 						}
-						setTimeout(() => {  
+						setTimeout( async () => {  
 	
 							if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
 							{
 								if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 								{
-									target_token.update({
-										"scale": (1),
+									await target_token.update({
+										"scale": original_scale,
 										"bar1.attribute": "health",
 										"displayBars": 50,
 										"displayName": 50
@@ -1565,28 +1569,34 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 								}
 								else
 								{
-									target_token.update({
-										"scale": (1),
+									await target_token.update({
+										"scale": original_scale,
 										"displayName": 50
 									});  
 								}
 							}
 							else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 							{
-								target_token.update({
-									"scale": (1),
+								await target_token.update({
+									"scale": original_scale,
 									"bar1.attribute": "health",
 									"displayBars": 50,
 								});  
 							}
 							else
 							{
-								target_token.update({"scale": (1)});
+								await target_token.update({"scale": original_scale});
 							}
+
+							// setTimeout( async() =>{
+							// 	await target_token.update({"scale": original_scale});
+							// }, 500);
 							
 						}, 2000);
 	
-						setTimeout(() => { AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true); }, 500);
+						setTimeout( async () => { 
+							AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true); 
+						}, 500);
 					}
 				}
 				else if (actor.data.type == "pokemon")
@@ -1595,7 +1605,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 					{
 						if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 						{
-							target_token.update({
+							await target_token.update({
 								"name": (current_token_nature+current_token_species),
 								"bar1.attribute": "health",
 								"displayBars": 50,
@@ -1604,7 +1614,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 						}
 						else
 						{
-							target_token.update({
+							await target_token.update({
 								"name": (current_token_nature+current_token_species),
 								"displayName": 50
 							});  
@@ -1612,7 +1622,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 					}
 					else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 					{
-						target_token.update({
+						await target_token.update({
 							"name": (current_token_nature+current_token_species),
 							"bar1.attribute": "health",
 							"displayBars": 50,
@@ -1620,7 +1630,7 @@ Hooks.on("createToken", (token, options, id) => { // If an owned Pokemon is drop
 					}
 					else
 					{
-						target_token.update({"name": (current_token_nature+current_token_species)});
+						await target_token.update({"name": (current_token_nature+current_token_species)});
 					}	
 					game.ptu.PlayPokemonCry(current_token_species);	
 				}
@@ -4998,7 +5008,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 					x: -0.08,
 					y: 0.5,
 				},
-				speed: 1,
+				speed: "auto",//1,
 				angle: 0,
 				scale: {
 					x: 0.5,
@@ -5080,7 +5090,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 				}
 			];
 
-			setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 800);
+			setTimeout( async () => {  await target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 800);
 
 
 			let pokeballWiggle_params =
@@ -5182,11 +5192,11 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 			};
 
 			// polymorph async function call
-			setTimeout(() => {
-				  polymorphFunc(); 
+			setTimeout( async () => {
+				  await polymorphFunc(); 
 
-				  target_token.update({"scale": (0.25/target_token.data.width)});
-				  setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballWiggle_params); }, 3500);
+				  await target_token.update({"scale": (0.25/target_token.data.width)});
+				  setTimeout( async () => {  await target_token.TMFXaddUpdateFilters(pokeballWiggle_params); }, 3500);
 			}, 1000);
 			
 			await RollCaptureChance(actor_token.actor, target_token.actor, pokeball, roll.terms[0].results[0].result, target_token, pokeball_item);
@@ -5228,7 +5238,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 				}
 			}];
 
-			TokenMagic.addFilters(target_token, dodge_params);
+			await TokenMagic.addFilters(target_token, dodge_params);
 
 
 			castSpell({
