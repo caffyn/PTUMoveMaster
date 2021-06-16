@@ -1356,7 +1356,8 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						
 						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
 						{
-							await target_token.update({"scale": (0.25/target_token.data.width)});
+							// await target_token.update({"scale": (0.25/target_token.data.width)});
+							await target_token.update({ "alpha": (0) });
 						}
 	
 						ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
@@ -1365,98 +1366,98 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						let transitionType = 9;
 						let targetImagePath = "/item_icons/"+pokeball+".png";
 	
-						let polymorphFilterId = "pokeball";
-						let pokeball_polymorph_quick_params =
-						[{
-							filterType: "polymorph",
-							filterId: polymorphFilterId,
-							type: transitionType,
-							padding: 70,
-							magnify: 1,
-							imagePath: targetImagePath,
-							animated:
-							{
-								progress:
-								{
-									active: true,
-									animType: "halfCosOscillation",
-									val1: 0,
-									val2: 100,
-									loops: 1,
-									loopDuration: 1
-								}
-							}
-						},
+						// let polymorphFilterId = "pokeball";
+						// let pokeball_polymorph_quick_params =
+						// [{
+						// 	filterType: "polymorph",
+						// 	filterId: polymorphFilterId,
+						// 	type: transitionType,
+						// 	padding: 70,
+						// 	magnify: 1,
+						// 	imagePath: targetImagePath,
+						// 	animated:
+						// 	{
+						// 		progress:
+						// 		{
+						// 			active: true,
+						// 			animType: "halfCosOscillation",
+						// 			val1: 0,
+						// 			val2: 100,
+						// 			loops: 1,
+						// 			loopDuration: 1
+						// 		}
+						// 	}
+						// },
 	
-						{
-							filterType: "transform",
-							filterId: "pokeball_bounce",
-							autoDestroy: true,
-							padding: 80,
-							animated:
-							{
-								translationY:
-								{
-									animType: "cosOscillation",
-									val1: 0,
-									val2: 0.25,
-									loops: 1,
-									loopDuration: 450
-								},
-								// translationX:
-								// {
-								// 	animType: "cosOscillation",
-								// 	val1: 0.15,
-								// 	val2: 0.12,
-								// 	loops: 1,
-								// 	loopDuration: 450
-								// },
-								scaleY:
-								{
-									animType: "cosOscillation",
-									val1: 1,
-									val2: 0.75,
-									loops: 2,
-									loopDuration: 450,
-								},
-								scaleX:
-								{
-									animType: "cosOscillation",
-									val1: 1,
-									val2: 0.75,
-									loops: 2,
-									loopDuration: 450,
-								}
-							}
-						}
+						// {
+						// 	filterType: "transform",
+						// 	filterId: "pokeball_bounce",
+						// 	autoDestroy: true,
+						// 	padding: 80,
+						// 	animated:
+						// 	{
+						// 		translationY:
+						// 		{
+						// 			animType: "cosOscillation",
+						// 			val1: 0,
+						// 			val2: 0.25,
+						// 			loops: 1,
+						// 			loopDuration: 450
+						// 		},
+						// 		// translationX:
+						// 		// {
+						// 		// 	animType: "cosOscillation",
+						// 		// 	val1: 0.15,
+						// 		// 	val2: 0.12,
+						// 		// 	loops: 1,
+						// 		// 	loopDuration: 450
+						// 		// },
+						// 		scaleY:
+						// 		{
+						// 			animType: "cosOscillation",
+						// 			val1: 1,
+						// 			val2: 0.75,
+						// 			loops: 2,
+						// 			loopDuration: 450,
+						// 		},
+						// 		scaleX:
+						// 		{
+						// 			animType: "cosOscillation",
+						// 			val1: 1,
+						// 			val2: 0.75,
+						// 			loops: 2,
+						// 			loopDuration: 450,
+						// 		}
+						// 	}
+						// }
 	
-						];
+						// ];
 	
-						let pokeball_polymorph_params =
-						[{
-							filterType: "polymorph",
-							filterId: polymorphFilterId,
-							type: transitionType,
-							padding: 70,
-							magnify: 1,
-							imagePath: targetImagePath,
-							animated:
-							{
-								progress:
-								{
-									active: true,
-									animType: "halfCosOscillation",
-									val1: 0,
-									val2: 100,
-									loops: 1,
-									loopDuration: 1
-								}
-							}
-						}];
+						// let pokeball_polymorph_params =
+						// [{
+						// 	filterType: "polymorph",
+						// 	filterId: polymorphFilterId,
+						// 	type: transitionType,
+						// 	padding: 70,
+						// 	magnify: 1,
+						// 	imagePath: targetImagePath,
+						// 	animated:
+						// 	{
+						// 		progress:
+						// 		{
+						// 			active: true,
+						// 			animType: "halfCosOscillation",
+						// 			val1: 0,
+						// 			val2: 100,
+						// 			loops: 1,
+						// 			loopDuration: 1
+						// 		}
+						// 	}
+						// }];
 	
 						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
 						{ 
-							await target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
+							// await target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
 	
 							function castSpell(effect) {
 								canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
@@ -1479,7 +1480,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							});
 							
 	
-							setTimeout( async () => { await target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
+							// setTimeout( async () => { await target_token.TMFXaddUpdateFilters(pokeball_polymorph_params); }, 1000);
 	
 							let pokeballShoop_params =
 							[
@@ -1552,7 +1553,10 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 								}
 							];
 	
-							setTimeout( async () => {  await target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 1000);
+							setTimeout( async () => {  
+								await target_token.TMFXaddUpdateFilters(pokeballShoop_params); 
+								await target_token.update({ "alpha": (1) });
+							}, 1000);
 						}
 						setTimeout( async () => {  
 	
@@ -1561,31 +1565,35 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 								if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 								{
 									await target_token.update({
-										"scale": original_scale,
+										// "scale": original_scale,
 										"bar1.attribute": "health",
 										"displayBars": 50,
-										"displayName": 50
+										"displayName": 50,
+										"alpha": (1) 
 									});  
 								}
 								else
 								{
 									await target_token.update({
-										"scale": original_scale,
-										"displayName": 50
+										// "scale": original_scale,
+										"displayName": 50,
+										"alpha": (1)
 									});  
 								}
 							}
 							else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 							{
 								await target_token.update({
-									"scale": original_scale,
+									// "scale": original_scale,
 									"bar1.attribute": "health",
 									"displayBars": 50,
+									"alpha": (1)
 								});  
 							}
 							else
 							{
-								await target_token.update({"scale": original_scale});
+								// await target_token.update({"scale": original_scale, "alpha": (1) });
+								await target_token.update({ "alpha": (1) });
 							}
 
 							// setTimeout( async() =>{
@@ -1609,14 +1617,16 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 								"name": (current_token_nature+current_token_species),
 								"bar1.attribute": "health",
 								"displayBars": 50,
-								"displayName": 50
+								"displayName": 50,
+								"alpha": (1)
 							});  
 						}
 						else
 						{
 							await target_token.update({
 								"name": (current_token_nature+current_token_species),
-								"displayName": 50
+								"displayName": 50,
+								"alpha": (1)
 							});  
 						}
 					}
@@ -1626,11 +1636,12 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							"name": (current_token_nature+current_token_species),
 							"bar1.attribute": "health",
 							"displayBars": 50,
+							"alpha": (1)
 						});  
 					}
 					else
 					{
-						await target_token.update({"name": (current_token_nature+current_token_species)});
+						await target_token.update({"name": (current_token_nature+current_token_species), "alpha": (1) });
 					}	
 					game.ptu.PlayPokemonCry(current_token_species);	
 				}
