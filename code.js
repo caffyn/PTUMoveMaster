@@ -1462,7 +1462,8 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							// await target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
 	
 							function castSpell(effect) {
-								canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
+								// canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
+								canvas.specials.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
 							}
 							
 	
@@ -5009,7 +5010,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 			// }
 			// game.user.targets.forEach((i, t) => {
 			//   canvas.fxmaster.drawSpecialToward(effect, tokens[0], t);
-			canvas.fxmaster.drawSpecialToward(effect, actor_token, target_token);
+			canvas.specials.drawSpecialToward(effect, actor_token, target_token);
 			// });
 		}
 		  
