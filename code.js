@@ -6803,6 +6803,7 @@ export function ShowManeuverMenu(actor)
 	let currentDamageBase;
 	let currentRange;
 	let currentEffectText;
+	let originalEffectText;
 	let currentMoveRangeIcon = "";
 	let effectivenessBackgroundColor = "lightgrey";
 	var effectivenessTextColor = "black";
@@ -6845,6 +6846,7 @@ export function ShowManeuverMenu(actor)
 		currentDamageBase = "--";
 		currentRange = maneuver_list[maneuver]["Range"];
 		currentEffectText = maneuver_list[maneuver]["Success"];
+		originalEffectText = currentEffectText;
 		currentMoveRangeIcon = "";
 		effectivenessBackgroundColor = "lightgrey";
 		effectivenessTextColor = "black";
@@ -7002,7 +7004,7 @@ export function ShowManeuverMenu(actor)
 		maneuver_buttons[maneuver] = {
 			noRefresh: false,
 			id: maneuver,
-			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;padding-top: 0px !important;width:200px;height:"+Number(ButtonHeight-20)+"px;font-size:20px;font-family:Modesto Condensed;line-height:1;'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px'>"+currentlabel+"</div>"/*+currentCooldownLabel*/+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
+			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;padding-top: 0px !important;width:200px;height:"+Number(ButtonHeight-20)+"px;font-size:20px;font-family:Modesto Condensed;line-height:1;'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px'title='"+(originalEffectText).replace("'","&#39;")+"'>"+currentlabel+"</div>"/*+currentCooldownLabel*/+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 			callback: async () => {
 
 				if(!game.PTUMoveMaster.ThisPokemonsTrainerCommandCheck(this_actor))
