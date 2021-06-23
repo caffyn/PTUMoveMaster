@@ -1208,11 +1208,11 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 Hooks.on("controlToken", async (token, selected) => {
 	if(selected)
 	{
-		// console.log("token");
-		// console.log(token);
+		console.log("token");
+		console.log(token);
 
-		// console.log("selected");
-		// console.log(selected);
+		console.log("selected");
+		console.log(selected);
 
 		let current_actor = game.actors.get(token.data.actorId);
 		
@@ -1348,7 +1348,9 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					if(throwRange < rangeToTarget)
 					{
 						ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
-						await game.actors.get(actor.id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
+						
+						await game.ptu.api.tokensDelete(game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);
+						// await game.actors.get(actor.id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
 					}
 					else
 					{
@@ -2149,6 +2151,15 @@ const SkillColors = {
 	"Adept": "#3d85c6",
 	"Expert": "#0b5394",
 	"Master": "#073763"
+};
+
+const SkillRankNumberColors = {
+	1: "#cfe2f3",
+	2: "#9fc5e8",
+	3: "#6fa8dc",
+	4: "#3d85c6",
+	5: "#0b5394",
+	6: "#073763"
 };
 
 const VolatileAfflictions = [
@@ -6165,12 +6176,12 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_catch_attempt.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
-	setTimeout(() => {  
+	setTimeout( async () => {  
 		chatMessage(target, ("Pokeball hit! The ball wiggles..."));
 		// ui.notifications.info(`The ball wiggles!`);
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_escape_attempt.mp3", volume: 1.0, autoplay: true, loop: false}, true);
 		
-		setTimeout(() => {  
+		setTimeout( async () => {  
 			roll.toMessage();
 			if(Number(roll._total) <= CaptureRate)
 			{
@@ -6201,10 +6212,13 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 					
 				}
 
-				game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.data._id]: CONST.ENTITY_PERMISSIONS.OWNER}, "data.pokeball":pokeball });
+				let current_target = game.actors.get(target_token.data.actorId);
 
-				setTimeout(() => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
-				setTimeout(() => {  
+				await game.ptu.api.transferOwnership(current_target, {pokeball:pokeball, timeout:15000, permission:{[non_gm_user.data._id]: CONST.ENTITY_PERMISSIONS.OWNER}});
+				// game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.data._id]: CONST.ENTITY_PERMISSIONS.OWNER}, "data.pokeball":pokeball });
+
+				setTimeout( async () => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
+				setTimeout( async () => {  
 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true); 
 					// await target.update({"data.owner = "});
 				}, 750);
@@ -6213,8 +6227,8 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 			}
 			else
 			{
-				setTimeout(() => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 800);
-				setTimeout(() => {  
+				setTimeout( async () => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 800);
+				setTimeout( async () => {  
 					polymorphFunc(); 
 					setTimeout(() => { target_token.update({"scale": 1}); 
 					target_token.TMFXdeleteFilters("pokeball");
@@ -6312,7 +6326,7 @@ export function PokeballRelease(token)
 };
 
 
-export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
+export function ThisPokemonsTrainerCommandCheck(pokemon_actor) // TODO: Fix roll bug
 {
 	let return_value = true;
 	let trainer_actor = game.actors.get(pokemon_actor.data.data.owner)
@@ -6341,7 +6355,7 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 
 	if(trainer_actor && command_DC)
 	{
-		let commanding_skill_rank = (trainer_actor.data.data.skills[commanding_skill].value);
+		let commanding_skill_rank = (trainer_actor.data.data.skills[commanding_skill].value.total);
 		
 		for(let alternate_commanding_skill_feature in alternate_commanding_skill_features)
 		{
@@ -6351,10 +6365,10 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 				{
 					if(eval(
 						'trainer_actor.data.data.skills.'+alternate_commanding_skill_features[alternate_commanding_skill_feature]
-						).value > commanding_skill_rank)
+						).value.total > commanding_skill_rank)
 					{
 						commanding_skill = alternate_commanding_skill_features[alternate_commanding_skill_feature];
-						commanding_skill_rank = trainer_actor.data.data.skills[alternate_commanding_skill_features[alternate_commanding_skill_feature]].value;
+						commanding_skill_rank = trainer_actor.data.data.skills[alternate_commanding_skill_features[alternate_commanding_skill_feature]].value.total;
 					}
 					break;
 				}
@@ -6363,7 +6377,7 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 
 		let numDice=commanding_skill_rank;
 		let dieSize = "d6";
-		let dieModifier = (trainer_actor.data.data.skills[commanding_skill].modifier);
+		let dieModifier = (trainer_actor.data.data.skills[commanding_skill].modifier.total);
 
 		let roll= new Roll(`${numDice}${dieSize}+${dieModifier}`).roll()
 		roll.toMessage(
@@ -6371,7 +6385,7 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 			speaker: ChatMessage.getSpeaker({token: trainer_actor}),}
 		)
 
-		if((roll.results[0]+roll.results[2]) < command_DC)
+		if((roll.total) < command_DC)
 		{
 			return_value = false;
 		}
@@ -6872,11 +6886,12 @@ export function ShowManeuverMenu(actor)
 
 		let currentMoveFiveStrike = false;
 		let currentMoveDoubleStrike = false;
+		let user_check_rank = 0;
 
 		if(currentTargetChecks[0])
 		{
 			let user_check_skill = "";
-			let user_check_rank = 0;
+			user_check_rank = 0;
 			let user_check_modifier = 0;
 
 			console.log("currentUserChecks");
@@ -6916,7 +6931,7 @@ export function ShowManeuverMenu(actor)
 				currentTargetCheckText += (' or <button class="skill-button-2" style="font-family:Segoe UI; font-size: 14; padding:0px !important; margin-top:5px !important; margin-bottom:5px !important; background-color:#808080;" id="Target Check 1" type="button" value="Target Check 1" data-skill='+currentTargetChecks[1]+'>'+(currentTargetChecks[1])+'</button><button class="skill-button-both" style="font-family:Segoe UI; font-size: 14; padding:0px !important; margin-top:5px !important; margin-bottom:5px !important; background-color:#808080;" id="Target Check Both" type="button" value="Target Check Both" data-skill1='+currentTargetChecks[0]+' data-skill2='+currentTargetChecks[1]+'>Auto Roll Best</button>');
 			}
 	
-			currentEffectText = "If the move hits, "+actor.name+" rolled<br><br><center>[["+user_check_roll.result+"]]</center><br><br>on a "+user_check_skill+" check vs the target's opposed "+currentTargetCheckText+" check. If successful,<br>"+currentEffectText;
+			currentEffectText = "If the move hits, "+actor.name+" rolled<br><br><center>[["+user_check_roll.total+"]]</center><br><br>on a "+user_check_skill+" check vs the target's opposed "+currentTargetCheckText+" check. If successful,<br>"+currentEffectText;
 
 		}
 		else if(currentUserChecks[0])
@@ -6976,6 +6991,12 @@ export function ShowManeuverMenu(actor)
 		let this_actor = canvas.tokens.controlled[0].actor;
 
 		var moveSoundFile = ("struggle.mp3");
+
+
+		effectivenessBackgroundColor = SkillRankNumberColors[user_check_rank];
+		console.log("MANEUVER DEBUG: _________________ effectivenessBackgroundColor ______________");
+		console.log(effectivenessBackgroundColor);
+
 
 		maneuver_buttons[maneuver] = {
 			noRefresh: false,
