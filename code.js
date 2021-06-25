@@ -215,6 +215,7 @@ function _loadModuleSettings() {
 } 
 
 var MoveMasterSidebar = {};
+var last_turn_combatantId = null;
 
 Hooks.once('init', async function() 
 {
@@ -284,9 +285,12 @@ Hooks.once('init', async function()
 		BreakPokeball,
 		RecoverThrownPokeballs,
 		RemoveThrownPokeball,
+		GetCurrentFieldImageURL,
+		toggleEffect,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
-		MoveMasterSidebar
+		MoveMasterSidebar,
+		last_turn_combatantId
 	};
 
 	Handlebars.registerHelper('ifeq', function (a, b, options) {
@@ -539,9 +543,9 @@ Hooks.on("renderChatMessage", (message, html, data) => {
     }, 1000);
 });
 
-Hooks.on("updateCombat", async (combat, update, options, userId) => {
+Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 
-	console.log("updateCombat: userId: " + userId);
+	console.log("startTurn: sender: " + sender);
 	console.log("game.user.data._id:");
 	console.log(game.user.data._id);
 
@@ -549,12 +553,12 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	console.log(combat);
 
 
-	if(userId != game.user.data._id)
+	if(sender != game.user.data._id)
 	{
-		console.log("updateCombat: Not the right user! Returning.")
+		console.log("startTurn: Not the right user! Returning.")
 		return;
 	}
-	console.log("updateCombat: The right user! Proceeding.")
+	console.log("startTurn: The right user! Proceeding.")
 
 	let this_round = combat.current.round;
 	let this_turn = combat.current.turn;
@@ -573,12 +577,12 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 
 	if( (this_turn != (previous_turn+1)) && (this_round != (previous_round+1)) )
 	{
-		console.log("updateCombat: Not the turn/round after the previous one! Returning.")
+		console.log("startTurn: Not the turn/round after the previous one! Returning.")
 		return;
 	}
 
 	let current_token = game.combat.current.tokenId;
-	console.log("updateCombat current_token");
+	console.log("startTurn current_token");
 	console.log(current_token);
 
 	let current_actor = canvas.tokens.get(current_token).actor;
@@ -614,531 +618,38 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 	
 	console.log("-------- NEW TURN TRIGGER ---------");
 
-	// await game.PTUMoveMaster.ResetActionEconomy(current_actor); // TODO: Move this to turn end
-
-	let queue_turn_skip = false;
-	if(current_actor.data.flags.ptu)
+	if( (current_actor.data.flags.ptu) && (game.settings.get("PTUMoveMaster", "autoSkipTurns")) )
 	{
-		// let condition_version = game.settings.get("PTUMoveMaster", "useErrataConditions");
-
-		// if(condition_version == "Original")
-		// {
-
-		// 	if(current_actor.data.flags.ptu.is_paralyzed)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let paralyzed_DC = 5;
-		// 			let save_roll_modifier = current_actor.data.data.modifiers.saveChecks.total;
-
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${paralyzed_DC} to resist the paralyzed condition at the beginning of their turn...`,
-		// 			speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) < paralyzed_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Paralysis and cannot take any Standard, Shift, or Swift Actions this turn - automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-		// 					queue_turn_skip = true;
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Paralysis and may act normally!");
-		// 				}
-		// 			}, 500);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_frozen)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let weather_modifier = 0;
-
-		// 			if(currentWeather == "Sunny")
-		// 			{
-		// 				weather_modifier = 4;
-		// 			}
-		// 			else if (currentWeather == "Hail")
-		// 			{
-		// 				weather_modifier = -2;
-		// 			}
-
-		// 			let save_roll_modifier = Number(current_actor.data.data.modifiers.saveChecks.total + weather_modifier);
-		// 			let frozen_DC = 16;
-		// 			if(current_actor.data.data.typing)
-		// 			{
-		// 				if(current_actor.data.data.typing[0] == "Fire" || current_actor.data.data.typing[1] == "Fire")
-		// 				{
-		// 					frozen_DC = 11;
-		// 				}
-		// 			}
-					
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${frozen_DC} to break free from the frozen condition at the end of their turn...`,
-		// 				speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) < frozen_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Frozen and remains frozen - automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-		// 					queue_turn_skip = true;
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Frozen and broke free! Automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Frozen")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 					queue_turn_skip = true;
-		// 				}
-		// 			}, 750);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_sleeping)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-
-		// 			let save_roll_modifier = Number(current_actor.data.data.modifiers.saveChecks.total);
-		// 			let sleep_DC = 16;
-					
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-
-		// 			if(current_actor.data.flags.ptu.is_badly_sleeping)
-		// 			{
-		// 				if(actor_has_Magic_Guard)
-		// 				{
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+"'s Magic Guard prevents damage from Bad Sleep!");
-		// 				}
-		// 				else
-		// 				{
-		// 					game.PTUMoveMaster.damageActorTick(current_actor, "Bad Sleep", 2);
-		// 				}
-		// 			}
-
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${sleep_DC} to wake up from the sleeping condition at the end of their turn...`,
-		// 				speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) < sleep_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Sleep and remains asleep - automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-		// 					queue_turn_skip = true;
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Sleep and woke up! Automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Sleep")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "BadSleep")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 					queue_turn_skip = true;
-		// 				}
-		// 			}, 750);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_confused)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let confused_normal_action_DC = 9;
-		// 			let confused_cured_DC = 16;
-		// 			let save_roll_modifier = current_actor.data.data.modifiers.saveChecks.total;
-
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${confused_normal_action_DC} to resist the confused condition (or DC ${confused_cured_DC} to cure it) at the beginning of their turn...`,
-		// 			speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) >= confused_cured_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save to cure their Confusion and may act normally!");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Confused")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 				}
-		// 				else if(Number(roll._total) >= confused_normal_action_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Confusion and may act normally!");
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Confusion and hit themselves using a Typeless Physical Struggle Attack as a Standard Action and may take no other actions this turn. This attack automatically hits, and deals damage as if it’s resisted 1 Step. Automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-
-		// 					// TODO: Struggle self, resisted 1 step
-
-		// 					queue_turn_skip = true;
-		// 				}
-		// 			}, 500);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_infatuated)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let infatuated_normal_action_DC = 11;
-		// 			let infatuated_cured_DC = 19;
-		// 			let save_roll_modifier = current_actor.data.data.modifiers.saveChecks.total;
-
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${infatuated_normal_action_DC} to resist the Infatuated condition (or DC ${infatuated_cured_DC} to cure it) at the beginning of their turn...`,
-		// 			speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) >= infatuated_cured_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save to cure their Infatuation and may act normally!");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Infatuation")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 				}
-		// 				else if(Number(roll._total) >= infatuated_normal_action_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Infatuation and may act normally!");
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Infatuation and may not target the Pokémon or Trainer that they are Infatuated towards with a Move or Attack, but may otherwise Shift and use actions normally.");
-		// 				}
-		// 			}, 500);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_fainted)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
-		// 			{
-		// 				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is fainted - automatically skipping to next turn.");
-		// 				game.combat.nextTurn();
-		// 			}
-		// 		}, 100);
-		// 	}
-
-		// 	// TODO: Cursed: If a Cursed Target takes a Standard Action, they lose two ticks of Hit Points at the end of that turn.
-
-		// 	// TODO: Rage: While enraged, the target must use a Damaging Physical or Special Move or Struggle Attack. At the end of each turn, roll a DC15 Save Check; if they succeed, they are cured of Rage.
-
-		// 	// TODO: Flinch: (Actually, probably use the homebrew one the system assumes) You may not take actions during your next turn that round. The Flinched Status does not carry over onto the next round.
-
-		// 	setTimeout(() => {
-		// 		if(queue_turn_skip)
-		// 		{
-		// 			if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
-		// 			{
-		// 				game.combat.nextTurn();
-		// 			}
-		// 		}
-		// 	}, 2500);
-		// }
-		// else if (condition_version == "Errata")
-		// {
-		// 	if(current_actor.data.flags.ptu.is_paralyzed)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let paralyzed_DC = 11;
-		// 			let save_roll_modifier = current_actor.data.data.modifiers.saveChecks.total;
-
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${paralyzed_DC} to resist the paralyzed condition at the beginning of their turn...`,
-		// 			speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) < paralyzed_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Paralysis and can only take a Standard OR Shift Action that round, but not both, is Vulnerable for 1 full round, and cannot take AOOs for 1 full round. (These effects are not automated.)");
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Paralysis and may act normally!");
-		// 				}
-		// 			}, 500);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_frozen)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let weather_modifier = 0;
-
-		// 			if(currentWeather == "Sunny")
-		// 			{
-		// 				weather_modifier = 4;
-		// 			}
-		// 			else if (currentWeather == "Hail")
-		// 			{
-		// 				weather_modifier = -2;
-		// 			}
-
-		// 			let save_roll_modifier = Number(current_actor.data.data.modifiers.saveChecks.total + weather_modifier);
-		// 			let frozen_DC = 16;
-		// 			if(current_actor.data.data.typing)
-		// 			{
-		// 				if(current_actor.data.data.typing[0] == "Fire" || current_actor.data.data.typing[1] == "Fire")
-		// 				{
-		// 					frozen_DC = 11;
-		// 				}
-		// 			}
-					
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${frozen_DC} to break free from the frozen condition at the end of their turn...`,
-		// 				speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) < frozen_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Frozen and remains frozen - automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-		// 					queue_turn_skip = true;
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Frozen and broke free! Automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Frozen")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 					queue_turn_skip = true;
-		// 				}
-		// 			}, 750);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_sleeping)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-
-		// 			let save_roll_modifier = Number(current_actor.data.data.modifiers.saveChecks.total);
-		// 			let sleep_DC = 16;
-					
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-
-		// 			if(current_actor.data.flags.ptu.is_badly_sleeping)
-		// 			{
-		// 				if(actor_has_Magic_Guard)
-		// 				{
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+"'s Magic Guard prevents damage from Bad Sleep!");
-		// 				}
-		// 				else
-		// 				{
-		// 					game.PTUMoveMaster.damageActorTick(current_actor, "Bad Sleep", 2);
-		// 				}
-		// 			}
-
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${sleep_DC} to wake up from the sleeping condition at the end of their turn...`,
-		// 				speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) < sleep_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Sleep and remains asleep - automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-		// 					queue_turn_skip = true;
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save against Sleep and woke up! Automatically skipping to next turn.");
-		// 					game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Sleep")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "BadSleep")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 					queue_turn_skip = true;
-		// 				}
-		// 			}, 750);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_confused)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let confused_cured_DC = 16;
-		// 			let save_roll_modifier = current_actor.data.data.modifiers.saveChecks.total;
-
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${confused_cured_DC} to cure the confused condition at the end of their turn...`,
-		// 			speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) >= confused_cured_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save to cure their Confusion at the end of their turn!");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Confused")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Confusion and remains confused.");
-		// 				}
-		// 			}, 500);
-		// 		}, 750);
-		// 	}
-
-		// 	if(current_actor.data.flags.ptu.is_infatuated)
-		// 	{
-		// 		setTimeout(() => {  
-		// 			let numDice=1;
-		// 			let dieSize = "d20";
-		// 			let infatuated_cured_DC = 16;
-		// 			let save_roll_modifier = current_actor.data.data.modifiers.saveChecks.total;
-
-		// 			let roll= new Roll(`${numDice}${dieSize}+${save_roll_modifier}`).roll()
-		// 			roll.toMessage({flavor: `${current_actor.name} attempts a save check vs DC ${infatuated_cured_DC} to cure the Infatuated condition at the end of their turn...`,
-		// 			speaker: ChatMessage.getSpeaker({token: current_actor}),});
-
-		// 			setTimeout(() => {  
-		// 				if(Number(roll._total) >= infatuated_cured_DC)
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" succeeded their save to cure their Infatuation at the end of their turn!");
-
-		// 					for(let effect of current_actor.effects)
-		// 					{
-		// 						if(effect.data.label == "Infatuation")
-		// 						{
-		// 							effect.delete();
-		// 							break;
-		// 						}
-		// 					}
-		// 				}
-		// 				else
-		// 				{
-		// 					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-		// 					game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" failed their save against Infatuation and remains Infatuated. The creature that Infatuated the target becomes the target’s Crush. Infatuated targets take a -5 penalty on all Damage Rolls that do not include their Crush as a target. For determining Damage Rolls that do include their Crush as a target, the Infatuated target’s Attack and Special Attack are halved.");
-		// 				}
-		// 			}, 500);
-		// 		}, 750);
-		// 	}
-
-	if(current_actor.data.flags.ptu.is_fainted)
-	{
-		setTimeout(() => {  
-			if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
-			{
-				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is fainted - automatically skipping to next turn.");
+		if(current_actor.data.flags.ptu.is_fainted)
+		{
+			game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is fainted - automatically skipping to next turn.");
+			await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
+			await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
+			setTimeout(() => {  
 				game.combat.nextTurn();
+			}, 100);
+		}
+		else
+		{
+			if(current_actor.data.flags.ptu.is_frozen)
+			{
+				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is frozen - automatically skipping to end of turn.");
+				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
+				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
+				setTimeout(() => {  
+					game.combat.nextTurn();
+				}, 100);
 			}
-		}, 100);
-	}
-
-		// 	// TODO: Cursed: If a Cursed Target takes a Standard Action, they lose two ticks of Hit Points at the end of that turn.
-
-		// 	// TODO: Rage: While enraged, the target must use a Damaging Physical or Special Move or Struggle Attack. At the end of each turn, roll a DC15 Save Check; if they succeed, they are cured of Rage.
-
-		// 	// TODO: Flinch: (Actually, probably use the homebrew one the system assumes) You may not take actions during your next turn that round. The Flinched Status does not carry over onto the next round.
-
-		// 	setTimeout(() => {
-		// 		if(queue_turn_skip)
-		// 		{
-		// 			if(game.settings.get("PTUMoveMaster", "autoSkipTurns"))
-		// 			{
-		// 				game.combat.nextTurn();
-		// 			}
-		// 		}
-		// 	}, 2500);
-		// }
+			else if(current_actor.data.flags.ptu.is_sleeping)
+			{
+				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is asleep - automatically skipping to end of turn.");
+				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
+				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
+				setTimeout(() => {  
+					game.combat.nextTurn();
+				}, 100);
+			}
+		}
 	}
 	
 	let not_fainted = true;
@@ -1152,7 +663,36 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 
 	if(current_token_species && not_fainted)
 	{
-		game.ptu.PlayPokemonCry(current_token_species);
+		setTimeout(() => {
+			game.ptu.PlayPokemonCry(current_token_species);
+		}, 500);
+	}
+
+	
+	
+});
+
+Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
+	console.log("END TURN: combatant:");
+	console.log(combatant);
+	// let current_token = game.combat.current.tokenId;
+	let current_actor = combatant._actor;
+	// let current_actor = combatant;
+	console.log("END TURN: Current Actor:");
+	console.log(current_actor);
+	let current_token_species = current_actor.data.data.species;
+	let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
+	let actor_type_1 = "Untyped";
+	let actor_type_2 = "Untyped";
+
+	let actor_has_Magic_Guard = false;
+	for(let item of current_actor.data.items)
+	{
+		if(item.name == "Magic Guard")
+		{
+			actor_has_Magic_Guard = true;
+			break;
+		}
 	}
 
 	if(current_actor.data.data.typing)
@@ -1188,7 +728,7 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 		}
 
 	}, 800);
-	
+
 });
 
 
@@ -1206,37 +746,25 @@ Hooks.on("updateCombat", async (combat, update, options, userId) => {
 
 
 Hooks.on("controlToken", async (token, selected) => {
-	if(selected)
+	if(canvas.tokens.controlled.length < 2) // This avoids the multi-select bug.
 	{
-		console.log("token");
-		console.log(token);
-
-		console.log("selected");
-		console.log(selected);
-
-		let current_actor = game.actors.get(token.data.actorId);
-		
-		// console.log("current_actor:");
-		// console.log(current_actor);
-
-		PTUAutoFight().ChatWindow(current_actor);
-		// PTUAutoFight().ChatWindow(token.actor);
+		if(selected)
+		{
+			let current_actor = game.actors.get(token.data.actorId);
+	
+			PTUAutoFight().ChatWindow(current_actor);
+		}
+		else
+		{
+			game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
+			game.PTUMoveMaster.MoveMasterSidebar.render(true);
+		}
 	}
-	else
-	{
-		game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
-		game.PTUMoveMaster.MoveMasterSidebar.render(true);
-	}
+	
 });
 
 
 Hooks.on("targetToken", async (user, token, targeted) => {
-	// console.log("HOOK: targetToken, user.data");
-	// console.log(user.data);
-
-	// console.log("HOOK: targetToken, game.user");
-	// console.log(game.user);
-
 	if(user.data._id == game.user.data._id)
 	{
 		let selected_token = canvas.tokens.controlled[0];
@@ -1250,26 +778,9 @@ Hooks.on("targetToken", async (user, token, targeted) => {
 
 
 Hooks.on("updateToken", async (token, change, diff, userid) => {
-
-	// console.log("HOOK: updateToken, game.combat");
-	// console.log(game.combat);
-
-	// console.log("HOOK: updateToken, game.user.id");
-	// console.log(game.user.id);
-
-	// console.log("HOOK: updateToken, userid");
-	// console.log(userid);
-
 	if(game.combat && userid == game.user.id)
 	{
-		// console.log("token");
-		// console.log(token);
-
 		let current_actor = game.actors.get(token.data.actorId);
-		// let current_actor = game.actors.get(token.actor.data.id);
-
-		// console.log("current_actor");
-		// console.log(current_actor);
 
 		if(diff.diff)
 		{
@@ -2061,6 +1572,7 @@ const TypeIconWidth = 97;
 const EffectivenessBorderThickness = 5;
 
 const TypeIconSuffix = "IC.png";
+const TypeIconSuffixFlipped = "IC_Flipped.png";
 const CategoryIconSuffix = ".png";
 
 // const TypeIconPath = "systems/ptu/css/images/types/";
@@ -2356,7 +1868,8 @@ export function PTUAutoFight()
 
 		let target = Array.from(game.user.targets)[0];
 		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
-		let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
+		let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
+		let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
 		
 		var items=actor.data.items;
 		var item_entities=actor.items;
@@ -2397,20 +1910,20 @@ export function PTUAutoFight()
 		let bigButtonWidth = "191px";
 
 		buttons["skillsMenu"] = {noRefresh: true, id:"skillsMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Skills 💬"+"</div></center>",
-			callback: () => {
-				game.PTUMoveMaster.ShowSkillsMenu(actor);
+			callback: async () => {
+				await game.PTUMoveMaster.ShowSkillsMenu(actor);
 				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
 		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
-			callback: () => {
-				game.PTUMoveMaster.ShowStruggleMenu(actor);
+			callback: async () => {
+				await game.PTUMoveMaster.ShowStruggleMenu(actor);
 				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
 		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
-		callback: () => {
-			game.PTUMoveMaster.ShowManeuverMenu(actor);
+		callback: async () => {
+			await game.PTUMoveMaster.ShowManeuverMenu(actor);
 			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 		}};
 
@@ -3475,7 +2988,62 @@ export function PTUAutoFight()
 
 		let dialogueID = "ptu-sidebar";
 		
-		let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
+		let content = "\
+		<style> #"+dialogueID+" .dialog-buttons \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				border: none !important;\
+			} #"+dialogueID+" .dialog-button \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin-top: 3px !important; \
+				margin-bottom: 3px !important; \
+				margin-left: 0px !important; \
+				margin-right: 0px !important; \
+				border: none !important; \
+				width: 200px\
+			} #"+dialogueID+" .dialog-content \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important; \
+				height: auto !important;\
+			} #"+dialogueID+" .window-content \
+			{\
+				;flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			}\
+		</style>\
+		<center>\
+			<div style='"+background_field+";\
+			font-family:Modesto Condensed;\
+			font-size:20px'>\
+				<h2 style='margin-bottom: 10px;'>\
+					"+ targetTypingText+"\
+				</h2>\
+			</div>\
+		</center>";
 		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID, classes: "ptu-sidebar"});
 		
 		sidebar.render(true);
@@ -4678,13 +4246,13 @@ export async function ApplyInjuries(target, final_effective_damage)
 			target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
 		}
 
-	if( Number(targetHealthCurrent - final_effective_damage) <= 0 )
+	if( (targetHealthCurrent > 0) && (Number(targetHealthCurrent - final_effective_damage) <= 0) )
 	{
 		Dialog.confirm({
 			title: "Fainted?",
 			content: "Hit Points are 0 or below; Apply fainted condition?",
 			yes: async () => {
-				await game.PTUMoveMaster.enableCondition(target, "fainted", "other"); // TODO: Implement
+				await game.PTUMoveMaster.enableCondition(target, "fainted", "other");
 			},
 			defaultYes: false 
 		})
@@ -5345,7 +4913,7 @@ export function PokedexScan(trainer_token, target_pokemon_token)
 };
 
 
-export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
+export async function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 {
 	console.log("TakeAction: actor: " + actor.name + ", action_type: " + action_type + ", action_subtype: " + action_subtype);
 
@@ -5366,28 +4934,28 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 		{	// This handles the homebrew option for extra standard actions that can't be used for directly damaging moves
 			if(action_subtype == "Physical")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.support": true,
 					"flags.ptu.actions_taken.attacked.physical": true
 				});
 			}
 			else if(action_subtype == "Special")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.support": true,
 					"flags.ptu.actions_taken.attacked.special": true
 				});
 			}
 			else if(action_subtype == "Status")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.support": true,
 					"flags.ptu.actions_taken.attacked.status": true
 				});
 			}
 			else if(action_subtype == "N/A" || action_subtype == "None")
 			{
-				actor.update({ "flags.ptu.actions_taken.support": true });
+				await actor.update({ "flags.ptu.actions_taken.support": true });
 			}
 			else
 			{
@@ -5398,28 +4966,28 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 		{	// Non-homebrew and/or damaging move and/or second nondamaging branch
 			if(action_subtype == "Physical")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.standard": true,
 					"flags.ptu.actions_taken.attacked.physical": true
 				});
 			}
 			else if(action_subtype == "Special")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.standard": true,
 					"flags.ptu.actions_taken.attacked.special": true
 				});
 			}
 			else if(action_subtype == "Status")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.standard": true,
 					"flags.ptu.actions_taken.attacked.status": true
 				});
 			}
 			else if(action_subtype == "N/A" || action_subtype == "None")
 			{
-				actor.update({ "flags.ptu.actions_taken.standard": true });
+				await actor.update({ "flags.ptu.actions_taken.standard": true });
 			}
 			else
 			{
@@ -5442,7 +5010,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 		{	// This handles the homebrew option for extra standard actions that can't be used for directly damaging moves
 			if(action_subtype == "Physical")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.support": true,
 					"flags.ptu.actions_taken.shift": true,
 					"flags.ptu.actions_taken.attacked.physical": true
@@ -5450,7 +5018,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 			}
 			else if(action_subtype == "Special")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.support": true,
 					"flags.ptu.actions_taken.shift": true,
 					"flags.ptu.actions_taken.attacked.special": true
@@ -5458,7 +5026,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 			}
 			else if(action_subtype == "Status")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.support": true,
 					"flags.ptu.actions_taken.shift": true,
 					"flags.ptu.actions_taken.attacked.status": true
@@ -5466,7 +5034,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 			}
 			else if(action_subtype == "N/A" || action_subtype == "None")
 			{
-				actor.update({ "flags.ptu.actions_taken.support": true, "flags.ptu.actions_taken.shift": true });
+				await actor.update({ "flags.ptu.actions_taken.support": true, "flags.ptu.actions_taken.shift": true });
 				
 			}
 			else
@@ -5478,7 +5046,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 		{	// Non-homebrew and/or damaging move and/or second nondamaging branch
 			if(action_subtype == "Physical")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.standard": true,
 					"flags.ptu.actions_taken.shift": true,
 					"flags.ptu.actions_taken.attacked.physical": true
@@ -5486,7 +5054,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 			}
 			else if(action_subtype == "Special")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.standard": true,
 					"flags.ptu.actions_taken.shift": true,
 					"flags.ptu.actions_taken.attacked.special": true
@@ -5494,7 +5062,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 			}
 			else if(action_subtype == "Status")
 			{
-				actor.update({ 
+				await actor.update({ 
 					"flags.ptu.actions_taken.standard": true,
 					"flags.ptu.actions_taken.shift": true,
 					"flags.ptu.actions_taken.attacked.status": true
@@ -5502,7 +5070,7 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 			}
 			else if(action_subtype == "N/A" || action_subtype == "None")
 			{
-				actor.update({ "flags.ptu.actions_taken.standard": true, "flags.ptu.actions_taken.shift": true });
+				await actor.update({ "flags.ptu.actions_taken.standard": true, "flags.ptu.actions_taken.shift": true });
 			}
 			else
 			{
@@ -5514,28 +5082,28 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 	{
 		if(action_subtype == "Physical")
 		{
-			actor.update({ 
+			await actor.update({ 
 				"flags.ptu.actions_taken.swift": true,
 				"flags.ptu.actions_taken.attacked.physical": true
 			});
 		}
 		else if(action_subtype == "Special")
 		{
-			actor.update({ 
+			await actor.update({ 
 				"flags.ptu.actions_taken.swift": true,
 				"flags.ptu.actions_taken.attacked.special": true
 			});
 		}
 		else if(action_subtype == "Status")
 		{
-			actor.update({ 
+			await actor.update({ 
 				"flags.ptu.actions_taken.swift": true,
 				"flags.ptu.actions_taken.attacked.status": true
 			});
 		}
 		else if(action_subtype == "N/A" || action_subtype == "None")
 		{
-			actor.update({ "flags.ptu.actions_taken.swift": true });
+			await actor.update({ "flags.ptu.actions_taken.swift": true });
 		}
 		else
 		{
@@ -5546,28 +5114,28 @@ export function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 	{
 		if(action_subtype == "Physical")
 		{
-			actor.update({ 
+			await actor.update({ 
 				"flags.ptu.actions_taken.shift": true,
 				"flags.ptu.actions_taken.attacked.physical": true
 			});
 		}
 		else if(action_subtype == "Special")
 		{
-			actor.update({ 
+			await actor.update({ 
 				"flags.ptu.actions_taken.shift": true,
 				"flags.ptu.actions_taken.attacked.special": true
 			});
 		}
 		else if(action_subtype == "Status")
 		{
-			actor.update({ 
+			await actor.update({ 
 				"flags.ptu.actions_taken.shift": true,
 				"flags.ptu.actions_taken.attacked.status": true
 			});
 		}
 		else if(action_subtype == "N/A" || action_subtype == "None")
 		{
-			actor.update({ "flags.ptu.actions_taken.shift": true });
+			await actor.update({ "flags.ptu.actions_taken.shift": true });
 		}
 		else
 		{
@@ -6505,7 +6073,8 @@ export async function ShowInventoryMenu(actor)
 	}
 
 	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor);
-	let background_field = "style='background-image: url('background_fields/BG_Grass.png');'";
+	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
+	let background_field = "style='background-image: url('"+background_field_URL+"');'";
 
 	let trainer_tokens = actor.getActiveTokens();
 	let actor_token = trainer_tokens[0]; // The using actor
@@ -6580,7 +6149,7 @@ export async function ShowInventoryMenu(actor)
 }
 
 
-export function ShowManeuverMenu(actor)
+export async function ShowManeuverMenu(actor)
 {
 	let maneuver_list = {
 		"Disarm": {
@@ -7055,7 +6624,8 @@ export function ShowManeuverMenu(actor)
 	console.log("______________ MANEUVER BUTTONS ______________");
 	console.log(maneuver_buttons);
 
-	let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
+	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
+	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
 
 	let dialogueID = "ptu-sidebar";
 	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
@@ -7066,7 +6636,7 @@ export function ShowManeuverMenu(actor)
 	/////////////////////////////////////////////////////////
 }
 
-export function ShowSkillsMenu(actor)
+export async function ShowSkillsMenu(actor)
 {
 	let actor_skills = actor.data.data.skills;
 
@@ -7159,8 +6729,8 @@ export function ShowSkillsMenu(actor)
 	console.log("______________ SKILL BUTTONS ______________");
 	console.log(skill_buttons);
 
-
-	let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
+	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
+	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
 
 	let dialogueID = "ptu-sidebar";
 	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
@@ -7169,7 +6739,7 @@ export function ShowSkillsMenu(actor)
 }
 
 
-export function ShowStruggleMenu(actor)
+export async function ShowStruggleMenu(actor)
 {
 	let struggle_types = ["Normal"];
 	let struggle_categories = ["Physical"];
@@ -7452,7 +7022,8 @@ export function ShowStruggleMenu(actor)
 	console.log(struggle_buttons);
 
 
-	let background_field = 'background-image: url("background_fields/BG_Grass.png"); background-repeat: repeat-x; background-position: left bottom';
+	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
+	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
 
 	let dialogueID = "ptu-sidebar";
 	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
@@ -7611,8 +7182,8 @@ export async function GetItemArt(item_name)
 export function GetTargetTypingHeader(target, actor)
 {
 	let targetTypingText = "";
-	let targetType1 = "???";
-	let targetType2 = "???";
+	let targetType1 = "Blank";
+	let targetType2 = "Blank";
 	let effectiveness;
 
 	let actions_image = game.PTUMoveMaster.GetActorActionIcon(actor);
@@ -7644,7 +7215,21 @@ export function GetTargetTypingHeader(target, actor)
 		
 		if(!target.actor.data.data.effectiveness)
 		{
-			targetTypingText = actions_image+"<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(Trainer)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+";'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+";'></img></div></div>";
+			targetType1 = "Untyped";
+
+			targetTypingText = actions_image+"\
+			<div class='row' style='width:200px; height=auto;'>\
+				<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
+					Your current target is<br>"+ target.name +"<br>\
+					<img src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto> (Trainer)\
+				</div>\
+				<div class='column' style='width:100px !important; height=auto; text-align: left;'>\
+					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+"; vertical-align: bottom; text-align: left;'></img>\
+				</div>\
+				<div class='column' style='width:100px !important; height=auto; text-align: right;'>\
+					<img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:auto; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
+				</div>\
+			</div>";
 		}
 		else
 		{
@@ -7652,26 +7237,24 @@ export function GetTargetTypingHeader(target, actor)
 	
 			if(targetType2 == "null")
 			{
-				if(targetType1 == "???")
-				{
-					targetTypingText = actions_image+"<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+";'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+";'></img></div></div>";
-				}
-				else
-				{
-					targetTypingText = actions_image+"<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+"'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+";'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+";'></img></div></div>";
-				}
+				targetType2 = "";
 			}
-			else
-			{
-				if(targetType1 == "???")
-				{
-					targetTypingText = actions_image+"<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>("+targetType1+"/"+targetType2+ ")</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+";'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+";'></img></div></div>";
-				}
-				else
-				{
-					targetTypingText = actions_image+"<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(<img src='" + AlternateIconPath+targetType1+TypeIconSuffix+ "' width=80px height=auto>/<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto>)</div><div class='column' style='width:"+actorTokenSize+" height=auto' style='border:none;'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+";'></img></div><div class='column' style='width:"+tokenSize+"; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+";'></img></div></div>";
-				}
-			}
+
+			targetTypingText = actions_image+"\
+				<div class='row' style='width:200px; height=auto;'>\
+					<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
+						Your current target is<br>\
+						"+ target.name +"<br>\
+						<img src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none'>\
+						<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto style='border:none'>\
+					</div>\
+					<div class='column' style='width:100px; height=auto; text-align: left;'>\
+						<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+"; vertical-align: bottom; text-align: left;'></img>\
+					</div>\
+					<div class='column' style='width:100px; height=auto; text-align: right;'>\
+						<img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
+					</div>\
+				</div>";
 		}
 		
 
@@ -7684,16 +7267,17 @@ export function GetTargetTypingHeader(target, actor)
 		let actorTokenSize = 90;
 
 		targetTypingText = actions_image+"\
-		<div class='row' style='width:200px; height=auto;'>\
-			<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
-				No current target<br>\
+			<div class='row' style='width:200px; height=auto;'>\
+				<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
+					No current target<br>\
+				</div>\
+				<div class='column' style='width:100px !important; height=auto; text-align: left;'>\
+					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); vertical-align: bottom; text-align: left;'></img>\
+				</div>\
+				<div class='column' style='width:100px !important; height=auto; text-align: right;'>\
+					\
+				</div>\
 			</div>\
-			<div class='column' style='width:"+actorTokenSize+" height=auto'>\
-				<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img>\
-			</div>\
-			<div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'>\
-			</div>\
-		</div>\
 		";
 	}
 	else
@@ -7711,7 +7295,20 @@ export function GetTargetTypingHeader(target, actor)
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
-		targetTypingText = actions_image+"<div class='row' style='width:200px; height=auto;'><div class='column' style='width:200px; height:100px ; color:lightgrey'>Your current target is<br>"+ target.name +"<br>(???/???)</div><div class='column' style='width:"+actorTokenSize+" height=auto'><img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img></div><div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'><img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img></div></div>";
+		targetTypingText = actions_image+"\
+			<div class='row' style='width:200px; height=auto;'>\
+				<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
+					Your current target is<br>\
+					"+ target.name +"<br>\
+					(???/???)\
+				</div>\
+				<div class='column' style='width:"+actorTokenSize+" height=auto'>\
+					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img>\
+				</div>\
+				<div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'>\
+					<img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img>\
+				</div>\
+			</div>";
 	}
 
 	return targetTypingText;
@@ -8327,14 +7924,69 @@ export async function resetSwiftAction(actor)
 }
 
 
-export async function enableCondition(actor, condition, condition_type = "other")
+export async function toggleEffect({ actor, effectLabel })
 {
-	chatMessage(actor, (actor.name + " gained the "+condition+" affliction!"));
+	if(!actor || !effectLabel) return;
+	let effect = actor.effects.find(e => e.data.label === effectLabel);
+	if(!effect) return;
+	return await effect.update({ disabled : !effect.data.disabled});
+}
+
+
+
+export async function enableCondition(target_actor, condition, condition_type = "other") // TODO: Implement
+{
+	chatMessage(target_actor, (target_actor.name + " gained the "+condition+" affliction!"));
 
 	let effectData = CONFIG.statusEffects.find(x => x.id == "effect."+condition_type+"."+condition);
 	// token.toggleEffect(effectData);
-	canvas.tokens.get(actor.token.id).toggleEffect(effectData);
+	// canvas.tokens.get(target_actor.token.id).toggleEffect(effectData);
 
-	// await actor.createEmbeddedEntity("ActiveEffect", CONFIG.statusEffects.find(x => x.id == "effect."+condition_type+"."+condition));
-	// await canvas.tokens.get(actor.token.id).toggleEffect("icons/svg/skull.svg");
+	// await target_actor.createEmbeddedEntity("ActiveEffect", CONFIG.statusEffects.find(x => x.id == "effect."+condition_type+"."+condition));
+	// let target_token = game.PTUMoveMaster.GetTokenFromActor(target_actor);
+	// console.log("Target Token:");
+	// console.log(target_token);
+	// await target_token.toggleEffect("icons/svg/skull.svg");
+	// await game.PTUMoveMaster.toggleEffect({ actor : game.actors.getName(target_actor.name), effectLabel : condition });
+	await game.ptu.api.toggleEffect(target_actor, effectData);
+
+	if(condition == "fainted")
+	{
+		let condition_cure = ["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned", "Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed",];
+		for(let affliction of (condition_cure))
+		{
+			await game.PTUMoveMaster.cureActorAffliction(target_actor, affliction);
+		}
+	}
+}
+
+
+export async function GetCurrentFieldImageURL()
+{
+	let current_weather = await game.PTUMoveMaster.GetCurrentWeather();
+	let current_time_of_day = "Day";
+	let current_terrain = "Grass";
+
+	if(current_weather == "Sunny")
+	{
+		current_time_of_day = "Afternoon";
+	}
+
+	if(current_weather == "Rainy")
+	{
+		current_terrain = "Water";
+	}
+
+	if(current_weather == "Hail")
+	{
+		current_terrain = "Snow";
+	}
+
+	if(current_weather == "Sandstorm")
+	{
+		current_terrain = "Sand";
+	}
+
+	let background_image_URL = 'background_fields/'+current_terrain+"_"+current_time_of_day+".png";
+	return background_image_URL;
 }
