@@ -287,6 +287,7 @@ Hooks.once('init', async function()
 		RemoveThrownPokeball,
 		GetCurrentFieldImageURL,
 		toggleEffect,
+		recallPokemon,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -452,44 +453,98 @@ Hooks.on("endTurn", async (combat, actor, round_and_turn, diff, id) => {
 	// 	}
 	// }
 
-	await game.PTUMoveMaster.ResetActionEconomy(current_actor);
+	await game.PTUMoveMaster.ResetActionEconomy(current_actor, true);
 });
 
 
 Hooks.on("preDeleteCombat", (combat, misc, tokenID) => {
     if( (game.user.isGM) && (game.settings.get("PTUMoveMaster", "autoResetStagesOnCombatEnd")) )
     {
-	let volatile_conditions = ["Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed", "Fainted"];
 
-      Dialog.confirm({
-        title: "End Scene?",
-        content: "Do you wish to end the Scene as well as the combat? This will reset combat stages, refresh per-scene and EOT cooldowns, and end volatile conditions for all combatants.",
-        yes: async () => {
-          let combatants = combat.data.combatants;
-		  let current_actor;
-          for(let combatant of combatants)
-          {
+	Dialog.confirm({
+		title: "End Scene?",
+		content: "Do you wish to end the Scene as well as the combat? This will reset combat stages, refresh per-scene and EOT cooldowns, and end volatile conditions for all combatants.",
+		yes: async () => {
+			let combatants = combat.data.combatants;
+			let current_actor;
+			for(let combatant of combatants)
+			{
 			current_actor = game.actors.get(combatant.actor.id);
 			console.log("END OF SCENE: __________ current_actor");
 			console.log(current_actor);
 
 
-            await game.PTUMoveMaster.ResetStagesToDefault(current_actor, true);
-			await game.PTUMoveMaster.ResetActionEconomy(current_actor);
-            await game.PTUMoveMaster.resetEOTMoves(current_actor, true);
+			await game.PTUMoveMaster.ResetStagesToDefault(current_actor, true);
+			await game.PTUMoveMaster.ResetActionEconomy(current_actor, true);
+			await game.PTUMoveMaster.resetEOTMoves(current_actor, true);
 			await game.PTUMoveMaster.resetSceneMoves(current_actor, true);
 
-			for(let affliction of volatile_conditions)
-			{
-				await game.PTUMoveMaster.cureActorAffliction(current_actor, affliction);
-			}
+			// for(let affliction of VolatileAfflictions)
+			// {
+			// 	await game.PTUMoveMaster.cureActorAffliction(current_actor, affliction, true);
+			// }
+			await game.PTUMoveMaster.cureActorAffliction(current_actor, "Fainted", true);
 
-          }
-		  AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
-        },
-        defaultYes: false 
-      })
+
+			}
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+		},
+		defaultYes: false 
+	})
     }
+});
+
+
+Hooks.on("prePlayerDeleteToken", async (uuids) => {
+    
+	// console.log("DEBUG: prePlayerDeleteToken: uuids");
+	// console.log(uuids);
+
+	let actors_to_be_deleted = [];
+	let at_least_one_owned_pokemon = false;
+
+	for(let uuid of uuids)
+	{
+		console.log(uuid);
+		let new_token = await fromUuid(uuid);
+		let new_actor = game.PTUMoveMaster.GetActorFromToken(new_token);
+
+		actors_to_be_deleted.push(new_actor);
+		if( (new_actor.type == 'pokemon') && (new_actor.data.data.owner != "0") )
+		{
+			at_least_one_owned_pokemon = true;
+		}
+	}
+
+	console.log("DEBUG: prePlayerDeleteToken: actors to be deleted")
+	for(let actor of actors_to_be_deleted)
+	{
+		console.log(actor);
+	}
+	
+	if(at_least_one_owned_pokemon)
+	{
+		Dialog.confirm({
+			title: "Recall Pokemon?",
+			content: "Do you wish to recall the selected owned pokemon, resetting stages to default and removing volatile conditions, or simply force a deletion?",
+			yes: async () => {
+				for(let actor of actors_to_be_deleted)
+				{
+					console.log("await game.PTUMoveMaster.recallPokemon(actor);");
+					await game.PTUMoveMaster.recallPokemon(actor);
+				}
+			},
+			no: async () => {
+				return true;
+			},
+			defaultYes: false 
+		})
+	}
+
+	
+	
+
+	return false;
 });
 
 
@@ -1840,6 +1895,17 @@ export function PTUAutoFight()
 				token.actor.modifyTokenAttribute("health", (-final_effective_damage), true, true);
 	
 				ApplyInjuries(token.actor, final_effective_damage);
+
+				if(token.actor.data.flags.ptu.is_frozen && (damage_type == "Fire" || damage_type == "Fighting" || damage_type == "Rock" || damage_type == "Steel") )
+				{
+					game.PTUMoveMaster.cureActorAffliction(token.actor, "Frozen");
+				}
+			
+				if( token.actor.data.flags.ptu.is_sleeping || token.actor.data.flags.ptu.is_badly_sleeping )
+				{
+					game.PTUMoveMaster.cureActorAffliction(token.actor, "Sleep");
+					game.PTUMoveMaster.cureActorAffliction(token.actor, "BadSleep");
+				}
 				
 			}
 			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
@@ -3217,10 +3283,11 @@ export async function ResetStagesToDefault(actor, silent=false)
 				await actor.update({[actor_stat_string]: Number(0)});
 			}
 		}
-		game.PTUMoveMaster.chatMessage(actor, actor.name + " All Stages Reset!");
+		
 	// }
 	if(!silent)
 	{
+		game.PTUMoveMaster.chatMessage(actor, actor.name + " All Stages Reset!");
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 	}
 }
@@ -3647,7 +3714,7 @@ export async function healActorRestPrompt(actor)
 }
 
 
-export async function cureActorAffliction(actor, affliction_name)
+export async function cureActorAffliction(actor, affliction_name, silent=false)
 {
 	let affliction_table = {
 		"paralysis":	"is_paralyzed",
@@ -3683,7 +3750,10 @@ export async function cureActorAffliction(actor, affliction_name)
 				await effect.delete();
 			}
 
-			game.PTUMoveMaster.chatMessage(actor, actor.name + ' was cured of '+ affliction_name +'!');
+			if(!silent)
+			{
+				game.PTUMoveMaster.chatMessage(actor, actor.name + ' was cured of '+ affliction_name +'!');
+			}
 
 			return true;
 		}
@@ -3702,9 +3772,23 @@ export async function cureActorAffliction(actor, affliction_name)
 
 
 export function CalculateAcRoll (moveData, actorData)   {
+	
+	let blindness_mod = 0;
+	if(actorData.flags.ptu)
+	{
+		if(actorData.flags.ptu.is_totally_blind)
+		{
+			blindness_mod = -10;
+		}
+		else if(actorData.flags.ptu.is_blind)
+		{
+			blindness_mod = -6;
+		}
+	}
+
 	return new Roll('1d20-@ac+@acBonus', {
 		ac: (parseInt(moveData.ac) || 0),
-		acBonus: (parseInt(actorData.modifiers.acBonus.total) || 0)
+		acBonus: ((parseInt(actorData.data.modifiers.acBonus.total)+blindness_mod) || 0)
 	})
 };
 
@@ -3718,6 +3802,114 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 	let lastChanceApplies = false;
 	let fiveStrikeCount = 0;
 	let hasSTAB = false;
+	let target_actor = null;
+	let target_token = Array.from(game.user.targets)[0];
+	let targeted = false;
+	let target_name = "";
+	let range_to_target = null;
+	let move_range = 1;
+	let in_range = true;
+	let actor_token = game.PTUMoveMaster.GetTokenFromActor(actor);
+
+	if(target_token)
+	{
+		target_actor = game.PTUMoveMaster.GetActorFromToken(target_token);
+	}
+	
+	let target_evasion = 0;
+	let target_evasion_type = "N/A"
+
+	if(target_actor)
+	{
+		let target_physical_evasion = target_actor.data.data.evasion.physical;
+		let target_special_evasion = target_actor.data.data.evasion.special;
+		let target_speed_evasion = target_actor.data.data.evasion.speed;
+
+		console.log("DEBUG ++++++++++++++ actor_token");
+		console.log(actor_token.data);
+		console.log("DEBUG ++++++++++++++ target_token");
+		console.log(target_token.data);
+
+		range_to_target = GetDistanceBetweenTokens( actor_token.data, target_token.data); //canvas.grid.measureDistance(actor_token.data, target_token.data);
+
+		if(move.range)
+		{
+			if(move.range.search("Melee") > -1)
+			{
+				move_range = Math.max( actor_token.data.width , actor_token.data.height);
+			}
+			else if(move.range.search("Self") > -1)
+			{
+				move_range = 9999;
+			}
+			else if(move.range.search("Pass") > -1)
+			{
+				move_range = 4;
+			}
+			else if(move.range.search("Burst") > -1)
+			{
+				move_range = Number(move.range.slice(move.range.search("Burst")+6).replace(/[, ]+/g, "").trim().slice(0, move.range.search(",")).replace(/[, ]+/g, "").trim());
+			}
+			else if(move.range.search("Cone") > -1)
+			{
+				move_range = Number(move.range.slice(move.range.search("Cone")+5).replace(/[, ]+/g, "").trim().slice(0, move.range.search(",")).replace(/[, ]+/g, "").trim());
+			}
+			else if(move.range.search("Line") > -1)
+			{
+				move_range = Number(move.range.slice(move.range.search("Line")+5).replace(/[, ]+/g, "").trim().slice(0, move.range.search(",")).replace(/[, ]+/g, "").trim());
+			}
+			else if(move.range.search("Close Blast") > -1)
+			{
+				move_range = Number(move.range.slice(move.range.search("Close Blast")+9).replace(/[, ]+/g, "").trim().slice(0, move.range.search(",")).replace(/[, ]+/g, "").trim());
+			}
+			else if(move.range.search("Ranged Blast") > -1)
+			{
+				move_range = move_range = Number(move.range.slice(0, move.range.search(",")).replace(/[, ]+/g, "").trim());
+			}
+			else
+			{
+				move_range = Number(move.range.slice(0, move.range.search(",")).replace(/[, ]+/g, "").trim());
+			}
+
+			console.log("DEBUG ++++++++++++++ range_to_target = "+range_to_target+" / move_range = "+move_range+" +++++++++++++");
+			
+			if(range_to_target > move_range)
+			{
+				in_range = false;
+			}
+		}
+		
+		
+		switch(move.category)
+		{
+			case "Physical":
+				{
+					target_evasion = Math.max(target_physical_evasion, target_speed_evasion);
+					target_evasion_type = "Physical/Speed";
+					targeted = true;
+					target_name = target_token.data.name;
+					break;
+				}
+				
+			case "Special":
+				{
+					target_evasion = Math.max(target_special_evasion, target_speed_evasion);
+					target_evasion_type = "Special/Speed";
+					targeted = true;
+					target_name = target_token.data.name;
+					break;
+				}
+			case "Status":
+				{
+					target_evasion = target_speed_evasion;
+					target_evasion_type = "Speed";
+					targeted = true;
+					target_name = target_token.data.name;
+					break;
+				}
+		}
+
+	}
 
 	let actorType1 = null;
 	let actorType2 = null;
@@ -3837,10 +4029,10 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		isDoubleStrike = true;
 	}
 
-	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move, actor.data.data);
+	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move, actor.data);
 	let diceResult = await game.PTUMoveMaster.GetDiceResult(acRoll);
 
-	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move, actor.data.data);
+	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move, actor.data);
 	let diceResult2 = await game.PTUMoveMaster.GetDiceResult(acRoll2);
 
 	let move_crit_base = 20;
@@ -3933,6 +4125,19 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		hasSTAB = true;
 	}
 
+	let roll1_hit = false;
+	let roll2_hit = false;
+
+	if(acRoll._total >= target_evasion)
+	{
+		roll1_hit = true;
+	}
+
+	if(acRoll2._total >= target_evasion)
+	{
+		roll2_hit = true;
+	}
+
 	game.PTUMoveMaster.sendMoveRollMessage(moveName, acRoll, acRoll2, {
 		speaker: ChatMessage.getSpeaker({
 			actor: actor
@@ -3956,6 +4161,15 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		isDoubleStrike: isDoubleStrike,
 		hasSTAB: hasSTAB,
 		finalDB: finalDB,
+		targetEvasion: target_evasion,
+		targetEvasionType: target_evasion_type,
+		targeted: targeted,
+		targetName: target_name,
+		hit1: roll1_hit,
+		hit2: roll2_hit,
+		moveRange: move_range,
+		rangeToTarget: range_to_target,
+		inRange: in_range
 	});//.then(data => console.log(data));
 
 	var moveSoundFile = ((move.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
@@ -4183,7 +4397,8 @@ export async function sendMoveRollMessage(moveName, rollData, rollData2, message
 	return ChatMessage.create(messageData, {});
 };
 
-export async function ApplyInjuries(target, final_effective_damage)
+
+export async function ApplyInjuries(target, final_effective_damage, damage_type="Untyped")
 {
 	let targetHealthCurrent = target.data.data.health.value;
 	let targetHealthMax = target.data.data.health.total;
@@ -4264,10 +4479,33 @@ export async function ApplyInjuries(target, final_effective_damage)
 
 export function GetDistanceBetweenTokens(token1, token2)
 {
-	// let target = Array.from(game.user.targets)[0];
-	let ray = new Ray(token1, token2);
+	let grid_size = canvas.scene.dimensions.size;
+
+	let token1_height_offset = (token1.height*grid_size)/2;
+	let token1_width_offset = (token1.width*grid_size)/2;
+	let token1_x = token1.x + token1_width_offset;
+	let token1_y = token1.y + token1_height_offset;
+
+	let token1_grid_offset = 0;
+	if(Math.max(token1.height, token1.width) > 1)
+	{
+		token1_grid_offset = Math.max( Math.floor(token1.height/2), Math.floor(token1.width/2) );
+	}
+
+	let token2_height_offset = (token2.height*grid_size)/2;
+	let token2_width_offset = (token2.width*grid_size)/2;
+	let token2_x = token2.x + token2_width_offset;
+	let token2_y = token2.y + token2_height_offset;
+
+	let token2_grid_offset = 0;
+	if(Math.max(token2.height, token2.width) > 1)
+	{
+		token2_grid_offset = Math.max( Math.floor(token2.height/2), Math.floor(token2.width/2) );
+	}
+
+	let ray = new Ray( {x:token1_x, y:token1_y}, {x:token2_x, y:token2_y} );
 	let segments = [{ray}];
-	let dist = canvas.grid.measureDistances(segments,{gridSpaces:true})[0]
+	let dist = (canvas.grid.measureDistances(segments,{gridSpaces:true})[0]) - token1_grid_offset - token2_grid_offset;
 		
 	// ui.notifications.info(`${dist} m apart`)
 	return dist;
@@ -4457,7 +4695,21 @@ export async function IsWithinPokeballThrowRange(actor_token, target_token, poke
 
 	let pokeballThrowAC = game.settings.get("PTUMoveMaster", "CustomPokeballAC");
 
-	let attack_mod = throwing_actor.data.data.modifiers.acBonus.total;
+
+	let blindness_mod = 0;
+	if(throwing_actor.data.flags.ptu)
+	{
+		if(throwing_actor.data.flags.ptu.is_totally_blind)
+		{
+			blindness_mod = -10;
+		}
+		else if(throwing_actor.data.flags.ptu.is_blind)
+		{
+			blindness_mod = -6;
+		}
+	}
+	
+	let attack_mod = throwing_actor.data.data.modifiers.acBonus.total + blindness_mod;
 	let trainerHasToolsOfTheTrade = game.PTUMoveMaster.ActorHasItemWithName(throwing_actor, "Tools of the Trade", "feat")
 
 	if(trainerHasToolsOfTheTrade)
@@ -4521,7 +4773,20 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 
 	let pokeballThrowAC = game.settings.get("PTUMoveMaster", "CustomPokeballAC");
 
-	let attack_mod = throwing_actor.data.data.modifiers.acBonus.total;
+	let blindness_mod = 0;
+	if(throwing_actor.data.flags.ptu)
+	{
+		if(throwing_actor.data.flags.ptu.is_totally_blind)
+		{
+			blindness_mod = -10;
+		}
+		else if(throwing_actor.data.flags.ptu.is_blind)
+		{
+			blindness_mod = -6;
+		}
+	}
+
+	let attack_mod = throwing_actor.data.data.modifiers.acBonus.total + blindness_mod;
 	let trainerHasToolsOfTheTrade = game.PTUMoveMaster.ActorHasItemWithName(throwing_actor, "Tools of the Trade", "feat")
 
 	if(trainerHasToolsOfTheTrade)
@@ -5233,7 +5498,7 @@ export async function TakeAction(actor, action_type="Standard", action_subtype="
 };
 
 
-export async function ResetActionEconomy(actor)
+export async function ResetActionEconomy(actor, silent=true)
 {
 	await actor.update({
 		"flags.ptu.actions_taken.standard": false, 
@@ -7819,9 +8084,10 @@ export async function resetEOTMoves(actor, silent=false)
 			}
 		}
 	}
-	chatMessage(actor, (actor.name + " refreshes their EOT-frequency moves!"))
+	
 	if(!silent)
 	{
+		chatMessage(actor, (actor.name + " refreshes their EOT-frequency moves!"))
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 }
@@ -7852,9 +8118,10 @@ export async function resetSceneMoves(actor, silent=false)
 			}
 		}
 	}
-	chatMessage(actor, (actor.name + " refreshes their Scene-frequency moves!"))
+	
 	if(!silent)
 	{
+		chatMessage(actor, (actor.name + " refreshes their Scene-frequency moves!"))
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 }
@@ -7882,9 +8149,10 @@ export async function resetDailyMoves(actor, silent=false)
 			}
 		}
 	}
-	chatMessage(actor, (actor.name + " refreshes their Daily-frequency moves!"))
+
 	if(!silent)
 	{
+		chatMessage(actor, (actor.name + " refreshes their Daily-frequency moves!"))
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 }
@@ -7989,4 +8257,17 @@ export async function GetCurrentFieldImageURL()
 
 	let background_image_URL = 'background_fields/'+current_terrain+"_"+current_time_of_day+".png";
 	return background_image_URL;
+}
+
+
+export async function recallPokemon(target_actor)
+{
+	for(let affliction of VolatileAfflictions)
+	{
+		await game.PTUMoveMaster.cureActorAffliction(target_actor, affliction, true);
+	}
+
+	await game.PTUMoveMaster.ResetStagesToDefault(target_actor, true);
+
+	game.PTUMoveMaster.chatMessage(target_actor, target_actor.name + ' was recalled! Stages reset to defaults, and all volatile conditions cured!');
 }
