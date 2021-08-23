@@ -4477,7 +4477,7 @@ export async function ApplyInjuries(target, final_effective_damage, damage_type=
 }
 
 
-export function GetDistanceBetweenTokens(token1, token2)
+export function GetDistanceBetweenTokens_Adjusted(token1, token2)
 {
 	let grid_size = canvas.scene.dimensions.size;
 
@@ -4510,6 +4510,14 @@ export function GetDistanceBetweenTokens(token1, token2)
 	// ui.notifications.info(`${dist} m apart`)
 	return dist;
 };
+
+export function GetDistanceBetweenTokens(token1, token2)
+{
+	let ray = new Ray(token1, token2);
+	let segments = [{ray}];
+	let dist = canvas.grid.measureDistances(segments,{gridSpaces:true})[0]
+	return dist;
+}
 
 
 export function CreateStatusMoveButtonList(actor)
