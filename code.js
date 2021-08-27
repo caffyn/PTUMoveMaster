@@ -32,8 +32,9 @@ function _loadModuleSettings() {
 		  "never": "Never",
 		  "always": "Always",
 		  "neutralOrBetter": "Only on neutral or better targets",
+		  "dex": "Only on targets that you possess the Dex entry for their species."
 		},
-		default: "neutralOrBetter"
+		default: "dex"
 	  });
 
 	game.settings.register("PTUMoveMaster", "showEffectivenessText", {
@@ -288,6 +289,7 @@ Hooks.once('init', async function()
 		GetCurrentFieldImageURL,
 		toggleEffect,
 		recallPokemon,
+		adjustActorAccuracy,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -911,9 +913,10 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					let throwRange = trainer_actor.data.data.capabilities["Throwing Range"];
 					let rangeToTarget = GetDistanceBetweenTokens(actor_token, tokenData);
 	
-					if(throwRange < rangeToTarget)
+					// if(throwRange < rangeToTarget)
+					if(!await game.PTUMoveMaster.IsWithinPokeballThrowRange(actor_token, target_token, pokeball))
 					{
-						ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
+						// ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
 						
 						await game.ptu.api.tokensDelete(game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);
 						// await game.actors.get(actor.id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
@@ -928,7 +931,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							await target_token.update({ "alpha": (0) });
 						}
 	
-						ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
+						// ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 	
 						let transitionType = 9;
@@ -1615,6 +1618,31 @@ var move_stage_changes = {
 	"Crabhammer"	:	{
 		"crit-range":	18,
 	},
+	"Magic Weapon"  :   {
+		"spatk" : 1,
+		"accuracy" : 1
+	},
+	"Take Aim"  :   {
+		"accuracy" : 1
+	},
+	"Bullseye"  :   {
+		"crit-range": 16
+	},
+	"Energy Blast"  :   {
+		"roll-trigger": 19,
+		"spatk" : 1
+	},
+	"Energy Sphere"  :   {
+		"roll-trigger": 19,
+		"spdef" : 1
+	},
+	"Energy Sphere"  :   {
+		"roll-trigger": 19,
+		"spdef" : 1
+	},
+	"Deadly Strike"  :   {
+		"crit-range":	2,
+	},
 };
 
 const ButtonHeight = 100;
@@ -1832,7 +1860,7 @@ export function PTUAutoFight()
 	
 				if( (currentRound - token.actor.data.data.TypeStrategistLastRoundUsed <= 1) && (currentEncounterID == token.actor.data.data.TypeStrategistLastEncounterUsed) )
 				{
-					extraDR = token.actor.data.data.TypeStrategistDR;
+					extraDR += token.actor.data.data.TypeStrategistDR;
 					extraDRSource = "Type Strategist, " + token.actor.data.data.TypeStrategistLastTypeUsed;
 					extraDRNotes = "(including +" + extraDR + " DR from " + extraDRSource + ")";
 				}
@@ -1851,7 +1879,7 @@ export function PTUAutoFight()
 				
 				if(mode=="resist")
 				{
-					flavor+="(resisted 1 step) "
+					flavor+="(resisted 1 step more) "
 					let old_effectiveness=this_moves_effectiveness;
 					if(old_effectiveness > 1)
 					{
@@ -1865,16 +1893,29 @@ export function PTUAutoFight()
 	
 				if(damage_category == "Physical")
 				{
-					var DR = def + extraDR;
+					var DR = def + extraDR + token.actor.data.data.modifiers.damageReduction.physical.total;
 				}
 				if(damage_category == "Special")
 				{
-					var DR = spdef + extraDR;
+					var DR = spdef + extraDR + token.actor.data.data.modifiers.damageReduction.special.total;
 				}
 				if(mode=="half")
 				{
 					flavor+="(1/2 damage) ";
 					initial_damage_total=Number(initial_damage_total/2);
+				}
+				if(mode=="weak")
+				{
+					flavor+="(resisted 1 step less) ";
+					let old_effectiveness=this_moves_effectiveness;
+					if(old_effectiveness < 1)
+					{
+						this_moves_effectiveness=this_moves_effectiveness + .5;
+					}
+					else
+					{
+						this_moves_effectiveness=Number(this_moves_effectiveness + 0.5);
+					}
 				}
 	
 				var defended_damage = Number(Number(initial_damage_total) - Number(DR));
@@ -2376,6 +2417,11 @@ export function PTUAutoFight()
 							effectivenessBackgroundColor = "darkred";
 							effectivenessTextColor = "white";
 						}
+						else if (effectiveness[item_data.type] == 1.25)
+						{
+							effectivenessBackgroundColor = "#89b3b5";
+							effectivenessTextColor = "white";
+						}
 						else if (effectiveness[item_data.type] == 1.5)
 						{
 							effectivenessBackgroundColor = "#6699cc";//"#3399ff";
@@ -2410,6 +2456,11 @@ export function PTUAutoFight()
 
 				let currentMoveFiveStrike = false;
 				let currentMoveDoubleStrike = false;
+				let effect_range_bonus = 0;
+				if(actor.data.data.modifiers.effectRange.total)
+				{
+					effect_range_bonus = actor.data.data.modifiers.effectRange.total;
+				}
 
 
 				// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
@@ -2493,7 +2544,7 @@ export function PTUAutoFight()
 								{
 									let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
 
-									if(diceRoll >= effectThreshold) // Effect Range Hit
+									if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
 									{
 										for (let searched_stat of stats)
 										{
@@ -2513,6 +2564,10 @@ export function PTUAutoFight()
 										if(move_stage_changes[searched_move]["weather"] != null)
 										{
 											game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+										}
+										if(move_stage_changes[searched_move]["accuracy"] != null)
+										{
+											adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 										}
 									}
 									else // Effect Range Missed
@@ -2540,6 +2595,10 @@ export function PTUAutoFight()
 									if(move_stage_changes[searched_move]["weather"] != null)
 									{
 										game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+									}
+									if(move_stage_changes[searched_move]["accuracy"] != null)
+									{
+										adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 									}
 								}
 								
@@ -2760,6 +2819,11 @@ export function PTUAutoFight()
 						else if (effectiveness[item_data.type] < 0.25)
 						{
 							effectivenessBackgroundColor = "darkred";
+							effectivenessTextColor = "white";
+						}
+						else if (effectiveness[item_data.type] == 1.25)
+						{
+							effectivenessBackgroundColor = "#89b3b5";
 							effectivenessTextColor = "white";
 						}
 						else if (effectiveness[item_data.type] == 1.5)
@@ -3217,6 +3281,19 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 			{
 				var DR = spdef + extraDR + bonusDamageReduction;
 			}
+			if(mode=="weak")
+			{
+				flavor+="(resisted 1 step less) ";
+				let old_effectiveness=this_moves_effectiveness;
+				if(old_effectiveness < 1)
+				{
+					this_moves_effectiveness=this_moves_effectiveness + .5;
+				}
+				else
+				{
+					this_moves_effectiveness=Number(this_moves_effectiveness + 0.5);
+				}
+			}
 			if(mode=="half")
 			{
 				flavor+="(1/2 damage) ";
@@ -3306,6 +3383,12 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 		var item_entities=actor.items;
 		let diceRoll = await game.PTUMoveMaster.PerformFullAttack (actor, item, moveName, finalDB, bonusDamage);
 
+		let effect_range_bonus = 0;
+		if(actor.data.data.modifiers.effectRange.total)
+		{
+			effect_range_bonus = actor.data.data.modifiers.effectRange.total;
+		}
+
 		if(game.combat == null)
 		{
 			var currentRound = 0;
@@ -3378,7 +3461,7 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 					let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
 					// console.log("EFFECT THRESHOLD"+effectThreshold);
 					// console.log("DICE ROLL"+diceRoll);
-					if(diceRoll >= effectThreshold) // Effect Range Hit
+					if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
 					{
 						// console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
 						
@@ -3396,6 +3479,10 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 						if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 						{
 							game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+						}
+						if(move_stage_changes[searched_move]["accuracy"] != null)
+						{
+							adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 						}
 					}
 					else // Effect Range Missed
@@ -3419,6 +3506,10 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 					if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 					{
 						game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+					}
+					if(move_stage_changes[searched_move]["accuracy"] != null)
+					{
+						adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 					}
 				}
 				
@@ -4579,14 +4670,15 @@ export function GetTokenFromActor(actor)
 
 export function ActorHasItemWithName(actor, initial_item_name, item_category="Any", precise_naming=false)
 {
-	let item_name = initial_item_name.replace("é", "e");
+	let item_name = initial_item_name.replace("é", "e").toLowerCase();
+
 	if(item_category == "Any" || item_category == "")
 	{
 		for(let item of actor.items)
 		{
 			if(item.data.name)
 			{
-				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
 					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
@@ -4600,7 +4692,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 		{
 			if(item.data.name)
 			{
-				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
 					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
@@ -4614,7 +4706,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 		{
 			if(item.data.name)
 			{
-				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
 					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
@@ -4628,7 +4720,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 		{
 			if(item.data.name)
 			{
-				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
 					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
@@ -4642,7 +4734,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 		{
 			if(item.data.name)
 			{
-				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
 					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
@@ -4656,7 +4748,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 		{
 			if(item.data.name)
 			{
-				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
 					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
@@ -4670,7 +4762,21 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 		{
 			if(item.data.name)
 			{
-				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name.toLowerCase())) ) )
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
+				{
+					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
+					return true;
+				}
+			}
+		}
+	}
+	else if(item_category == "dexentry")
+	{
+		for(let item of actor.itemTypes.dexentry)
+		{
+			if(item.data.name)
+			{
+				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
 					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
@@ -5154,11 +5260,15 @@ export function SpeakPokemonName(pokemon_actor)
 };
 
 
-export function PokedexScan(trainer_token, target_pokemon_token)
+export async function PokedexScan(trainer_token, target_pokemon_token)
 {
 	let trainer_actor = trainer_token.actor;
 	let target_pokemon_actor = target_pokemon_token.actor;
 	let distance = GetDistanceBetweenTokens(trainer_token, target_pokemon_token)
+
+	// let actorIDs = [];
+	// let userIDs = [];
+	let current_actor_to_add_DEX_entry_for;
 
 	if(distance > 10)
 	{
@@ -5172,6 +5282,52 @@ export function PokedexScan(trainer_token, target_pokemon_token)
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 		return;
 	}
+
+	let species = target_pokemon_actor.data.data.species;
+	let species_data = game.ptu.GetSpeciesData(species);
+	let species_number = 0;
+	if(species_data.number)
+	{
+		species_number = Number(species_data.number)
+	}
+
+	// for(let user of game.users)
+	// {
+	// 	if(!user.isGM){
+	// 		if(!actorIDs.includes(user.character.id))
+	// 		{
+	// 			actorIDs.push(user.character.id);
+	// 		}
+	// 		if(!userIDs.includes(user.id))
+	// 		{
+	// 			userIDs.push(user.id);
+	// 		} 
+	// 	}
+	// }
+
+	current_actor_to_add_DEX_entry_for = trainer_actor;
+
+	// for(let actorID of actorIDs)
+	// {
+	// 	current_actor_to_add_DEX_entry_for = game.actors.get(actorID);
+	// 	if(current_actor_to_add_DEX_entry_for.type == "character")
+	// 	{
+	// 		if(!game.PTUMoveMaster.ActorHasItemWithName(current_actor_to_add_DEX_entry_for, target_pokemon_actor.data.data.species, "dexentry"))
+	// 		{
+	// 			await current_actor_to_add_DEX_entry_for.createOwnedItem({name: target_pokemon_actor.data.data.species, type: "dexentry", data: {
+	// 				entry: "",
+	// 				id: species_number,
+	// 				owned: false
+	// 			}});
+	// 		}
+	// 	}
+	// }
+
+	await current_actor_to_add_DEX_entry_for.createOwnedItem({name: species.toLowerCase(), type: "dexentry", data: {
+		entry: "",
+		id: species_number,
+		owned: false
+	}});
 
 	if(target_pokemon_token.data.disposition == -1)
 	{
@@ -6066,6 +6222,51 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 				}, 750);
 
 				game.PTUMoveMaster.RemoveThrownPokeball(trainer, pokeball_item);
+
+				let species = current_target.data.data.species;
+				let species_data = game.ptu.GetSpeciesData(species);
+				let species_number = 0;
+				if(species_data.number)
+				{
+					species_number = Number(species_data.number)
+				}
+
+				let current_actor_to_add_DEX_entry_for = trainer;
+
+				if(game.PTUMoveMaster.ActorHasItemWithName(current_actor_to_add_DEX_entry_for, species.toLowerCase(), "dexentry"))
+				{
+					for(let item of current_actor_to_add_DEX_entry_for.itemTypes.dexentry)
+					{
+						if(item.data.name)
+						{
+							if( (item.data.name.replace("é", "e") == species.toLowerCase()) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(species.toLowerCase())) ) )
+							{
+								item.update(
+									{
+										name: species.toLowerCase(), 
+										type: "dexentry", 
+										data: 
+										{
+											entry: "",
+											id: species_number,
+											owned: true
+										}
+									}
+								);
+								break;
+							}
+						}
+					}
+				}
+				else
+				{
+					await current_actor_to_add_DEX_entry_for.createOwnedItem({name: species.toLowerCase(), type: "dexentry", data: {
+						entry: "",
+						id: species_number,
+						owned: true
+					}});
+				}
+				
 			}
 			else
 			{
@@ -7206,6 +7407,11 @@ export async function ShowStruggleMenu(actor)
 						effectivenessBackgroundColor = "darkred";
 						effectivenessTextColor = "white";
 					}
+					else if (effectiveness[currentType] == 1.25)
+					{
+						effectivenessBackgroundColor = "#89b3b5";
+						effectivenessTextColor = "white";
+					}
 					else if (effectiveness[currentType] == 1.5)
 					{
 						effectivenessBackgroundColor = "#6699cc";//"#3399ff";
@@ -7216,6 +7422,7 @@ export async function ShowStruggleMenu(actor)
 						effectivenessBackgroundColor = "blue";
 						effectivenessTextColor = "white";
 					}
+					
 					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 					{
 						effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[currentType].toString())+"</span>";
@@ -7458,12 +7665,35 @@ export function GetTargetTypingHeader(target, actor)
 	let targetType1 = "Blank";
 	let targetType2 = "Blank";
 	let effectiveness;
-
+	let showEffectivenessMode = game.settings.get("PTUMoveMaster", "showEffectiveness");
 	let actions_image = game.PTUMoveMaster.GetActorActionIcon(actor);
 
-	if ( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target))
+	let actor_has_target_dex_entry = false;
+
+	if(target)
 	{
-		if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+		if(target.actor.data.data.species)
+		{
+			actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+		}
+	}
+	
+
+	if ( (showEffectivenessMode != "never") && (target))
+	{
+		if(
+			(
+				(target.data.disposition > DISPOSITION_HOSTILE)
+				&& (showEffectivenessMode == "neutralOrBetter")
+			) 
+			|| 
+			(
+				actor_has_target_dex_entry
+				&& (showEffectivenessMode == "dex")
+			)
+			||
+			(showEffectivenessMode == "always")
+		)
 		{
 			if(target.actor.data.data.typing)
 			{
@@ -8278,4 +8508,28 @@ export async function recallPokemon(target_actor)
 	await game.PTUMoveMaster.ResetStagesToDefault(target_actor, true);
 
 	game.PTUMoveMaster.chatMessage(target_actor, target_actor.name + ' was recalled! Stages reset to defaults, and all volatile conditions cured!');
+}
+
+
+export async function adjustActorAccuracy(actor, change)
+{
+	setTimeout(() => {
+
+		if(change > 0)
+		{
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+		}
+		else
+		{
+			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+		}
+
+		let old_stage = Number(actor.data.data.modifiers.acBonus.value);
+
+		let new_stage = (old_stage + Number(change));
+
+		actor.update({'data.modifiers.acBonus.value': Number(new_stage) });
+		game.PTUMoveMaster.chatMessage(actor, actor.name + ' Accuracy +'+ change +'!');
+
+	}, 100);
 }
