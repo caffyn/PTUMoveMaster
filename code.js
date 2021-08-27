@@ -5265,14 +5265,15 @@ export async function PokedexScan(trainer_token, target_pokemon_token)
 	let trainer_actor = trainer_token.actor;
 	let target_pokemon_actor = target_pokemon_token.actor;
 	let distance = GetDistanceBetweenTokens(trainer_token, target_pokemon_token)
+	let pokedex_range = game.settings.get("PTUMoveMaster", "PokedexRangeLimit");
 
 	// let actorIDs = [];
 	// let userIDs = [];
 	let current_actor_to_add_DEX_entry_for;
 
-	if(distance > 10)
+	if(distance > pokedex_range)
 	{
-		ui.notifications.warn(`Target is ${distance}m away, which is past the Pokedex's scan range of 10m!`);
+		ui.notifications.warn(`Target is ${distance}m away, which is past the Pokedex's scan range of ${pokedex_range}m!`);
 		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 		return;
 	}
