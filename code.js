@@ -313,12 +313,10 @@ Hooks.once('init', async function()
 
 	if(game.settings.get("PTUMoveMaster", "hideConfettiButton"))
 	{
-		console.log("Hiding Confetti");
 		$("body").addClass('confetti-hidden');
 	}
 	else
 	{
-		console.log("Un-Hiding Confetti");
 		$("body").removeClass('confetti-hidden');
 	}
 
@@ -333,12 +331,10 @@ Hooks.once('init', async function()
 Hooks.on("ready", async () => {
 	if(game.settings.get("PTUMoveMaster", "hideConfettiButton"))
 	{
-		console.log("Hiding Confetti");
 		$("body").addClass('confetti-hidden');
 	}
 	else
 	{
-		console.log("Un-Hiding Confetti");
 		$("body").removeClass('confetti-hidden');
 	}
 
@@ -368,8 +364,6 @@ Hooks.on("ready", async () => {
 
 Hooks.on("endTurn", async (combat, actor, round_and_turn, diff, id) => {
 
-	console.log("endTurn: actor");
-	console.log(actor);
 	let current_actor = game.actors.get(actor.data.actorId);
 
 	// if(current_actor.data.flags.ptu.actions_taken.standard || current_actor.data.flags.ptu.actions_taken.support)
@@ -472,9 +466,6 @@ Hooks.on("preDeleteCombat", (combat, misc, tokenID) => {
 			for(let combatant of combatants)
 			{
 			current_actor = game.actors.get(combatant.actor.id);
-			console.log("END OF SCENE: __________ current_actor");
-			console.log(current_actor);
-
 
 			await game.PTUMoveMaster.ResetStagesToDefault(current_actor, true);
 			await game.PTUMoveMaster.ResetActionEconomy(current_actor, true);
@@ -498,16 +489,12 @@ Hooks.on("preDeleteCombat", (combat, misc, tokenID) => {
 
 
 Hooks.on("prePlayerDeleteToken", async (uuids) => {
-    
-	// console.log("DEBUG: prePlayerDeleteToken: uuids");
-	// console.log(uuids);
 
 	let actors_to_be_deleted = [];
 	let at_least_one_owned_pokemon = false;
 
 	for(let uuid of uuids)
 	{
-		console.log(uuid);
 		let new_token = await fromUuid(uuid);
 		let new_actor = game.PTUMoveMaster.GetActorFromToken(new_token);
 
@@ -518,11 +505,10 @@ Hooks.on("prePlayerDeleteToken", async (uuids) => {
 		}
 	}
 
-	console.log("DEBUG: prePlayerDeleteToken: actors to be deleted")
-	for(let actor of actors_to_be_deleted)
-	{
-		console.log(actor);
-	}
+	// for(let actor of actors_to_be_deleted)
+	// {
+	// 	// console.log(actor);
+	// }
 	
 	if(at_least_one_owned_pokemon)
 	{
@@ -532,7 +518,7 @@ Hooks.on("prePlayerDeleteToken", async (uuids) => {
 			yes: async () => {
 				for(let actor of actors_to_be_deleted)
 				{
-					console.log("await game.PTUMoveMaster.recallPokemon(actor);");
+					// console.log("await game.PTUMoveMaster.recallPokemon(actor);");
 					await game.PTUMoveMaster.recallPokemon(actor);
 				}
 			},
@@ -571,12 +557,10 @@ Hooks.on("closeSettingsConfig", async (ExtendedSettingsConfig, S) => {
 
 	if(game.settings.get("PTUMoveMaster", "hideConfettiButton"))
 	{
-		console.log("Hiding Confetti");
 		$("body").addClass('confetti-hidden');
 	}
 	else
 	{
-		console.log("Un-Hiding Confetti");
 		$("body").removeClass('confetti-hidden');
 	}
 
@@ -602,46 +586,22 @@ Hooks.on("renderChatMessage", (message, html, data) => {
 
 Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 
-	console.log("startTurn: sender: " + sender);
-	console.log("game.user.data._id:");
-	console.log(game.user.data._id);
-
-	console.log("combat:");
-	console.log(combat);
-
-
 	if(sender != game.user.data._id)
 	{
-		console.log("startTurn: Not the right user! Returning.")
 		return;
 	}
-	console.log("startTurn: The right user! Proceeding.")
 
 	let this_round = combat.current.round;
 	let this_turn = combat.current.turn;
 	let previous_round = combat.previous.round;
 	let previous_turn = combat.previous.turn;
 
-	console.log("previous_round:");
-	console.log(previous_round);
-	console.log("this_round:");
-	console.log(this_round);
-
-	console.log("previous_turn:");
-	console.log(previous_turn);
-	console.log("this_turn:");
-	console.log(this_turn);
-
 	if( (this_turn != (previous_turn+1)) && (this_round != (previous_round+1)) )
 	{
-		console.log("startTurn: Not the turn/round after the previous one! Returning.")
 		return;
 	}
 
 	let current_token = game.combat.current.tokenId;
-	console.log("startTurn current_token");
-	console.log(current_token);
-
 	let current_actor = canvas.tokens.get(current_token).actor;
 	let current_token_species = current_actor.data.data.species;
 	let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
@@ -661,7 +621,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 	
 	if( (this_turn == 0) && (this_round == (previous_round+1)) )
 	{
-		console.log("-------- NEW ROUND TRIGGER ---------");
+		// console.log("-------- NEW ROUND TRIGGER ---------");
 		for(let combatant of game.combat.combatants)
 		{
 			let this_actor = combatant.actor;
@@ -673,7 +633,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 		}
 	}
 	
-	console.log("-------- NEW TURN TRIGGER ---------");
+	// console.log("-------- NEW TURN TRIGGER ---------");
 
 	if( (current_actor.data.flags.ptu) && (game.settings.get("PTUMoveMaster", "autoSkipTurns")) )
 	{
@@ -730,13 +690,8 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 });
 
 Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
-	console.log("END TURN: combatant:");
-	console.log(combatant);
-	// let current_token = game.combat.current.tokenId;
+
 	let current_actor = combatant._actor;
-	// let current_actor = combatant;
-	console.log("END TURN: Current Actor:");
-	console.log(current_actor);
 	let current_token_species = current_actor.data.data.species;
 	let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
 	let actor_type_1 = "Untyped";
@@ -787,19 +742,6 @@ Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 	}, 800);
 
 });
-
-
-// Hooks.on("preDeleteCombat", async (combat) => {
-
-// 	if(game.settings.get("PTUMoveMaster", "autoResetStagesOnCombatEnd"))
-// 	{
-// 		let combatants = combat.data.combatants;
-// 		for(let combatant of combatants)
-// 		{
-// 			await game.PTUMoveMaster.ResetStagesToDefault(combatant.actor);
-// 		}
-// 	}
-// });
 
 
 Hooks.on("controlToken", async (token, selected) => {
@@ -913,13 +855,11 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					let throwRange = trainer_actor.data.data.capabilities["Throwing Range"];
 					let rangeToTarget = GetDistanceBetweenTokens(actor_token, tokenData);
 	
-					// if(throwRange < rangeToTarget)
 					if(!await game.PTUMoveMaster.IsWithinPokeballThrowRange(actor_token, target_token, pokeball))
 					{
 						// ui.notifications.warn(`Target square is ${rangeToTarget}m away, which is outside your ${throwRange}m throwing range!`);
 						
 						await game.ptu.api.tokensDelete(game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);
-						// await game.actors.get(actor.id).getActiveTokens().slice(-1)[0].delete(); // Delete the last (assumed to be latest, i.e. the one just dragged out) token
 					}
 					else
 					{
@@ -927,7 +867,6 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						
 						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
 						{
-							// await target_token.update({"scale": (0.25/target_token.data.width)});
 							await target_token.update({ "alpha": (0) });
 						}
 	
@@ -937,101 +876,10 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						let transitionType = 9;
 						let targetImagePath = "/item_icons/"+pokeball+".png";
 	
-						// let polymorphFilterId = "pokeball";
-						// let pokeball_polymorph_quick_params =
-						// [{
-						// 	filterType: "polymorph",
-						// 	filterId: polymorphFilterId,
-						// 	type: transitionType,
-						// 	padding: 70,
-						// 	magnify: 1,
-						// 	imagePath: targetImagePath,
-						// 	animated:
-						// 	{
-						// 		progress:
-						// 		{
-						// 			active: true,
-						// 			animType: "halfCosOscillation",
-						// 			val1: 0,
-						// 			val2: 100,
-						// 			loops: 1,
-						// 			loopDuration: 1
-						// 		}
-						// 	}
-						// },
-	
-						// {
-						// 	filterType: "transform",
-						// 	filterId: "pokeball_bounce",
-						// 	autoDestroy: true,
-						// 	padding: 80,
-						// 	animated:
-						// 	{
-						// 		translationY:
-						// 		{
-						// 			animType: "cosOscillation",
-						// 			val1: 0,
-						// 			val2: 0.25,
-						// 			loops: 1,
-						// 			loopDuration: 450
-						// 		},
-						// 		// translationX:
-						// 		// {
-						// 		// 	animType: "cosOscillation",
-						// 		// 	val1: 0.15,
-						// 		// 	val2: 0.12,
-						// 		// 	loops: 1,
-						// 		// 	loopDuration: 450
-						// 		// },
-						// 		scaleY:
-						// 		{
-						// 			animType: "cosOscillation",
-						// 			val1: 1,
-						// 			val2: 0.75,
-						// 			loops: 2,
-						// 			loopDuration: 450,
-						// 		},
-						// 		scaleX:
-						// 		{
-						// 			animType: "cosOscillation",
-						// 			val1: 1,
-						// 			val2: 0.75,
-						// 			loops: 2,
-						// 			loopDuration: 450,
-						// 		}
-						// 	}
-						// }
-	
-						// ];
-	
-						// let pokeball_polymorph_params =
-						// [{
-						// 	filterType: "polymorph",
-						// 	filterId: polymorphFilterId,
-						// 	type: transitionType,
-						// 	padding: 70,
-						// 	magnify: 1,
-						// 	imagePath: targetImagePath,
-						// 	animated:
-						// 	{
-						// 		progress:
-						// 		{
-						// 			active: true,
-						// 			animType: "halfCosOscillation",
-						// 			val1: 0,
-						// 			val2: 100,
-						// 			loops: 1,
-						// 			loopDuration: 1
-						// 		}
-						// 	}
-						// }];
-	
 						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
 						{ 
-							// await target_token.TMFXaddUpdateFilters(pokeball_polymorph_quick_params);
 	
 							function castSpell(effect) {
-								// canvas.fxmaster.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
 								canvas.specials.drawSpecialToward(effect, actor_token, game.actors.get(actor.id).getActiveTokens().slice(-1)[0]);//target_token);
 							}
 							
@@ -1228,44 +1076,6 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 		}, 100);
 	}
 });
-
-
-// Hooks.on("endTurn", function(combat, combatant, prevTurnInfo, options, sender) {
-// 	combat // Combat Object
-// 	combatant // Combatant Object that just Ended it's turn.
-// 	prevTurnInfo // {round, turn} info on which round & turn the last turn was.
-// 	options // {round, turn, diff} 
-// 	  // round: {direction} where direction is either -1, 0 or 1. Signifying the direction the combat is moving for in relation to round. Shorthands available in: CONFIG.PTUCombat.DirectionOptions
-// 	  // turn: {direction}where direction is either -1, 0 or 1. Signifying the direction the combat is moving for in relation to turn. Shorthands available in: CONFIG.PTUCombat.DirectionOptions
-// 	  // diff: Boolean
-// 	sender // Origin of request
-//   }
-// );
-
-
-// Hooks.on("hoverToken", async (token, update, options, userId) => {
-
-// 	console.log(token);
-// 	// let current_token_species = canvas.tokens.get(token).actor.data.data.species;
-
-// 	if(update) // Hover-on
-// 	{
-// 		console.log("Mouse has hovered the token.");
-// 		console.log(token.data);
-// 	}
-
-// 	if(!update) // Hover-off
-// 	{
-// 		console.log("Mouse has left the token.");
-// 	}
-// });
-
-// function PokedexCheck (actorData, targetData)   {
-// 	return new Roll('1d20-@ac+@acBonus', {
-// 		ac: (parseInt(moveData.ac) || 0),
-// 		acBonus: (parseInt(actorData.modifiers.acBonus) || 0)
-// 	})
-// };
 
 
 Hooks.once("dragRuler.ready", (SpeedProvider) => {
@@ -1977,6 +1787,8 @@ export function PTUAutoFight()
 		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
 		let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 		let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
+
+		let showEffectivenessMode = game.settings.get("PTUMoveMaster", "showEffectiveness");
 		
 		var items=actor.data.items;
 		var item_entities=actor.items;
@@ -2104,9 +1916,6 @@ export function PTUAutoFight()
 		//for(let item of items) // START ABILITY BUTTON LOOP
 		for(let item of actor.itemTypes.ability)
 		{
-			// console.log("__ABILITY:__");
-			// console.log(item);
-
 			let item_data = item.data.data;
 			let currentid = item.id;
 
@@ -2220,7 +2029,6 @@ export function PTUAutoFight()
 
 			if(item_data.UseCount == null)
 			{
-				// console.log("USE COUNT == NULL");
 				for(let search_item of item_entities)
 				{
 					if (search_item.id == item.id)
@@ -2232,21 +2040,6 @@ export function PTUAutoFight()
 
 			var currentUseCount = item_data.UseCount;
 			var cooldownFileSuffix = "";
-
-			// console.log("Move:");
-			// console.log(item.name);
-
-			// console.log("currentRound");
-			// console.log(currentRound);
-
-			// console.log("currentLastRoundUsed");
-			// console.log(currentLastRoundUsed);
-
-			// console.log("currentEncounterID");
-			// console.log(currentEncounterID);
-
-			// console.log("currentLastEncounterUsed");
-			// console.log(currentLastEncounterUsed);
 
 			if( (Number(currentRound - currentLastRoundUsed) < 2) && (currentEncounterID == currentLastEncounterUsed) )
 			{
@@ -2386,11 +2179,40 @@ export function PTUAutoFight()
 				effectiveness = target.actor.data.data.effectiveness.All;
 			}
 
+			let actor_has_target_dex_entry = false;
+
+			if(target)
+			{
+				if(target.actor.data.data.species)
+				{
+					actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+					if(game.user.isGM)
+					{
+						actor_has_target_dex_entry = true;
+					}
+				}
+			}
+
 			if(currenttype=="move" && (currentCategory == "Status"))
 			{
 				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item_data.damageBase)) && (item_data.damageBase != "") && effectiveness)
 				{
-					if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+					// if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+					if(
+						(
+							(target.data.disposition > DISPOSITION_HOSTILE)
+							&& (showEffectivenessMode == "neutralOrBetter")
+						) 
+						|| 
+						(
+							actor_has_target_dex_entry
+							&& (showEffectivenessMode == "dex")
+						)
+						||
+						(showEffectivenessMode == "always")
+						||
+						(game.user.isGM)
+					)
 					{
 						currentEffectivenessLabel = " (x"+effectiveness[item_data.type]+")";
 						if (effectiveness[item_data.type] == 0.5)
@@ -2476,14 +2298,9 @@ export function PTUAutoFight()
 							return;
 						}
 						let key_shift = keyboard.isDown("Shift");
-						// if (key_shift) 
-						// {
-						// 	console.log("KEYBOARD SHIFT IS DOWN!");
-						// }
 
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-						console.log("STATUS MOVE: item.data.data = ");
-						console.log(item.data.data);
+
 						let diceRoll = await PerformFullAttack (actor,item.data.data, item.name);
 
 						if(game.combat == null)
@@ -2530,7 +2347,7 @@ export function PTUAutoFight()
 									{
 										let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
 										let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-										// console.log("DEBUG: Type Strategist: " + item_data.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
+
 										await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item_data.type, "data.TypeStrategistDR": currentDR});
 									}
 								}
@@ -2569,10 +2386,6 @@ export function PTUAutoFight()
 										{
 											adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 										}
-									}
-									else // Effect Range Missed
-									{
-										// console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
 									}
 								}
 								else // No Effect Range
@@ -2790,11 +2603,41 @@ export function PTUAutoFight()
 			{
 				effectiveness = target.actor.data.data.effectiveness.All;
 			}
+
+			let actor_has_target_dex_entry = false;
+
+			if(target)
+			{
+				if(target.actor.data.data.species)
+				{
+					actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+					if(game.user.isGM)
+					{
+						actor_has_target_dex_entry = true;
+					}
+				}
+			}
+
 			if(currenttype=="move" && (currentCategory == "Physical" || currentCategory == "Special"))
 			{
 				if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(item_data.damageBase)) && (item_data.damageBase != "") && effectiveness)
 				{
-					if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+					// if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+					if(
+						(
+							(target.data.disposition > DISPOSITION_HOSTILE)
+							&& (showEffectivenessMode == "neutralOrBetter")
+						) 
+						|| 
+						(
+							actor_has_target_dex_entry
+							&& (showEffectivenessMode == "dex")
+						)
+						||
+						(showEffectivenessMode == "always")
+						||
+						(game.user.isGM)
+					)
 					{
 						currentEffectivenessLabel = " (x"+effectiveness[item_data.type]+")";
 						if (effectiveness[item_data.type] == 0.5)
@@ -2864,13 +2707,11 @@ export function PTUAutoFight()
 
 				if(currentMoveRange.search("Five Strike") > -1)
 				{
-					// console.log("DEBUG: FIVE STRIKE FOUND!");
 					currentMoveFiveStrike = true;
 				}
 
 				if( (currentMoveRange.search("Doublestrike") > -1) || (currentMoveRange.search("Double Strike") > -1) )
 				{
-					// console.log("DEBUG: DOUBLE STRIKE FOUND!");
 					currentMoveDoubleStrike = true;
 				}
 
@@ -2902,7 +2743,6 @@ export function PTUAutoFight()
 
 				for(let search_item of actor.items)
 				{
-					// console.log(search_item.name);
 					if(search_item.name == "Technician")
 					{
 						userHasTechnician = true;
@@ -3007,11 +2847,6 @@ export function PTUAutoFight()
 
 					DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img title="Damage Base '+finalDB+'" src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+finalDB+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
 				}
-				
-				// if(moveData.damageBase)
-				// {
-				// 	DBBorderImage = '<div class="col" style="padding: 0px ! important;"><span class="type-img"><img src="/modules/PTUMoveMaster/images/icons/DividerIcon_DB'+damageBase+'.png" style="width: 248px; height: auto; padding: 0px ! important;"></span></div>';
-				// }
 
 				if(actor.data.data.typing)
 				{
@@ -3021,28 +2856,24 @@ export function PTUAutoFight()
 					}
 				}
 
-				// buttons[currentid]={label: "<center><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black;width:130px;height:130px;font-size:10px;'>"+currentCooldownLabel+""+"<h3>"+currentlabel+currentMoveTypeLabel+"</h3>"+"<h5>"+currentMoveRangeIcon+"</h5>"+currentEffectivenessLabel+"</div></center>",
 				buttons[currentid]={
 					id:currentid, 
 					label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item_data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
-					//label: "<center style='padding: 0px'><div style='background-color:"+ effectivenessBackgroundColor +";color:"+ effectivenessTextColor +";border:2px solid black; padding: 0px ;width:167px;height:95px;font-size:20px;font-family:Modesto Condensed;line-height:0.8'><h6>"+currentCooldownLabel+"</h6>"+"<h3 style='padding: 1px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'>"+currentlabel+DBBorderImage+STABBorderImage+currentMoveTypeLabel+"</h3>"+"<h6>"+currentMoveRangeIcon+"</h6>"+"</div></center>",
 					callback: async () => {
-						if(!ThisPokemonsTrainerCommandCheck(actor))
-						{
-							game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
-							return;
-						}
-						let key_shift = keyboard.isDown("Shift");
-						if (key_shift) 
-						{
-							rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
-						}
-						else
-						{
-							game.PTUMoveMaster.RollDamageMove(actor, item, item.name, finalDB, typeStrategist, 0);
-						}
-						
-
+							if(!ThisPokemonsTrainerCommandCheck(actor))
+							{
+								game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
+								return;
+							}
+							let key_shift = keyboard.isDown("Shift");
+							if (key_shift) 
+							{
+								rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
+							}
+							else
+							{
+								game.PTUMoveMaster.RollDamageMove(actor, item, item.name, finalDB, typeStrategist, 0);
+							}
 						}
 
 					}
@@ -3346,22 +3177,19 @@ export async function ResetStagesToDefault(actor, silent=false)
 		// }
 	};
 
-	// for (let token of canvas.tokens.controlled){
-
-		for (let stat of stats)
+	for (let stat of stats)
+	{
+		var actor_stat_string = String("data.stats." + stat + ".stage");
+		if(default_stages[actor.name])
 		{
-			var actor_stat_string = String("data.stats." + stat + ".stage");
-			if(default_stages[actor.name])
-			{
-				await actor.update({[actor_stat_string]: Number(default_stages[actor.name][stat])});
-			}
-			else
-			{
-				await actor.update({[actor_stat_string]: Number(0)});
-			}
+			await actor.update({[actor_stat_string]: Number(default_stages[actor.name][stat])});
 		}
+		else
+		{
+			await actor.update({[actor_stat_string]: Number(0)});
+		}
+	}
 		
-	// }
 	if(!silent)
 	{
 		game.PTUMoveMaster.chatMessage(actor, actor.name + " All Stages Reset!");
@@ -3409,48 +3237,33 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 					await search_item.update({ "data.UseCount": 0});
 				}
 			}
-			// item.update({ "data.UseCount": Number(0)});
 		}
 
 		if(item.frequency == "Daily" || item.frequency == "Daily x2" || item.frequency == "Daily x3" || item.frequency == "Scene" || item.frequency == "Scene x2" || item.frequency == "Scene x3")
 		{
 			for(let search_item of item_entities)
 			{
-				// console.log("search_item.data.id:");
-				// console.log(search_item.id);
-
-				// console.log("item_initial.id:");
-				// console.log(item_initial.id);
 				if (search_item.id == item_initial.id)
 				{
-					// console.log("DEBUG: search_item.data.id == item_initial.id, updating data.UseCount");
 					await search_item.update({ "data.UseCount": Number(item.UseCount + 1)});
 				}
 			}
-			// item.update({ "data.UseCount": Number(item.UseCount + 1)});
 		}
 
 		for(let search_item of item_entities)
 			{
 				if (search_item.id == item_initial.id)
 				{
-					// console.log("DEBUG: search_item.id == item_initial.id, updating data.LastRoundUsed");
-
 					await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 
 					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.type) > -1) )
 					{
 						let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
 						let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-						// console.log("DEBUG: Type Strategist: " + item.type + ", activated on round " + currentRound + ", HP = " + actor.data.data.health.value + "/" + actor.data.data.health.max + " (" + Number(actor.data.data.health.value / actor.data.data.health.max)*100 + "%; DR = " + currentDR);
 						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.type, "data.TypeStrategistDR": currentDR});
 					}
 				}
 			}
-		// item.update({ "data.LastRoundUsed": currentRound});
-		// item.update({ "data.LastEncounterUsed": currentEncounterID});
-		// console.log(item.name + " data.LastRoundUsed = " + item.LastRoundUsed);
-		// console.log("search debug",move_stage_changes);
 
 		for(let searched_move in move_stage_changes)
 		{
@@ -3459,12 +3272,9 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 				if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
 				{
 					let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
-					// console.log("EFFECT THRESHOLD"+effectThreshold);
-					// console.log("DICE ROLL"+diceRoll);
+
 					if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
 					{
-						// console.log("Move Trigger Range Hit: " + diceRoll + "vs " + effectThreshold);
-						
 						for (let searched_stat of stats)
 						{
 							if (move_stage_changes[searched_move][searched_stat] != null)
@@ -3484,10 +3294,6 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 						{
 							adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 						}
-					}
-					else // Effect Range Missed
-					{
-						// console.log("Move Trigger Range Missed: " + diceRoll + "vs " + effectThreshold);
 					}
 				}
 				else // No Effect Range
@@ -3750,13 +3556,7 @@ export function healActorTick(actor, source="")
 
 export function healActorRest(actor, hours=8, bandage_used=false)
 {
-
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
-
-	// let one_eighth_actor_health = (Math.floor(actor.data.data.health.total/8));
-
-	// let finalhealing = (one_eighth_actor_health + (bandage_used ? one_eighth_actor_health : 0)) * hours;
-
 
 	let health_fractions_healed = hours;
 	let health_fraction_size = (bandage_used ? 4 : 8);
@@ -3786,7 +3586,6 @@ export function healActorRest(actor, hours=8, bandage_used=false)
 		{
 			game.PTUMoveMaster.cureActorAffliction(actor, affliction);
 		}
-
 	}
 
 	actor.update({'data.health.injuries': Math.max(Number(actor.data.data.health.injuries - injuries_healed), 0) });
@@ -3832,10 +3631,6 @@ export async function cureActorAffliction(actor, affliction_name, silent=false)
 	{
 		if(eval('actor.data.flags.ptu.'+lowercase_affliction_name) == "true")
 		{
-			// console.log(actor.name+" has effect: "+lowercase_affliction_name);
-			
-			// await actor.effects.filter(x => x.data.label == affliction_name).forEach(x => await x.delete());
-
 			for(let effect of actor.effects.filter(x => x.data.label == affliction_name))
   			{
 				await effect.delete();
@@ -3850,13 +3645,11 @@ export async function cureActorAffliction(actor, affliction_name, silent=false)
 		}
 		else
 		{
-			// console.log(actor.name+" does NOT have effect: "+lowercase_affliction_name);
 			return false;
 		}
 	}
 	else
 	{
-		// console.log(actor.name+" does not have any flags set.");
 		return false;
 	}
 }
@@ -3916,11 +3709,6 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		let target_special_evasion = target_actor.data.data.evasion.special;
 		let target_speed_evasion = target_actor.data.data.evasion.speed;
 
-		console.log("DEBUG ++++++++++++++ actor_token");
-		console.log(actor_token.data);
-		console.log("DEBUG ++++++++++++++ target_token");
-		console.log(target_token.data);
-
 		range_to_target = GetDistanceBetweenTokens( actor_token.data, target_token.data); //canvas.grid.measureDistance(actor_token.data, target_token.data);
 
 		if(move.range)
@@ -3961,8 +3749,6 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 			{
 				move_range = Number(move.range.slice(0, move.range.search(",")).replace(/[, ]+/g, "").trim());
 			}
-
-			console.log("DEBUG ++++++++++++++ range_to_target = "+range_to_target+" / move_range = "+move_range+" +++++++++++++");
 			
 			if(range_to_target > move_range)
 			{
@@ -4095,8 +3881,6 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		}
 	}
 
-	console.log("move");
-	console.log(move);
 	if(move.range.search("Five Strike") > -1)
 	{
 		isFiveStrike = true;
@@ -4680,7 +4464,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4694,7 +4477,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4708,7 +4490,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4722,7 +4503,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4736,7 +4516,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4750,7 +4529,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4764,7 +4542,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4778,7 +4555,6 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					console.log("game.PTUMoveMaster.ActorHasItemWithName(): Item with name '%s' found!", item_name);
 					return true;
 				}
 			}
@@ -4831,29 +4607,9 @@ export async function IsWithinPokeballThrowRange(actor_token, target_token, poke
 		attack_mod += 2;
 	}
 
-	console.log("_______ DEBUG: ThrowPokeball: throwRange");
-	console.log(throwRange);
-
-	console.log("_______ DEBUG: ThrowPokeball: trainerHasThrowingMasteries");
-	console.log(trainerHasThrowingMasteries);
-
-	console.log("_______ DEBUG: ThrowPokeball: rangeToTarget");
-	console.log(rangeToTarget);
-
-	console.log("_______ DEBUG: ThrowPokeball: rangeLimitEnabled");
-	console.log(rangeLimitEnabled);
-
-	console.log("_______ DEBUG: ThrowPokeball: AthleticsReducesPokeballAC");
-	console.log(AthleticsReducesPokeballAC);
-
-	console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
-	console.log(pokeballThrowAC);
-
 	if(AthleticsReducesPokeballAC)
 	{
 		pokeballThrowAC = Math.max((pokeballThrowAC - actor_token.actor.data.data.skills.athletics.value.total), 2);
-		console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
-		console.log(pokeballThrowAC);
 	}
 
 	if(( throwRange < rangeToTarget) && rangeLimitEnabled )
@@ -4908,29 +4664,9 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 		attack_mod += 2;
 	}
 
-	console.log("_______ DEBUG: ThrowPokeball: throwRange");
-	console.log(throwRange);
-
-	console.log("_______ DEBUG: ThrowPokeball: trainerHasThrowingMasteries");
-	console.log(trainerHasThrowingMasteries);
-
-	console.log("_______ DEBUG: ThrowPokeball: rangeToTarget");
-	console.log(rangeToTarget);
-
-	console.log("_______ DEBUG: ThrowPokeball: rangeLimitEnabled");
-	console.log(rangeLimitEnabled);
-
-	console.log("_______ DEBUG: ThrowPokeball: AthleticsReducesPokeballAC");
-	console.log(AthleticsReducesPokeballAC);
-
-	console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
-	console.log(pokeballThrowAC);
-
 	if(AthleticsReducesPokeballAC)
 	{
 		pokeballThrowAC = Math.max((pokeballThrowAC - actor_token.actor.data.data.skills.athletics.value.total), 2);
-		console.log("_______ DEBUG: ThrowPokeball: pokeballThrowAC");
-		console.log(pokeballThrowAC);
 	}
 
 	if(( throwRange < rangeToTarget) && rangeLimitEnabled )
@@ -4950,24 +4686,10 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 		roll.toMessage()
 
 		function castSpell(effect) {
-			// const tokens = canvas.tokens.controlled;
-			// if (tokens.length == 0) {
-			//   ui.notifications.error("Please select a token");
-			//   return;
-			// }
-			// game.user.targets.forEach((i, t) => {
-			//   canvas.fxmaster.drawSpecialToward(effect, tokens[0], t);
 			canvas.specials.drawSpecialToward(effect, actor_token, target_token);
-			// });
 		}
-		  
 		
 		let TargetSpeedEvasion = target_token.actor.data.data.evasion.speed;
-
-		// roll = Math.floor(Math.random() * (20 - 1 + 1)) + 1;
-
-		console.log("______________roll");
-		console.log(roll);
 
 		if(Number(roll.total) >= TargetSpeedEvasion)
 		{
@@ -5266,9 +4988,6 @@ export async function PokedexScan(trainer_token, target_pokemon_token)
 	let target_pokemon_actor = target_pokemon_token.actor;
 	let distance = GetDistanceBetweenTokens(trainer_token, target_pokemon_token)
 	let pokedex_range = game.settings.get("PTUMoveMaster", "PokedexRangeLimit");
-
-	// let actorIDs = [];
-	// let userIDs = [];
 	let current_actor_to_add_DEX_entry_for;
 
 	if(distance > pokedex_range)
@@ -5345,8 +5064,6 @@ export async function PokedexScan(trainer_token, target_pokemon_token)
 
 export async function TakeAction(actor, action_type="Standard", action_subtype="N/A")
 {
-	console.log("TakeAction: actor: " + actor.name + ", action_type: " + action_type + ", action_subtype: " + action_subtype);
-
 	if(action_type == "Standard")
 	{
 		let support_action = false;
@@ -5356,8 +5073,6 @@ export async function TakeAction(actor, action_type="Standard", action_subtype="
 		{
 			actions = actor.data.flags.ptu.actions_taken;
 			support_action = actions.support;
-			console.log("support_action");
-			console.log(support_action);
 		}
 
 		if( (support_action != true) && (action_subtype != "Physical" && action_subtype != "Special") && (game.settings.get("PTUMoveMaster", "useExtraActionHomebrew")) )
@@ -5572,94 +5287,6 @@ export async function TakeAction(actor, action_type="Standard", action_subtype="
 			ui.notifications.warn("Something has gone terribly wrong, no action subtype specified, even the default.");
 		}
 	}
-
-	// setTimeout(() => {  
-
-	// 	if(action_type == "Standard" || action_type == "Full")
-	// 	{
-			
-	// 		let actor_has_Magic_Guard = false;
-	// 		for(let item of actor.data.items)
-	// 		{
-	// 			if(item.name == "Magic Guard")
-	// 			{
-	// 				actor_has_Magic_Guard = true;
-	// 				break;
-	// 			}
-	// 		}
-
-	// 		let actorInjuries = actor.data.data.health.injuries;
-
-	// 		if(actorInjuries >=5)
-	// 		{
-	// 			game.PTUMoveMaster.chatMessage(actor, actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
-	// 			actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
-	// 			game.PTUMoveMaster.ApplyInjuries(actor, actorInjuries);
-	// 		}
-
-	// 		let actor_active_effects = actor.effects;
-	// 		console.log("actor_active_effects");
-	// 		console.log(actor_active_effects);
-
-	// 		if (actor.data.flags.ptu)
-	// 		{
-	// 			if (actor.data.flags.ptu.is_badly_poisoned)
-	// 			{
-	// 				let round_of_badly_poisoned = 0;
-
-	// 				for(let active_effect of actor_active_effects)
-	// 				{
-	// 					console.log("active_effect");
-	// 					console.log(active_effect);
-
-	// 					if(active_effect.data.changes[1])
-	// 					{
-	// 						if(active_effect.data.changes[1].key == "flags.ptu.is_badly_poisoned")
-	// 						{
-	// 							console.log('active_effect.getFlag("ptu", "roundsElapsed")');
-	// 							console.log(active_effect.getFlag("ptu", "roundsElapsed"));
-		
-	// 							round_of_badly_poisoned = active_effect.getFlag("ptu", "roundsElapsed");									
-	// 							console.log("round_of_badly_poisoned");
-	// 							console.log(round_of_badly_poisoned);
-		
-	// 							break;
-	// 						}
-	// 					}
-	// 				}
-		
-	// 				let badly_poisoned_damage = 5*(2**round_of_badly_poisoned);
-		
-	// 				game.PTUMoveMaster.damageActorFlatValue(actor, badly_poisoned_damage, ("round "+Number(round_of_badly_poisoned+1)+" of Badly Poisoned"));
-	// 			}
-	// 			else if(actor.data.flags.ptu.is_poisoned)
-	// 			// if(actor.data.flags.ptu.is_poisoned)
-	// 			{
-	// 				if(actor_has_Magic_Guard)
-	// 				{
-	// 					game.PTUMoveMaster.chatMessage(actor, actor.name+"'s Magic Guard prevents damage from Poisoned!");
-	// 				}
-	// 				else
-	// 				{
-	// 					game.PTUMoveMaster.damageActorTick(actor, "Poisoned");
-	// 				}
-	// 			}
-		
-	// 			if(actor.data.flags.ptu.is_burned)
-	// 			{
-	// 				if(actor_has_Magic_Guard)
-	// 				{
-	// 					game.PTUMoveMaster.chatMessage(actor, actor.name+"'s Magic Guard prevents damage from Burned!");
-	// 				}
-	// 				else
-	// 				{
-	// 					game.PTUMoveMaster.damageActorTick(actor, "Burned");
-	// 				}
-	// 			}
-	// 		}
-	// 	}
-
-	// }, 800);
 };
 
 
@@ -5853,7 +5480,6 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 		{
 			CaptureRate += 5;
 		}
-
 	}
 
 	CaptureRate += (TargetVolatileConditionCount * 5);
@@ -5886,11 +5512,7 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 		"Cherish Ball": {"Base Modifier": -5},
 		"Park Ball": {"Base Modifier": -15}
 	};
-
-
-	console.log("Pokeball modifier: " + pokeball_stats[pokeball]["Base Modifier"] + " from "+ pokeball +".");
 	
-
 	if(pokeball_stats[pokeball]["Conditional Modifier"] && pokeball_stats[pokeball]["Conditions"])
 	{
 
@@ -5924,64 +5546,36 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 		{
 			CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
 		}
-
-
-		// Dialog.confirm({
-		// 	title: "Pokeball special conditions?",
-		// 	content: ("Is this Pokeball's special condition fulfilled? \n"+pokeball_stats[pokeball]["Conditions"]),
-		// 	yes: async () => {
-		// 		CaptureRollModifier += pokeball_stats[pokeball]["Conditional Modifier"];
-		// 	},
-		// 	no: async () => {
-		// 		CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
-		// 	},
-		// 	defaultYes: false 
-		// })
 	}
 	else
 	{
 		CaptureRollModifier += pokeball_stats[pokeball]["Base Modifier"];
 	}
-
-	console.log("CaptureRollModifier = " + CaptureRollModifier);
 	
 	CaptureRate -= PokemonLevel*2;
-	console.log("Pokemon Level = " + PokemonLevel);
-	console.log("CaptureRate = " + CaptureRate);
 
 	let PokemonHitPoints = target.data.data.health.value;
 	let PokemonHealthPercent = target.data.data.health.percent;
-	console.log("PokemonHealthPercent = " + PokemonHealthPercent);
 
 	if (PokemonHitPoints == 1)
 	{
 		CaptureRate = CaptureRate + 30;
-		console.log("HP == 1");
-		console.log("CaptureRate = " + CaptureRate);
 	}
 	else if (PokemonHealthPercent <= 25)
 	{
 		CaptureRate = CaptureRate + 15;
-		console.log("HP <= 25");
-		console.log("CaptureRate = " + CaptureRate);
 	}
 	else if (PokemonHealthPercent <= 50)
 	{
 		CaptureRate = CaptureRate + 0;
-		console.log("HP <= 50");
-		console.log("CaptureRate = " + CaptureRate);
 	}
 	else if (PokemonHealthPercent <= 75)
 	{
 		CaptureRate = CaptureRate - 15;
-		console.log("HP <= 75");
-		console.log("CaptureRate = " + CaptureRate);
 	}
 	else if (PokemonHealthPercent > 75)
 	{
 		CaptureRate = CaptureRate - 30;
-		console.log("HP > 75");
-		console.log("CaptureRate = " + CaptureRate);
 	}
 
 	let PokemonShiny = target.data.data.shiny;
@@ -5989,8 +5583,6 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 	if (PokemonShiny)
 	{
 		CaptureRate = CaptureRate - 10;
-		console.log("Shiny == True");
-		console.log("CaptureRate = " + CaptureRate);
 	}
 
 	let PokemonLegendary = target.data.data.legendary;
@@ -5998,11 +5590,8 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 	if (PokemonLegendary)
 	{
 		CaptureRate = CaptureRate - 30;
-		console.log("Legendary == True");
-		console.log("CaptureRate = " + CaptureRate);
 	}
 
-	console.log("EvolutionsLeft == "+evolutionsLeft);
 	if(evolutionsLeft == 2)
 	{
 		CaptureRate = CaptureRate + 10;
@@ -6011,27 +5600,13 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 	{
 		CaptureRate = CaptureRate - 10;
 	}
-	console.log("CaptureRate = " + CaptureRate);
-
-	//TODO: Factor status afflictions; each persistent = +10, each volatile = +5, stuck = +10, slow = +5
 
 	CaptureRate = CaptureRate + (target.data.data.health.injuries * 5)
-	console.log("Injuries = " + target.data.data.health.injuries);
-	console.log("CaptureRate = " + CaptureRate);
-
 
 	let numDice=1;
 	let dieSize = "d100";
 
 	let roll= new Roll(`${numDice}${dieSize}+${CaptureRollModifier}`).roll()
-	console.log("CAPTURE ROLL! ----------------");
-	console.log(roll);
-
-
-	// let dramaticDelayFactor = roll
-	
-
-	// const wait = (delay) => new Promise((resolve) => setTimeout(resolve, delay))
 
 	let pokeballShoop_params =
 	[
@@ -6103,8 +5678,6 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 			}
 		}
 	];
-
-
 
 	let polymorphFunc = async function () 
 	{
@@ -6191,8 +5764,6 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 				const strength = window.confetti.confettiStrength.high;
   				const shootConfettiProps = window.confetti.getShootConfettiProps(strength);
 				
-				// Update permissions
-				// let users = trainer.getUsers(CONST.ENTITY_PERMISSIONS.OWNER, true)
 				let users = trainer.data.permission
 				let non_gm_user;
 				let pokemon_parent_actor = game.actors.get(target_token.data.actorId);
@@ -6214,12 +5785,10 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 				let current_target = game.actors.get(target_token.data.actorId);
 
 				await game.ptu.api.transferOwnership(current_target, {pokeball:pokeball, timeout:15000, permission:{[non_gm_user.data._id]: CONST.ENTITY_PERMISSIONS.OWNER}});
-				// game.actors.get(target_token.data.actorId).update({permission: {[non_gm_user.data._id]: CONST.ENTITY_PERMISSIONS.OWNER}, "data.pokeball":pokeball });
 
 				setTimeout( async () => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
 				setTimeout( async () => {  
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true); 
-					// await target.update({"data.owner = "});
+					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true);
 				}, 750);
 
 				game.PTUMoveMaster.RemoveThrownPokeball(trainer, pokeball_item);
@@ -6370,7 +5939,7 @@ export function PokeballRelease(token)
 };
 
 
-export function ThisPokemonsTrainerCommandCheck(pokemon_actor) // TODO: Fix roll bug
+export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 {
 	let return_value = true;
 	let trainer_actor = game.actors.get(pokemon_actor.data.data.owner)
@@ -6562,8 +6131,8 @@ export async function ShowInventoryMenu(actor)
 	// {
 		for(let item of actor.items)
 		{
-			console.log("item: ");
-			console.log(item);
+			// console.log("item: ");
+			// console.log(item);
 			if(item.data.type == "item" && !item.data.name.includes(" Ball"))
 			{
 				item_inventory.push(item);
@@ -6574,8 +6143,8 @@ export async function ShowInventoryMenu(actor)
 	for(let inventory_item of item_inventory)
 	// for(let inventory_item of actor.items_categorized.Medical)
 	{
-		console.log("inventory_item: ");
-		console.log(inventory_item);
+		// console.log("inventory_item: ");
+		// console.log(inventory_item);
 		let item_base_image = await game.PTUMoveMaster.GetItemArt(inventory_item.name);
 		let item_image = "";
 		let item_count = inventory_item.data.data.quantity;
@@ -6876,7 +6445,7 @@ export async function ShowManeuverMenu(actor)
 
 	for(let maneuver in maneuver_list)
 	{
-		console.log(maneuver);
+		// console.log(maneuver);
 
 		if(actor.data.type == "pokemon" && maneuver_list[maneuver]["Trainer Only"])
 		{
@@ -6904,8 +6473,8 @@ export async function ShowManeuverMenu(actor)
 		currentUserChecks = maneuver_list[maneuver]["User Checks"];
 		currentTargetChecks = maneuver_list[maneuver]["Target Checks"];
 
-		console.log("currentTargetChecks");
-		console.log(currentTargetChecks);
+		// console.log("currentTargetChecks");
+		// console.log(currentTargetChecks);
 
 
 		currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
@@ -6941,13 +6510,13 @@ export async function ShowManeuverMenu(actor)
 			user_check_rank = 0;
 			let user_check_modifier = 0;
 
-			console.log("currentUserChecks");
-			console.log(currentUserChecks);
+			// console.log("currentUserChecks");
+			// console.log(currentUserChecks);
 
 			for(let check of currentUserChecks)
 			{
-				console.log("check");
-				console.log(check);
+				// console.log("check");
+				// console.log(check);
 
 				let check_skill_rank;
 				let check_skill_modifier;
@@ -6955,8 +6524,8 @@ export async function ShowManeuverMenu(actor)
 				eval("check_skill_rank = actor.data.data.skills."+check+".value.total;");
 				eval("check_skill_modifier = actor.data.data.skills."+check+".modifier.total;");
 
-				console.log("check_skill_rank");
-				console.log(check_skill_rank);
+				// console.log("check_skill_rank");
+				// console.log(check_skill_rank);
 
 				if(check_skill_rank > user_check_rank)
 				{
@@ -6968,8 +6537,8 @@ export async function ShowManeuverMenu(actor)
 
 			let checkDieSize = "d6";
 			let user_check_roll = new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
-			console.log("user_check_roll");
-			console.log(user_check_roll);
+			// console.log("user_check_roll");
+			// console.log(user_check_roll);
 
 			let currentTargetCheckText = '<button class="skill-button-1" style="font-family:Segoe UI; font-size: 14; padding:0px !important; margin-top:5px !important; margin-bottom:5px !important; background-color:#808080;" id="Target Check 1" type="button" value="Target Check 1" data-skill='+currentTargetChecks[0]+'>'+(currentTargetChecks[0])+'</button>';
 
@@ -6987,13 +6556,13 @@ export async function ShowManeuverMenu(actor)
 			let user_check_rank = 0;
 			let user_check_modifier = 0;
 
-			console.log("currentUserChecks");
-			console.log(currentUserChecks);
+			// console.log("currentUserChecks");
+			// console.log(currentUserChecks);
 
 			for(let check of currentUserChecks)
 			{
-				console.log("check");
-				console.log(check);
+				// console.log("check");
+				// console.log(check);
 
 				let check_skill_rank;
 				let check_skill_modifier;
@@ -7001,8 +6570,8 @@ export async function ShowManeuverMenu(actor)
 				eval("check_skill_rank = actor.data.data.skills."+check+".value.total;");
 				eval("check_skill_modifier = actor.data.data.skills."+check+".modifier.total;");
 
-				console.log("check_skill_rank");
-				console.log(check_skill_rank);
+				// console.log("check_skill_rank");
+				// console.log(check_skill_rank);
 
 				if(check_skill_rank > user_check_rank)
 				{
@@ -7014,8 +6583,8 @@ export async function ShowManeuverMenu(actor)
 
 			let checkDieSize = "d6";
 			let user_check_roll = new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
-			console.log("user_check_roll");
-			console.log(user_check_roll);
+			// console.log("user_check_roll");
+			// console.log(user_check_roll);
 
 			currentEffectText = actor.name+" rolled<br><br><center>[["+user_check_roll+"]]</center><br><br>on a "+user_check_skill+" check vs the DC.<br>"+currentEffectText;
 		}
@@ -7041,8 +6610,8 @@ export async function ShowManeuverMenu(actor)
 
 
 		effectivenessBackgroundColor = SkillRankNumberColors[user_check_rank];
-		console.log("MANEUVER DEBUG: _________________ effectivenessBackgroundColor ______________");
-		console.log(effectivenessBackgroundColor);
+		// console.log("MANEUVER DEBUG: _________________ effectivenessBackgroundColor ______________");
+		// console.log(effectivenessBackgroundColor);
 
 
 		maneuver_buttons[maneuver] = {
@@ -7059,7 +6628,7 @@ export async function ShowManeuverMenu(actor)
 				let key_shift = keyboard.isDown("Shift");
 				if (key_shift) 
 				{
-					console.log("KEYBOARD SHIFT IS DOWN!");
+					// console.log("KEYBOARD SHIFT IS DOWN!");
 					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, maneuver, finalDB, false);
 				}
 				else
@@ -7096,8 +6665,8 @@ export async function ShowManeuverMenu(actor)
 		};
 	}
 
-	console.log("______________ MANEUVER BUTTONS ______________");
-	console.log(maneuver_buttons);
+	// console.log("______________ MANEUVER BUTTONS ______________");
+	// console.log(maneuver_buttons);
 
 	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
@@ -7152,7 +6721,7 @@ export async function ShowSkillsMenu(actor)
 
 	for(let skill in actor_skills)
 	{
-		console.log(skill);
+		// console.log(skill);
 
 		let currentSkillName = actor_skills[skill]["label"];
 
@@ -7201,8 +6770,8 @@ export async function ShowSkillsMenu(actor)
 		};
 	}
 
-	console.log("______________ SKILL BUTTONS ______________");
-	console.log(skill_buttons);
+	// console.log("______________ SKILL BUTTONS ______________");
+	// console.log(skill_buttons);
 
 	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
@@ -7223,6 +6792,7 @@ export async function ShowStruggleMenu(actor)
 	let struggle_DB = 4;
 
 	let actor_combat_rank = actor.data.data.skills.combat.value;
+	let showEffectivenessMode = game.settings.get("PTUMoveMaster", "showEffectiveness");
 
 	if(actor_combat_rank >= 5)
 	{
@@ -7306,7 +6876,7 @@ export async function ShowStruggleMenu(actor)
 		}
 	}
 
-	console.log(struggle_list);
+	// console.log(struggle_list);
 
 	let struggle_buttons = {};
 
@@ -7347,7 +6917,7 @@ export async function ShowStruggleMenu(actor)
 
 	for(let struggle in struggle_list)
 	{
-		console.log(struggle);
+		// console.log(struggle);
 
 		currentType=struggle_list[struggle]["Type"];
 		currentCategory=struggle_list[struggle]["Class"];
@@ -7376,12 +6946,41 @@ export async function ShowStruggleMenu(actor)
 		{
 			effectiveness = target.actor.data.data.effectiveness.All;
 		}
+
+		let actor_has_target_dex_entry = false;
+
+		if(target)
+		{
+			if(target.actor.data.data.species)
+			{
+				actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+				if(game.user.isGM)
+				{
+					actor_has_target_dex_entry = true;
+				}
+			}
+		}
 		
 		if(currentCategory == "Physical" || currentCategory == "Special")
 		{
 			if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(currentDamageBase)) && (currentDamageBase != "") && effectiveness)
 			{
-				if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+				// if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
+				if(
+					(
+						(target.data.disposition > DISPOSITION_HOSTILE)
+						&& (showEffectivenessMode == "neutralOrBetter")
+					) 
+					|| 
+					(
+						actor_has_target_dex_entry
+						&& (showEffectivenessMode == "dex")
+					)
+					||
+					(showEffectivenessMode == "always")
+					||
+					(game.user.isGM)
+				)
 				{
 					currentEffectivenessLabel = " (x"+effectiveness[currentType]+")";
 					if (effectiveness[currentType] == 0.5)
@@ -7465,9 +7064,6 @@ export async function ShowStruggleMenu(actor)
 			}
 		};
 
-		console.log("+++++++ STRUGGLE DEBUG +++++++")
-		console.log(created_move_item);
-
 		let this_actor = canvas.tokens.controlled[0].actor;
 
 		var moveSoundFile = ("struggle.mp3");
@@ -7486,7 +7082,6 @@ export async function ShowStruggleMenu(actor)
 				let key_shift = keyboard.isDown("Shift");
 				if (key_shift) 
 				{
-					console.log("KEYBOARD SHIFT IS DOWN!");
 					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, struggle, finalDB, false);
 				}
 				else
@@ -7498,10 +7093,6 @@ export async function ShowStruggleMenu(actor)
 			}
 		};
 	}
-
-	console.log("______________ STRUGGLE BUTTONS ______________");
-	console.log(struggle_buttons);
-
 
 	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
@@ -7676,6 +7267,10 @@ export function GetTargetTypingHeader(target, actor)
 		if(target.actor.data.data.species)
 		{
 			actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+			if(game.user.isGM)
+			{
+				actor_has_target_dex_entry = true;
+			}
 		}
 	}
 	
@@ -7694,6 +7289,8 @@ export function GetTargetTypingHeader(target, actor)
 			)
 			||
 			(showEffectivenessMode == "always")
+			||
+			(game.user.isGM)
 		)
 		{
 			if(target.actor.data.data.typing)
@@ -7874,11 +7471,6 @@ export async function ExpendItem(owning_actor, item_object)
 
 export async function BreakPokeball(owning_actor, item_object) 
 {
-	console.log("BreakPokeball: owning_actor");
-	console.log(owning_actor);
-	console.log("BreakPokeball: item_object");
-	console.log(item_object);
-
 	let thrown_item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 	if(thrown_item)
 	{
@@ -7913,11 +7505,6 @@ export async function BreakPokeball(owning_actor, item_object)
 
 export async function RemoveThrownPokeball(owning_actor, item_object) 
 {
-	console.log("RemoveThrownPokeball: owning_actor");
-	console.log(owning_actor);
-	console.log("RemoveThrownPokeball: item_object");
-	console.log(item_object);
-
 	let thrown_item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 	if(thrown_item)
 	{
@@ -7979,19 +7566,20 @@ export async function SetCurrentWeather(new_weather)
 		if(FXMaster_module)
 		{
 			let fxmaster_weather_presets = {
-				"Clear":{  },
-				"Sunny":{ type: "embers", options: {} },
-				"Rainy":{ type: "rain", options: {} },
-				"Hail":{ type: "snowstorm", options: {speed:100, density:100, direction:25} },
-				"Sandstorm":{ type: "fog", options: {speed:100, density:50, direction:69, apply_tint:true, tint:"0xFFC675"} },
-			}
+				"Clear":{ name: "MoveMasterWeather", type: "", options: {} },
+				"Sunny":{ name: "MoveMasterWeather", type: "embers", options: {} },
+				"Rainy":{ name: "MoveMasterWeather", type: "rain", options: {} },
+				"Hail":{ name: "MoveMasterWeather", type: "snowstorm", options: {scale: 1, speed:5000, density:5000, direction:30} },
+				"Sandstorm":{ name: "MoveMasterWeather", type: "clouds", options: {scale: 2, speed:1000, density:100, direction:180, tint: {apply: true, value: "#baa24a"} } },
+			};
 			console.log("fxmaster_weather_presets[new_weather]");
 			console.log(fxmaster_weather_presets[new_weather]);
 
 			Hooks.call("updateWeather", [
 				fxmaster_weather_presets[new_weather]
 			]);
-			
+
+			// Hooks.call("switchWeather", fxmaster_weather_presets[new_weather]);
 		}
 	}
 }
@@ -8039,9 +7627,6 @@ export async function RollSkillCheck(skill1, skill2="")	// If a second skill is 
 
 	let roll = await new Roll(`${numDice}d${dieSize}+${modifier}`).evaluate()
 
-	console.log("+++++++++ RollSkillCheck: roll ++++++++++");
-	console.log(roll);
-
 	roll.toMessage(
 		{flavor: `${selected_actor.name}: ${skill} check.`,
 		speaker: ChatMessage.getSpeaker({token: selected_actor}),}
@@ -8061,8 +7646,6 @@ export function GetActorActionIcon(actor)
 	if(actor.data.flags && actor.data.flags.ptu && actor.data.flags.ptu.actions_taken)
 	{
 		actions = (actor.data.flags.ptu.actions_taken); // Token actors don't work right here
-		console.log("actions");
-		console.log(actions);
 
 		standard_action = (actions.standard ? 0 : 1);
 		support_action = (actions.support ? 0 : 1);
@@ -8334,9 +7917,6 @@ export async function resetEOTMoves(actor, silent=false)
 
 export async function resetSceneMoves(actor, silent=false)
 {
-	console.log("RESET SCENE MOVES: __________ actor");
-	console.log(actor);
-
 	let item_entities = actor.items;
 	for(let item of actor.data.items)
 	{
