@@ -6,12 +6,24 @@
             <button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="width:55px; height:28px; margin-top:3px; margin-bottom:0px; margin-left:0; margin-right:0; padding:0">{{{btn.label}}}</button>
         {{else}}
             {{#ifincludes btn.id "Menu"}}
-            <button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="width:90px; margin-top:3px; margin-bottom:3px; margin-left:0; margin-right:0; padding:0">{{{btn.label}}}</button>
+                <button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="width:90px; margin-top:3px; margin-bottom:3px; margin-left:0; margin-right:0; padding:0">{{{btn.label}}}</button>
             {{else}}
                 {{#ifincludes btn.id "BigButton"}}
                     <button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="width:191px; margin-top:3px; margin-bottom:3px; margin-left:0; margin-right:0; padding:0">{{{btn.label}}}</button>
                 {{else}}
-                    <div class="row", style="margin:0; padding:0"><button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="margin-top:3px; margin-bottom:3px; margin-left:0; margin-right:0; padding:0">{{{btn.label}}}</button></div>
+                    {{#ifincludes btn.id "OrderButton"}}
+                        <button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="width:140px; height:25px; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; padding-left:0px; padding-right:0px; border:none;">{{{btn.label}}}</button>
+                    {{else}}
+                        {{#ifincludes btn.id "AutoOrderToggle"}}
+                            <button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="width:40px; height:25px; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; padding-left:0px; padding-right:0px; border:none;">{{{btn.label}}}</button>
+                        {{else}}
+                            {{#ifincludes btn.id "PokeballButton"}}
+                                <button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="width:38px; height:50px; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:18px; padding-left:0px; padding-right:0px; border:none;">{{{btn.label}}}</button>
+                            {{else}}
+                                <div class="row", style="margin:0; padding:0"><button type="button" class="MoveMaster-button" data-button="{{btn.id}}" style="margin-top:3px; margin-bottom:3px; margin-left:0; margin-right:0; padding:0">{{{btn.label}}}</button></div>
+                            {{/ifincludes}}
+                        {{/ifincludes}}
+                    {{/ifincludes}}
                 {{/ifincludes}}
             {{/ifincludes}}
         {{/ifincludes}}

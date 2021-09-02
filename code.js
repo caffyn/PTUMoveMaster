@@ -290,6 +290,11 @@ Hooks.once('init', async function()
 		toggleEffect,
 		recallPokemon,
 		adjustActorAccuracy,
+		PokemonsTrainerHasItemWithName,
+		ActorGetAutoOrderState,
+		ActorSetAutoOrders,
+		ApplyTrainingToActorsActivePokemon,
+		GetActorHealthColor,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -364,92 +369,11 @@ Hooks.on("ready", async () => {
 
 Hooks.on("endTurn", async (combat, actor, round_and_turn, diff, id) => {
 
-	let current_actor = game.actors.get(actor.data.actorId);
-
-	// if(current_actor.data.flags.ptu.actions_taken.standard || current_actor.data.flags.ptu.actions_taken.support)
-	// {
-	// 	let actor_has_Magic_Guard = false;
-	// 	for(let item of current_actor.data.items)
-	// 	{
-	// 		if(item.name == "Magic Guard")
-	// 		{
-	// 			actor_has_Magic_Guard = true;
-	// 			break;
-	// 		}
-	// 	}
-
-	// 	let actorInjuries = current_actor.data.data.health.injuries;
-
-	// 	if(actorInjuries >=5)
-	// 	{
-	// 		game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' took a standard action while they have '+ actorInjuries +' injuries - they take '+actorInjuries+' damage!');
-	// 		current_actor.modifyTokenAttribute("health", (-actorInjuries), true, true);
-	// 		game.PTUMoveMaster.ApplyInjuries(current_actor, actorInjuries);
-	// 	}
-
-	// 	let actor_active_effects = current_actor.effects;
-	// 	console.log("actor_active_effects");
-	// 	console.log(actor_active_effects);
-
-	// 	if (current_actor.data.flags.ptu)
-	// 	{
-	// 		if (current_actor.data.flags.ptu.is_badly_poisoned)
-	// 		{
-	// 			let round_of_badly_poisoned = 0;
-
-	// 			for(let active_effect of actor_active_effects)
-	// 			{
-	// 				console.log("active_effect");
-	// 				console.log(active_effect);
-
-	// 				if(active_effect.data.changes[1])
-	// 				{
-	// 					if(active_effect.data.changes[1].key == "flags.ptu.is_badly_poisoned")
-	// 					{
-	// 						console.log('active_effect.getFlag("ptu", "roundsElapsed")');
-	// 						console.log(active_effect.getFlag("ptu", "roundsElapsed"));
-
-	// 						round_of_badly_poisoned = active_effect.getFlag("ptu", "roundsElapsed");									
-	// 						console.log("round_of_badly_poisoned");
-	// 						console.log(round_of_badly_poisoned);
-
-	// 						break;
-	// 					}
-	// 				}
-	// 			}
-
-	// 			let badly_poisoned_damage = 5*(2**round_of_badly_poisoned);
-
-	// 			game.PTUMoveMaster.damageActorFlatValue(current_actor, badly_poisoned_damage, ("round "+Number(round_of_badly_poisoned+1)+" of Badly Poisoned"));
-	// 		}
-	// 		else if(current_actor.data.flags.ptu.is_poisoned)
-	// 		// if(current_actor.data.flags.ptu.is_poisoned)
-	// 		{
-	// 			if(actor_has_Magic_Guard)
-	// 			{
-	// 				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+"'s Magic Guard prevents damage from Poisoned!");
-	// 			}
-	// 			else
-	// 			{
-	// 				game.PTUMoveMaster.damageActorTick(current_actor, "Poisoned");
-	// 			}
-	// 		}
-
-	// 		if(current_actor.data.flags.ptu.is_burned)
-	// 		{
-	// 			if(actor_has_Magic_Guard)
-	// 			{
-	// 				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+"'s Magic Guard prevents damage from Burned!");
-	// 			}
-	// 			else
-	// 			{
-	// 				game.PTUMoveMaster.damageActorTick(current_actor, "Burned");
-	// 			}
-	// 		}
-	// 	}
-	// }
-
-	await game.PTUMoveMaster.ResetActionEconomy(current_actor, true);
+	if(game.user.isGM)
+	{
+		let current_actor = game.actors.get(actor.data.actorId);
+		await game.PTUMoveMaster.ResetActionEconomy(current_actor, true);
+	}
 });
 
 
@@ -528,9 +452,6 @@ Hooks.on("prePlayerDeleteToken", async (uuids) => {
 			defaultYes: false 
 		})
 	}
-
-	
-	
 
 	return false;
 });
@@ -697,14 +618,103 @@ Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 	let actor_type_1 = "Untyped";
 	let actor_type_2 = "Untyped";
 
-	let actor_has_Magic_Guard = false;
-	for(let item of current_actor.data.items)
+	let actor_immune_to_hail = false;
+	let actor_heals_from_hail = false;
+	let actor_immune_to_sandstorm = false;
+	let actor_heals_from_sandstorm = false;
+
+
+	if(current_actor.data.data.heldItem.toLowerCase() == "winter cloak")
 	{
-		if(item.name == "Magic Guard")
-		{
-			actor_has_Magic_Guard = true;
-			break;
-		}
+		actor_immune_to_hail = true;
+	}
+
+	if(current_actor.data.data.heldItem.toLowerCase() == "go-goggles")
+	{
+		actor_immune_to_sandstorm = true;
+	}
+	
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Ice Body", "ability"))
+	{
+		actor_immune_to_hail = true;
+		actor_heals_from_hail = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Ice Body [Playtest]", "ability"))
+	{
+		actor_immune_to_hail = true;
+	}
+
+	// if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "HEAL FROM SANDSTORM", "ability"))
+	// {
+	// 	actor_immune_to_sandstorm = true;
+	// 	actor_heals_from_sandstorm = true;
+	// }
+
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Snow Cloak", "ability"))
+	{
+		actor_immune_to_hail = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Snow Warning", "ability"))
+	{
+		actor_immune_to_hail = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Arctic Pilgrim - Tundra Terrain", "feat"))
+	{
+		actor_immune_to_hail = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "The Cold Never Bothered Me Anyway", "feat"))
+	{
+		actor_immune_to_hail = true;
+	}
+
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Dune Walker - Desert Terrain", "feat"))
+	{
+		actor_immune_to_sandstorm = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Desert Weather", "ability"))
+	{
+		actor_immune_to_sandstorm = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Sand Force", "ability"))
+	{
+		actor_immune_to_sandstorm = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Sand Rush", "ability"))
+	{
+		actor_immune_to_sandstorm = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Sand Stream", "ability"))
+	{
+		actor_immune_to_sandstorm = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Sand Veil", "ability"))
+	{
+		actor_immune_to_sandstorm = true;
+	}
+
+
+	let actor_is_immune_to_weather_ticks = false;
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Magic Guard", "ability"))
+	{
+		actor_is_immune_to_weather_ticks = true;
+	}
+
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Permafrost [Playtest]", "ability"))
+	{
+		actor_is_immune_to_weather_ticks = true;
 	}
 
 	if(current_actor.data.data.typing)
@@ -717,9 +727,13 @@ Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 
 		if(currentWeather == "Sandstorm")
 		{
-			if(actor_type_1 != "Ground" && actor_type_1 != "Rock" && actor_type_1 != "Steel" && actor_type_2 != "Ground" && actor_type_2 != "Rock" && actor_type_2 != "Steel" && !actor_has_Magic_Guard)
+			if(actor_type_1 != "Ground" && actor_type_1 != "Rock" && actor_type_1 != "Steel" && actor_type_2 != "Ground" && actor_type_2 != "Rock" && actor_type_2 != "Steel" && !actor_is_immune_to_weather_ticks && !actor_immune_to_sandstorm)
 			{
 				game.PTUMoveMaster.damageActorTick(current_actor, "Sandstorm");
+			}
+			else if(actor_heals_from_sandstorm)
+			{
+				game.PTUMoveMaster.healActorTick(current_actor, "Sandstorm");
 			}
 			else
 			{
@@ -729,13 +743,43 @@ Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 
 		if(currentWeather == "Hail")
 		{
-			if(actor_type_1 != "Ice" && actor_type_2 != "Ice" && !actor_has_Magic_Guard)
+			if(actor_type_1 != "Ice" && actor_type_2 != "Ice" && !actor_is_immune_to_weather_ticks && !actor_immune_to_hail)
 			{
 				game.PTUMoveMaster.damageActorTick(current_actor, "Hail");
+			}
+			else if(actor_heals_from_hail)
+			{
+				game.PTUMoveMaster.healActorTick(current_actor, "Hail");
 			}
 			else
 			{
 				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name + ' is immune to the Hail\'s effects!');
+			}
+		}
+
+		if(currentWeather == "Rainy")
+		{
+			if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Rain Dish", "ability"))
+			{
+				game.PTUMoveMaster.healActorTick(current_actor, "Rainy + Rain Dish");
+			}
+
+			if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Dry Skin", "ability"))
+			{
+				game.PTUMoveMaster.healActorTick(current_actor, "Rainy + Dry Skin");
+			}
+		}
+
+		if(currentWeather == "Sunny")
+		{
+			if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Dry Skin", "ability"))
+			{
+				game.PTUMoveMaster.damageActorTick(current_actor, "Sunny + Dry Skin");
+			}
+
+			if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Sun Blanket", "ability"))
+			{
+				game.PTUMoveMaster.healActorTick(current_actor, "Sunny + Sun Blanket");
 			}
 		}
 
@@ -1503,6 +1547,32 @@ const TickDamageMark = "<img title='Apply Tick Damage' src='"+AlternateIconPath+
 const TickHealMark = "<img title='Heal Tick Damage' src='"+AlternateIconPath+"TickHealIcon.png' style='border:none; width:55px;'>";
 const RestMark = "<img title='Rest' src='"+AlternateIconPath+"RestIcon.png' style='border:none; width:55px;'>";
 
+// const OrdersToggleAuto_on_Mark = "<img title='Toggle automatic order if action available at turn end. Currently active.' src='"+AlternateIconPath+"OrdersToggleAuto_on.png' style='border:none; height:25px;'>";
+// const OrdersToggleAuto_off_Mark = "<img title='Toggle automatic order if action available at turn end. Currently inactive.' src='"+AlternateIconPath+"OrdersToggleAuto_off.png' style='border:none; height:25px;'>";
+
+const OrdersToggleAuto_on_Mark = 		"<div title='Toggle automatic order if action available at turn end. Currently active.' 								style='background-color: #333333; color:#cccccc; border-left:5px solid green; 	width:100%; color: #009004;			height:25px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>AUTO</div>";
+const OrdersToggleAuto_off_Mark = 		"<div title='Toggle automatic order if action available at turn end. Currently inactive.' 								style='background-color: #333333; color:#cccccc; border-left:5px solid black; 	width:100%; color: #666;			height:25px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>AUTO</div>";
+
+// const Orders_Agility_Training_Mark = "<img title='Agility Orders: +1 bonus to Movement Capabilities and +4 to Initiative.' src='"+AlternateIconPath+"OrderButton_Agility_Training.png' style='border:none; width:140px;'>";
+// const Orders_Agility_Training_Mark = "<img title='Agility Orders: +1 bonus to Movement Capabilities and +4 to Initiative.' src='"+AlternateIconPath+"OrderButton_Agility_Training.png' style='border:none; width:134px; margin:none; padding:none;'>"
+// const Orders_Brutal_Training_Mark = "<img title='Brutal Orders: Increase the Critical-Hit and Effect Range of all attacks by +1.' src='"+AlternateIconPath+"OrderButton_Brutal_Training.png' style='border:none; width:134px; margin:none; padding:none;'>";
+// const Orders_Focused_Training_Mark = "<img title='Focused Orders: gain a +1 bonus to Accuracy Rolls and +2 to Skill Checks.' src='"+AlternateIconPath+"OrderButton_Focused_Training.png' style='border:none; width:134px; margin:none; padding:none;'>";
+// const Orders_Inspired_Training_Mark = "<img title='Inspired Orders: +1 bonus to Evasion and +2 to Save Checks.' src='"+AlternateIconPath+"OrderButton_Inspired_Training.png' style='border:none; width:134px; margin:none; padding:none;'>";
+// const Orders_Critical_Moment_Mark = "<img title='Critical Moment: The bonuses from your Pokemon’s [Training] are tripled until the end of your next turn.' src='"+AlternateIconPath+"OrderButton_Critical_Moment.png' style='border:none; width:134px; margin:none; padding:none;'>";
+
+const Orders_Agility_Training_Mark_off = 	"<div title='Agility Orders: +1 bonus to Movement Capabilities and +4 to Initiative.' 									style='background-color: #333333; color:#cccccc; border-left:5px solid darkgray; 	width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Agility Orders</div>";
+const Orders_Brutal_Training_Mark_off = 	"<div title='Brutal Orders: Increase the Critical-Hit and Effect Range of all attacks by +1.' 							style='background-color: #333333; color:#cccccc; border-left:5px solid darkgray; 	width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Brutal Orders</div>";
+const Orders_Focused_Training_Mark_off = 	"<div title='Focused Orders: gain a +1 bonus to Accuracy Rolls and +2 to Skill Checks.' 								style='background-color: #333333; color:#cccccc; border-left:5px solid darkgray; 	width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Focused Orders</div>";
+const Orders_Inspired_Training_Mark_off = 	"<div title='Inspired Orders: +1 bonus to Evasion and +2 to Save Checks.' 												style='background-color: #333333; color:#cccccc; border-left:5px solid darkgray; 	width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Inspired Orders</div>";
+const Orders_Critical_Moment_Mark_off = 	"<div title='Critical Moment: The bonuses from your Pokemon’s [Training] are tripled until the end of your next turn.' 		style='background-color: #333333; color:#cccccc; border-left:5px solid darkgray; 	width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Critical Moment!</div>";
+
+const Orders_Agility_Training_Mark_on = 	"<div title='Agility Orders: +1 bonus to Movement Capabilities and +4 to Initiative.' 									style='background-color: #333333; color:#cccccc; border-left:5px solid green; 		width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Agility Orders</div>";
+const Orders_Brutal_Training_Mark_on = 	"<div title='Brutal Orders: Increase the Critical-Hit and Effect Range of all attacks by +1.' 								style='background-color: #333333; color:#cccccc; border-left:5px solid green; 		width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Brutal Orders</div>";
+const Orders_Focused_Training_Mark_on = 	"<div title='Focused Orders: gain a +1 bonus to Accuracy Rolls and +2 to Skill Checks.' 								style='background-color: #333333; color:#cccccc; border-left:5px solid green; 		width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Focused Orders</div>";
+const Orders_Inspired_Training_Mark_on = 	"<div title='Inspired Orders: +1 bonus to Evasion and +2 to Save Checks.' 												style='background-color: #333333; color:#cccccc; border-left:5px solid green; 		width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Inspired Orders</div>";
+const Orders_Critical_Moment_Mark_on = 	"<div title='Critical Moment: The bonuses from your Pokemon’s [Training] are tripled until the end of your next turn.' 		style='background-color: #333333; color:#cccccc; border-left:5px solid green; 		width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Critical Moment!</div>";
+
+
 // const AbilityIcon = "Ability: ";
 const AbilityIcon = "";
 
@@ -1747,17 +1817,19 @@ export function PTUAutoFight()
 	
 				ApplyInjuries(token.actor, final_effective_damage);
 
-				if(token.actor.data.flags.ptu.is_frozen && (damage_type == "Fire" || damage_type == "Fighting" || damage_type == "Rock" || damage_type == "Steel") )
+				if(token.actor.data.flags.ptu)
 				{
-					game.PTUMoveMaster.cureActorAffliction(token.actor, "Frozen");
-				}
-			
-				if( token.actor.data.flags.ptu.is_sleeping || token.actor.data.flags.ptu.is_badly_sleeping )
-				{
-					game.PTUMoveMaster.cureActorAffliction(token.actor, "Sleep");
-					game.PTUMoveMaster.cureActorAffliction(token.actor, "BadSleep");
-				}
+					if(token.actor.data.flags.ptu.is_frozen && (damage_type == "Fire" || damage_type == "Fighting" || damage_type == "Rock" || damage_type == "Steel") )
+					{
+						game.PTUMoveMaster.cureActorAffliction(token.actor, "Frozen");
+					}
 				
+					if( token.actor.data.flags.ptu.is_sleeping || token.actor.data.flags.ptu.is_badly_sleeping )
+					{
+						game.PTUMoveMaster.cureActorAffliction(token.actor, "Sleep");
+						game.PTUMoveMaster.cureActorAffliction(token.actor, "BadSleep");
+					}
+				}
 			}
 			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 		}
@@ -1907,6 +1979,237 @@ export function PTUAutoFight()
 			}
 		}
 
+
+		if(actor.data.type == "character")
+		{
+			let orders_list = [
+				"Agility Training",
+				"Brutal Training",
+				"Focused Training",
+				"Inspired Training",
+				"Critical Moment",
+			];
+
+			buttons["ordersDivider"] = {noRefresh: true, id:"ordersDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Orders.png' style='border:none; width:200px;'>",
+			callback: () => {
+
+			}};
+
+			let is_auto_active = false;
+			let pokemon_order_state = "off";
+			let ownerId = actor.id;
+			let active_pokemon_list = [];
+			let order_flag_string = "";
+
+			// console.log("DEBUG ++++++++++++++++ ownerId");
+			// console.log(ownerId);
+
+			for(let token of game.scenes.current.tokens)
+			{
+				if(token._actor.data.data.owner == ownerId)
+				{
+					active_pokemon_list[token._actor.id] = token._actor;
+					// console.log("DEBUG ++++++++++++++++ ACTIVE POKEMON LIST "+token._actor.name+" token._actor.id = " + token._actor.id);
+				}
+			}
+
+			for(let order of orders_list)
+			{
+				pokemon_order_state = "off";
+
+				order_flag_string = "owned_pokemon.data.data.training."+(order.slice(0, order.search(" ")).toLocaleLowerCase()+".ordered");
+				if(order == "Critical Moment")
+				{
+					order_flag_string = "owned_pokemon.data.data.training.critical";
+				}
+				// console.log("DEBUG ++++++++++++++++ order_flag_string");
+				// console.log(order_flag_string);
+
+				for(let owned_pokemon_id in active_pokemon_list)
+				{
+					let owned_pokemon = game.actors.get(owned_pokemon_id);
+					if(owned_pokemon)
+					{
+						// console.log("DEBUG ++++++++++++++++ owned_pokemon from list");
+						// console.log(owned_pokemon);
+						// console.log("eval(order_flag_string)");
+						// console.log(eval(order_flag_string));
+						if(eval(order_flag_string))
+						{
+							// console.log("DEBUG ++++++++++++++++ eval(order_flag_string) == true");
+							pokemon_order_state = "on";
+						}
+					}
+				}
+				
+				
+
+				let order_string = order.replace(" ", "_");
+				if(game.PTUMoveMaster.ActorHasItemWithName(actor, order, "feat"))
+				{
+					let mark = eval("Orders_"+order_string+"_Mark_"+pokemon_order_state);
+					let button_string = ("OrderButton_"+order_string);
+
+					if(pokemon_order_state == "off")
+					{
+						buttons[button_string] = 
+						{
+							id:button_string, 
+							label: mark,
+							callback: async () => 
+							{
+								await game.PTUMoveMaster.ApplyTrainingToActorsActivePokemon(actor, order, "off", active_pokemon_list);
+								AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								await game.PTUMoveMaster.TakeAction(actor, "Standard")
+							}
+						};
+					}
+					else
+					{
+						buttons[button_string] = 
+						{
+							id:button_string, 
+							label: mark,
+							callback: async () => 
+							{
+								await game.PTUMoveMaster.ApplyTrainingToActorsActivePokemon(actor, order, "on", active_pokemon_list);
+								AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								await game.PTUMoveMaster.TakeAction(actor, "Standard")
+							}
+						};
+					}
+					
+
+					is_auto_active = await game.PTUMoveMaster.ActorGetAutoOrderState(actor, order);
+
+					if(is_auto_active)
+					{
+						let on_button_string = (order_string+"AutoOrderToggle_on");
+						buttons[on_button_string] = 
+						{
+							id:on_button_string, 
+							label: OrdersToggleAuto_on_Mark,
+							callback: async () => 
+							{
+								// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								await game.PTUMoveMaster.ActorSetAutoOrders(actor, order, false);
+							}
+						};
+					}
+					else
+					{
+						let off_button_string = (order_string+"AutoOrderToggle_off");
+						buttons[off_button_string] = 
+						{
+							id:off_button_string,
+							label: OrdersToggleAuto_off_Mark,
+							callback: async () => 
+							{
+								// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								await game.PTUMoveMaster.ActorSetAutoOrders(actor, order, true);
+							}
+						};
+					}
+				}
+			}
+
+
+			buttons["activePokemonDivider"] = {noRefresh: true, id:"activePokemonDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_ActivePokemon.png' style='border:none; width:200px;'>",
+			callback: () => {
+
+			}};
+
+			for(let owned_pokemon_id in active_pokemon_list)
+			{
+				let owned_pokemon = game.actors.get(owned_pokemon_id);
+				if(owned_pokemon)
+				{
+					let owned_pokemon_image = "<img src='"+owned_pokemon.img+"' style='border:none; max-height: 50px; max-width: 50px;'>";
+					let owned_pokemon_health_color = await GetActorHealthColor(owned_pokemon);
+
+					buttons[("active_pokemon_"+owned_pokemon_id)] = 
+					{
+						noRefresh: true, 
+						id:("active_pokemon_"+owned_pokemon_id), 
+						label: "<div title='Click to select your active pokemon's token.'	style=' text-align: left;	background-color: #333333;	border-left:5px solid "+owned_pokemon_health_color+"; 	width:100%; color:#cccccc;	height:50px; font-size:25px;	font-family: Modesto Condensed;	display: flex;	justify-content: left;	align-items: center;'>"+owned_pokemon_image+owned_pokemon.name+"</div>",
+						callback: () => 
+						{
+							let owned_pokemon_token = owned_pokemon.getActiveTokens().slice(-1)[0];
+							owned_pokemon_token.control(true);
+						}
+					};
+				}
+			}
+
+
+			buttons["recalledPokemonDivider"] = {noRefresh: true, id:"recalledPokemonDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_RecalledPokemon.png' style='border:none; width:200px;'>",
+			callback: () => {
+
+			}};
+
+			for(let recalled_pokemon of game.actors)
+			{
+				let ownerId = recalled_pokemon.data.data.owner;
+				let trainerId = actor.id;
+				let pokemon_is_active = false;
+				let owned_pokemon_health_color = await GetActorHealthColor(recalled_pokemon);
+
+				if( (ownerId == trainerId) && (recalled_pokemon.type == "pokemon") )
+				{
+					for(const active_pokemon in active_pokemon_list)
+					{
+						if(active_pokemon == recalled_pokemon.id)
+						{
+							pokemon_is_active = true;
+							break;
+						}
+					}
+
+					let draggableAttrs = {
+						draggable: "true",
+						"data-entity": recalled_pokemon.documentType,
+						"data-id": recalled_pokemon.id,
+					};
+					let draggable_attr_string = `draggable="true" data-entity="${recalled_pokemon.documentType}" data-id="${recalled_pokemon.id}"`;
+				
+					
+					let pokeball_type = recalled_pokemon.data.data.pokeball;
+					if(pokeball_type == "")
+					{
+						pokeball_type = "Basic Ball";
+					}
+					// let recalled_pokemon_pokeball_image = "<img src='"+"/item_icons/"+pokeball_type+".png' style='border:none'>";
+					let recalled_pokemon_pokeball_image = '<div style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+																<img src="/item_icons/'+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
+																<img src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
+															</div>';
+
+					if(pokemon_is_active)
+					{
+						recalled_pokemon_pokeball_image = '<div class="directory-item entity actor flexrow" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+																<img src="/item_icons/'+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
+																<img src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
+															</div>';
+					}
+
+					
+					buttons[("recalled_pokemon_PokeballButton"+recalled_pokemon.id)] = 
+					{
+						noRefresh: true, 
+						id:("recalled_pokemon_PokeballButton"+recalled_pokemon.id), 
+						label: "<div class='entity actor' "+draggable_attr_string+" title='"+recalled_pokemon.name+"'	style='	background-color: #333333;	color:#cccccc;	border-left:5px solid "+owned_pokemon_health_color+"; 	width:100%; color: #666;	height:50px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;	align-items: center;'>"+recalled_pokemon_pokeball_image+"</div>",
+						callback: () => 
+						{
+							// let owned_pokemon_token = recalled_pokemon.getActiveTokens().slice(-1)[0];
+							// owned_pokemon_token.control(true);
+							recalled_pokemon.sheet.render(true);
+						}
+					};
+				}
+			}
+
+		}
+
 		buttons["abilityDivider"] = {noRefresh: true, id:"abilityDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Abilities.png' style='border:none; width:200px;'>",
 		callback: () => {
 
@@ -1991,6 +2294,8 @@ export function PTUAutoFight()
 			}
 
 		}
+
+
 
 		buttons["statusDivider"] = {noRefresh: true, id:"statusDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Moves.png' style='border:none; width:200px;'>",
 		callback: () => {
@@ -2681,7 +2986,10 @@ export function PTUAutoFight()
 						}
 						if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 						{
-							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item_data.type].toString())+"</span>";
+							if(effectiveness[item_data.type])
+							{
+								effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item_data.type].toString())+"</span>";
+							}
 						}
 					}
 				}
@@ -3520,6 +3828,19 @@ export function damageActorFlatValue(actor, damage_value, source="")
 export function damageActorTick(actor, source="", tick_count=1)
 {
 	let tick_DR = 0;
+	let tick_DR_flavor = "";
+	
+	if(game.PTUMoveMaster.ActorHasItemWithName(actor, "Permafrost", "ability"))
+	{
+		tick_DR += 5;
+		tick_DR_flavor = ", after "+tick_DR+" Tick DR from Permafrost";
+	}
+
+	if(game.PTUMoveMaster.PokemonsTrainerHasItemWithName(actor, "Stat Mastery (Special Defense)", "feat"))
+	{
+		tick_DR += 5;
+		tick_DR_flavor = ", after "+tick_DR+" Tick DR from Trainer's Stat Mastery (Special Defense)";
+	}
 
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
@@ -3532,7 +3853,7 @@ export function damageActorTick(actor, source="", tick_count=1)
 	}
 
 	actor.modifyTokenAttribute("health", -finalDamage, true, true);
-	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took '+tick_count+' tick of damage ('+ finalDamage +' Hit Points)'+source_string+'!');
+	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took '+tick_count+' tick of damage ('+ finalDamage +' Hit Points)'+source_string+tick_DR_flavor+'!');
 	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
 }
 
@@ -3694,6 +4015,8 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 	let move_range = 1;
 	let in_range = true;
 	let actor_token = game.PTUMoveMaster.GetTokenFromActor(actor);
+	let actor_image = actor_token.data.img;
+	let target_image = "";
 
 	if(target_token)
 	{
@@ -3708,6 +4031,8 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		let target_physical_evasion = target_actor.data.data.evasion.physical;
 		let target_special_evasion = target_actor.data.data.evasion.special;
 		let target_speed_evasion = target_actor.data.data.evasion.speed;
+
+		target_image = target_token.data.img;
 
 		range_to_target = GetDistanceBetweenTokens( actor_token.data, target_token.data); //canvas.grid.measureDistance(actor_token.data, target_token.data);
 
@@ -4044,7 +4369,9 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		hit2: roll2_hit,
 		moveRange: move_range,
 		rangeToTarget: range_to_target,
-		inRange: in_range
+		inRange: in_range,
+		actorImage: actor_image,
+		targetImage: target_image
 	});//.then(data => console.log(data));
 
 	var moveSoundFile = ((move.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
@@ -4101,7 +4428,7 @@ export async function GetDiceResult(roll)
 	}
 	catch (err) 
 	{
-		console.log("Old system detected, using deprecated rolling...")
+		// console.log("Old system detected, using deprecated rolling...")
 		diceResult = roll.parts[0].results[0];
 	}
 	return diceResult;
@@ -4566,6 +4893,24 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 };
 
 
+export function PokemonsTrainerHasItemWithName(pokemonActor, itemName, itemType = undefined)
+{
+	const ownerId = pokemonActor.data.data.owner;
+	const trainerActor = game.actors.get(ownerId);
+
+	if(!trainerActor)
+	{
+		return 0;
+	}
+
+	if(itemType) 
+	{
+		return trainerActor.itemTypes[itemType].find(i => i.name == itemName);
+	}
+	return trainerActor.items.getName(itemName);
+}
+
+
 export async function IsWithinPokeballThrowRange(actor_token, target_token, pokeball)
 {
 	let throwing_actor = game.PTUMoveMaster.GetActorFromToken(actor_token);
@@ -4576,7 +4921,7 @@ export async function IsWithinPokeballThrowRange(actor_token, target_token, poke
 	if(trainerHasThrowingMasteries)
 	{
 		throwRange += 2;
-	}
+	}3
 
 	let rangeToTarget = GetDistanceBetweenTokens(actor_token, target_token);
 
@@ -5306,7 +5651,7 @@ export async function ResetActionEconomy(actor, silent=true)
 
 export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target_token, pokeball_item)
 {
-	console.log("ROLLING CAPTURE CHANCE");
+	// console.log("ROLLING CAPTURE CHANCE");
 	let CaptureRollModifier = 0;
 	let CaptureRate = 100;
 
@@ -8113,4 +8458,152 @@ export async function adjustActorAccuracy(actor, change)
 		game.PTUMoveMaster.chatMessage(actor, actor.name + ' Accuracy +'+ change +'!');
 
 	}, 100);
+}
+
+
+export async function ActorGetAutoOrderState(actor, order)
+{
+	let return_value = false;
+	let get_value = false;
+	let order_string = "flags.ptu.auto_orders." + order.replace(" ", "_");
+
+	if(actor.data.flags.ptu.auto_orders != null)
+	{
+		get_value = (eval( "actor.data."+order_string ));
+
+		if(get_value)
+		{
+			return_value = get_value;
+		}
+	}
+
+	return return_value;
+}
+
+
+export async function ActorSetAutoOrders(actor, order, new_state)
+{
+	let order_string = "flags.ptu.auto_orders." + order.replace(" ", "_");
+	// await actor.update({order_string: new_state });
+	eval("actor.update({'"+order_string+"': "+ new_state +" })");
+	return;
+}
+
+
+export async function ApplyTrainingToActorsActivePokemon(actor, order, previous_state, active_pokemon_list)
+{
+	let new_state = "true";
+	let new_state_string = "applied";
+	let order_flag_string = "data.training."+(order.slice(0, order.search(" ")).toLocaleLowerCase()+".ordered");
+	if(order == "Critical Moment")
+	{
+		order_flag_string = "data.training.critical";
+	}
+
+	// console.log("Debug: ApplyTrainingToActorsActivePokemon, previous_state = " + previous_state);
+	// console.log(previous_state);
+	
+	if(previous_state == "on")
+	{
+		new_state = false;
+		new_state_string = "cancelled";
+	}
+
+	// console.log("Debug: ApplyTrainingToActorsActivePokemon, new_state = " + new_state);
+	// console.log(new_state);
+
+	for(let owned_pokemon_id in active_pokemon_list)
+	{
+		let pokemon = game.actors.get(owned_pokemon_id);
+		if(pokemon)
+		{
+			// console.log("Debug: ApplyTrainingToActorsActivePokemon, owned_pokemon_id = " + owned_pokemon_id);
+			// console.log("Debug: ApplyTrainingToActorsActivePokemon, order_flag_string = " + order_flag_string);
+			// eval( 'pokemon.update({ "'+order_flag_string+'": '+new_state+' })' );
+			chatMessage(actor, (actor.name + " "+new_state_string+" "+order+" to their Pokemon, "+pokemon.name+"!"));
+
+			//////////////////////////////////////
+			const path = order_flag_string;
+			const training = path.split('.')[2];
+			const isOrder = path.split('.')[3] == "ordered";
+
+			// If property is true
+			if(getProperty(pokemon.data, path)) {
+				const effects = [];
+				pokemon.data.effects.forEach(effect => {
+					if(effect.data.changes.some(change => change.key == path)) {
+						effects.push(effect.id);
+						// return;
+					}
+				});
+				
+				if(effects.length == 0 ) {
+					await pokemon.update({[path]: false});
+				}
+
+				for(let id of effects) {
+					await pokemon.effects.get(id).delete();
+				}
+				// return;
+			}
+
+			if(new_state == "true")
+			{
+				const effectData = new ActiveEffect({
+					changes: [{"key":path,"mode":5,"value":true,"priority":50}].concat(game.ptu.getTrainingChanges(training, isOrder).changes),
+					label: `${training.capitalize()} ${training == 'critical' ? "Moment" : isOrder ? "Order" : "Training"}`,
+					icon: "",
+					transfer: false,
+					'flags.ptu.editLocked': true,
+					_id: randomID()
+				}).data
+				await pokemon.createEmbeddedDocuments("ActiveEffect", [effectData]);
+			}
+			
+			//////////////////////////////////////
+		}
+	}
+
+	
+	
+	return;
+}
+
+
+export async function GetActorHealthColor(actor)
+{
+	let color_value = "green";
+
+	const actor_health_current = actor.data.data.health.value;
+	const actor_health_max = actor.data.data.health.max;
+	const actor_injuries = actor.data.data.health.injuries;
+
+	let actor_health_pct = (actor_health_current/actor_health_max);
+
+	if(actor_health_pct >= 1)
+	{
+		color_value = "green";//"#3d85c6";
+	}
+	else if(actor_health_pct > 0.75)
+	{
+		color_value = "#4dab00";
+	}
+	else if(actor_health_pct > 0.50)
+	{
+		color_value = "#92790e";//"#cccc00";
+	}
+	else if(actor_health_pct > 0.25)
+	{
+		color_value = "#ab380e";//"orangered";
+	}
+	else if(actor_health_pct > 0)
+	{
+		color_value = "#b51712";
+	}
+	else
+	{
+		color_value = "black";
+	}
+
+	return color_value;
 }
