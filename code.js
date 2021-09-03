@@ -8467,15 +8467,23 @@ export async function ActorGetAutoOrderState(actor, order)
 	let get_value = false;
 	let order_string = "flags.ptu.auto_orders." + order.replace(" ", "_");
 
-	if(actor.data.flags.ptu.auto_orders != null)
+	if(actor)
 	{
-		get_value = (eval( "actor.data."+order_string ));
-
-		if(get_value)
+		if(actor.data.flags.ptu)
 		{
-			return_value = get_value;
+			if(actor.data.flags.ptu.auto_orders != null)
+			{
+				get_value = (eval( "actor.data."+order_string ));
+
+				if(get_value)
+				{
+					return_value = get_value;
+				}
+			}
 		}
 	}
+	
+	
 
 	return return_value;
 }
