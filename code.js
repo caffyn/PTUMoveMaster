@@ -51,8 +51,8 @@ function _loadModuleSettings() {
 	  });
 
 	game.settings.register("PTUMoveMaster", "alwaysDisplayTokenNames", {
-		name: "GM Setting: Always Display Token Names",
-		hint: "Always set tokens to display their name to everyone when they're dragged out.",
+		name: "GM Setting: Always Display Species in Token Name for Wild Pokemon",
+		hint: "Always set wild pokemon's tokens to display their species name to everyone when they're dragged out.",
 		scope: "world",
 		config: true,
 		type: Boolean,
@@ -60,8 +60,8 @@ function _loadModuleSettings() {
 	});
 
 	game.settings.register("PTUMoveMaster", "alwaysDisplayTokenHealth", {
-		name: "GM Setting: Always Display Token Health",
-		hint: "Always set tokens to display their health as a bar to everyone when they're dragged out.",
+		name: "GM Setting: Always Display Token Health for Wild Pokemon",
+		hint: "Always set wild pokemon's tokens to display their health as a bar to everyone when they're dragged out.",
 		scope: "world",
 		config: true,
 		type: Boolean,
@@ -69,8 +69,8 @@ function _loadModuleSettings() {
 	});
 
 	game.settings.register("PTUMoveMaster", "alwaysDisplayTokenNature", {
-		name: "GM Setting: Always Display Token Nature in names.",
-		hint: "Always set tokens to display their nature, as an appendation to their names, to everyone when they're dragged out.",
+		name: "GM Setting: Always Display Token Nature in Names of Wild Pokemon.",
+		hint: "Always set wild pokemon's tokens to display their nature, as an appendation to their names, to everyone when they're dragged out. Note that this will have no effect if Always Display Species in Token Name for Wild Pokemon is not also active.",
 		scope: "world",
 		config: true,
 		type: Boolean,
@@ -213,6 +213,43 @@ function _loadModuleSettings() {
 		type: Boolean,
 		default: true
 	});
+
+	game.settings.register("PTUMoveMaster", "itemIconDirectory", {
+        name: "Item Icons Directory",
+        hint: "The directory where the user can upload item image files to be used by scripts or modules. Must end with a /",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "item_icons/",
+        filePicker: true,
+        // onChange: (value) => CustomSpeciesFolder.updateFolderDisplay(value),
+        category: "other"
+    });
+
+	game.settings.register("PTUMoveMaster", "pokedexNameSoundDirectory", {
+        name: "Pokedex Name Sounds Directory",
+        hint: "The directory where the user can upload sound files of the Pokedex saying the name of a scanned Pokemon when Move Master's Pokedex function is used. Must end with a /",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "pokemon_names/",
+        filePicker: true,
+        // onChange: (value) => CustomSpeciesFolder.updateFolderDisplay(value),
+        category: "other"
+    });
+
+	game.settings.register("PTUMoveMaster", "backgroundFieldDirectory", {
+        name: "Background Field Directory",
+        hint: "The directory where the user can upload background image files to be used by Move Master in certain UI elements. Must end with a /",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "background_fields/",
+        filePicker: true,
+        // onChange: (value) => CustomSpeciesFolder.updateFolderDisplay(value),
+        category: "other"
+    });
+
 } 
 
 var MoveMasterSidebar = {};
@@ -295,6 +332,7 @@ Hooks.once('init', async function()
 		ActorSetAutoOrders,
 		ApplyTrainingToActorsActivePokemon,
 		GetActorHealthColor,
+		ThisActorOrTheirTrainerHasDexEntry,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -658,6 +696,13 @@ Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 		actor_immune_to_hail = true;
 	}
 
+	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Overcoat", "ability"))
+	{
+		actor_immune_to_hail = true;
+		actor_immune_to_sandstorm = true;
+		actor_is_immune_to_weather_ticks = true;
+	}
+
 	if(game.PTUMoveMaster.ActorHasItemWithName(current_actor, "Snow Warning", "ability"))
 	{
 		actor_immune_to_hail = true;
@@ -848,6 +893,11 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 			let tokenData = token.data;
 			let actor = game.actors.get(tokenData.actorId);
 			let original_scale = tokenData.scale;
+			let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
+			let display_token_nature = game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNature");
+			let enable_pokeball_animation = game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut");
+			let always_display_token_name = game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames");
+			let always_display_token_health = game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth");
 	
 			function capitalizeFirstLetter(string) {
 				return string[0].toUpperCase() + string.slice(1);
@@ -879,7 +929,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 				}
 				
 				let current_token_nature = "";
-				if(actor.data.data.nature && game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNature"))
+				if(actor.data.data.nature && display_token_nature)
 				{
 					current_token_nature = capitalizeFirstLetter((actor.data.data.nature.value).toLowerCase())+" ";
 				}
@@ -909,7 +959,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					{
 						setTimeout( async () => { game.ptu.PlayPokemonCry(current_token_species); }, 2000);
 						
-						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
+						if(enable_pokeball_animation)
 						{
 							await target_token.update({ "alpha": (0) });
 						}
@@ -918,9 +968,9 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 	
 						let transitionType = 9;
-						let targetImagePath = "/item_icons/"+pokeball+".png";
+						let targetImagePath = item_icon_path+pokeball+".png";
 	
-						if(game.settings.get("PTUMoveMaster", "usePokeballAnimationOnDragOut"))
+						if(enable_pokeball_animation)
 						{ 
 	
 							function castSpell(effect) {
@@ -930,7 +980,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 	
 							castSpell({
 								file:
-									"item_icons/"+pokeball+".webm",
+									item_icon_path+pokeball+".webm",
 								anchor: {
 									x: -0.08,
 									y: 0.5,
@@ -1024,7 +1074,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						}
 						setTimeout( async () => {  
 	
-							if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
+							if(always_display_token_name)
 							{
 								if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 								{
@@ -1073,9 +1123,9 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 				}
 				else if (actor.data.type == "pokemon")
 				{
-					if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenNames") == true)
+					if(always_display_token_name)
 					{
-						if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+						if(always_display_token_health)
 						{
 							await target_token.update({
 								"name": (current_token_nature+current_token_species),
@@ -1094,10 +1144,10 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							});  
 						}
 					}
-					else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
+					else if (always_display_token_health)
 					{
 						await target_token.update({
-							"name": (current_token_nature+current_token_species),
+							// "name": (current_token_nature+current_token_species),
 							"bar1.attribute": "health",
 							"displayBars": 50,
 							"alpha": (1)
@@ -1105,7 +1155,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					}
 					else
 					{
-						await target_token.update({"name": (current_token_nature+current_token_species), "alpha": (1) });
+						await target_token.update({/*"name": (current_token_nature+current_token_species),*/ "alpha": (1) });
 					}	
 					game.ptu.PlayPokemonCry(current_token_species);	
 				}
@@ -1650,9 +1700,6 @@ const VolatileAfflictions = [
 	"Suppressed",
 ];
 
-const JingleDirectory = "pokemon_jingles/";
-const NameVoiceLinesDirectory = "pokemon_names/";
-
 const UIButtonClickSound = "buttonclickrelease.wav";
 const UIPopupSound = "packopen_6_A_cardflip.wav";
 
@@ -1859,6 +1906,7 @@ export function PTUAutoFight()
 		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
 		let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 		let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
+		let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
 
 		let showEffectivenessMode = game.settings.get("PTUMoveMaster", "showEffectiveness");
 		
@@ -2178,16 +2226,16 @@ export function PTUAutoFight()
 					{
 						pokeball_type = "Basic Ball";
 					}
-					// let recalled_pokemon_pokeball_image = "<img src='"+"/item_icons/"+pokeball_type+".png' style='border:none'>";
+					// let recalled_pokemon_pokeball_image = "<img src='"+item_icon_path+pokeball_type+".png' style='border:none'>";
 					let recalled_pokemon_pokeball_image = '<div style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-																<img src="/item_icons/'+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
+																<img src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
 																<img src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
 															</div>';
 
 					if(pokemon_is_active)
 					{
 						recalled_pokemon_pokeball_image = '<div class="directory-item entity actor flexrow" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-																<img src="/item_icons/'+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
+																<img src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
 																<img src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
 															</div>';
 					}
@@ -2490,7 +2538,7 @@ export function PTUAutoFight()
 			{
 				if(target.actor.data.data.species)
 				{
-					actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+					actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
 					if(game.user.isGM)
 					{
 						actor_has_target_dex_entry = true;
@@ -2915,7 +2963,7 @@ export function PTUAutoFight()
 			{
 				if(target.actor.data.data.species)
 				{
-					actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+					actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
 					if(game.user.isGM)
 					{
 						actor_has_target_dex_entry = true;
@@ -4762,7 +4810,7 @@ export function GetActorFromToken(token)
 export function GetTokenFromActor(actor)
 {
 	let actor_id = actor.id;
-	let scene_tokens = game.scenes.active.data.tokens;
+	let scene_tokens = game.scenes.active.data.tokens; // TODO: fix this looking at *active* scene instead of viewed scene
 
 	let token = false;
 
@@ -4971,6 +5019,8 @@ export async function IsWithinPokeballThrowRange(actor_token, target_token, poke
 
 export async function ThrowPokeball(actor_token, target_token, pokeball, pokeball_item)
 {
+	let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
+	
 	let throwing_actor = game.PTUMoveMaster.GetActorFromToken(actor_token);
 
 	let throwRange = throwing_actor.data.data.capabilities["Throwing Range"];
@@ -5040,7 +5090,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 		{
 			castSpell({
 				file:
-					"item_icons/"+pokeball+".webm",
+					item_icon_path+pokeball+".webm",
 				anchor: {
 					x: -0.08,
 					y: 0.5,
@@ -5164,7 +5214,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 			let polymorphFunc = async function () 
 			{
 				let transitionType = 9;
-				let targetImagePath = "/item_icons/"+pokeball+".png";
+				let targetImagePath = item_icon_path+pokeball+".png";
 				let polymorphFilterId = "pokeball";
 				let polymorph_params;
 				
@@ -5280,7 +5330,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 
 			castSpell({
 				file:
-					"item_icons/"+pokeball+".webm",
+					item_icon_path+pokeball+".webm",
 				anchor: {
 					x: -0.08,
 					y: 0.5,
@@ -5304,6 +5354,8 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 
 export function SpeakPokemonName(pokemon_actor)
 {
+	let pokemon_name_sound_path = game.settings.get("PTUMoveMaster", "pokedexNameSoundDirectory");
+
 	let species = pokemon_actor.data.data.species;
 	let species_data = game.ptu.GetSpeciesData(species);
 	let species_number = species_data.number;
@@ -5323,7 +5375,7 @@ export function SpeakPokemonName(pokemon_actor)
 	}
 
 	let pokedexSpeechSoundFile = species_number_string+" - "+capitalizeFirstLetter((species).toLowerCase())+".wav";
-	AudioHelper.play({src: "pokemon_names/"+pokedexSpeechSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+	AudioHelper.play({src: pokemon_name_sound_path+pokedexSpeechSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 };
 
 
@@ -6026,8 +6078,9 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 
 	let polymorphFunc = async function () 
 	{
+		let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
 		let transitionType = 9;
-		let targetImagePath = "/item_icons/"+pokeball+".png";
+		let targetImagePath = item_icon_path+pokeball+".png";
 		let polymorphFilterId = "pokeball";
 		let polymorph_params;
 		
@@ -6355,6 +6408,8 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 
 export async function ShowPokeballMenu(actor)
 {
+	let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
+
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/pokeball_grow.mp3", volume: 0.8, autoplay: true, loop: false}, false);
 	let pokeball_inventory = [];
@@ -6388,16 +6443,16 @@ export async function ShowPokeballMenu(actor)
 			if(pokeball.name.includes("Thrown"))
 			{//filter: sepia(100%) saturate(300%) brightness(70%) hue-rotate(180deg);
 				let pokeball_name_without_thrown = pokeball.name.replace("Thrown ", "");
-				pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball_name_without_thrown+".png' style='border-width: 0px; height: 30px; filter: saturate(0%) opacity(50%) brightness(100%);'></img>";
+				pokeball_image = pokeball_image + "<img src='"+item_icon_path+pokeball_name_without_thrown+".png' style='border-width: 0px; height: 30px; filter: saturate(0%) opacity(50%) brightness(100%);'></img>";
 			}
 			else if(pokeball.name.includes("Broken"))
 			{//filter: sepia(100%) saturate(300%) brightness(70%) hue-rotate(180deg);
 				let pokeball_name_without_broken = pokeball.name.replace("Broken ", "");
-				pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball_name_without_broken+".png' style='border-width: 0px; height: 30px; filter: sepia(100%) saturate(150%) brightness(100%);'></img>";
+				pokeball_image = pokeball_image + "<img src='"+item_icon_path+pokeball_name_without_broken+".png' style='border-width: 0px; height: 30px; filter: sepia(100%) saturate(150%) brightness(100%);'></img>";
 			}
 			else
 			{
-				pokeball_image = pokeball_image + "<img src='item_icons/"+pokeball.name+".png' style='border-width: 0px; height: 30px;'></img>";
+				pokeball_image = pokeball_image + "<img src='"+item_icon_path+pokeball.name+".png' style='border-width: 0px; height: 30px;'></img>";
 			}
 		}
 
@@ -7298,7 +7353,7 @@ export async function ShowStruggleMenu(actor)
 		{
 			if(target.actor.data.data.species)
 			{
-				actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+				actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
 				if(game.user.isGM)
 				{
 					actor_has_target_dex_entry = true;
@@ -7580,15 +7635,17 @@ export async function UseInventoryItem(actor_token, target_token, inventory_item
 
 export async function GetItemArt(item_name) 
 {
-	let item_base_image = ("item_icons/"+item_name+".webp");
+	let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
+
+	let item_base_image = (item_icon_path+item_name+".webp");
     let result = await fetch(item_base_image);
 	if(result.status === 404) 
 	{
-		item_base_image = ("item_icons/"+item_name+".png");
+		item_base_image = (item_icon_path+item_name+".png");
 		result = await fetch(item_base_image);
 		if(result.status === 404) 
 		{
-			item_base_image = ("item_icons/Generic Item.webp");
+			item_base_image = (item_icon_path+"/Generic Item.webp");
 		}
 	}
 	
@@ -7611,7 +7668,7 @@ export function GetTargetTypingHeader(target, actor)
 	{
 		if(target.actor.data.data.species)
 		{
-			actor_has_target_dex_entry = game.PTUMoveMaster.ActorHasItemWithName(actor, target.actor.data.data.species, "dexentry");
+			actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
 			if(game.user.isGM)
 			{
 				actor_has_target_dex_entry = true;
@@ -8395,6 +8452,8 @@ export async function enableCondition(target_actor, condition, condition_type = 
 
 export async function GetCurrentFieldImageURL()
 {
+	let background_field_path = game.settings.get("PTUMoveMaster", "backgroundFieldDirectory");
+
 	let current_weather = await game.PTUMoveMaster.GetCurrentWeather();
 	let current_time_of_day = "Day";
 	let current_terrain = "Grass";
@@ -8419,7 +8478,7 @@ export async function GetCurrentFieldImageURL()
 		current_terrain = "Sand";
 	}
 
-	let background_image_URL = 'background_fields/'+current_terrain+"_"+current_time_of_day+".png";
+	let background_image_URL = background_field_path+current_terrain+"_"+current_time_of_day+".png";
 	return background_image_URL;
 }
 
@@ -8614,4 +8673,46 @@ export async function GetActorHealthColor(actor)
 	}
 
 	return color_value;
+}
+
+
+export function ThisActorOrTheirTrainerHasDexEntry(actor, species_name)
+{
+	let return_value = false;
+	let actor_type = actor.type;
+	let actors_trainer;
+
+	console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: actor_type = ");
+	console.log(actor_type);
+
+
+	if(actor_type == "character")
+	{
+		console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: character branch");
+
+		if(game.PTUMoveMaster.ActorHasItemWithName(actor, species_name.toLowerCase(), "dexentry"))
+		{
+			return_value = true;
+		}
+	}
+	else if(actor_type == "pokemon")
+	{
+		console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: pokemon branch");
+
+		actors_trainer = game.actors.get( actor.data.data.owner );
+		console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: actors_trainer = ");
+		console.log(actors_trainer);
+
+		if(actors_trainer)
+		{
+			if(game.PTUMoveMaster.ActorHasItemWithName(actors_trainer, species_name.toLowerCase(), "dexentry"))
+			{
+				return_value = true;
+			}
+		}
+	}
+
+	console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: return_value = "+return_value);
+
+	return return_value;
 }
