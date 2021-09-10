@@ -8682,14 +8682,8 @@ export function ThisActorOrTheirTrainerHasDexEntry(actor, species_name)
 	let actor_type = actor.type;
 	let actors_trainer;
 
-	console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: actor_type = ");
-	console.log(actor_type);
-
-
 	if(actor_type == "character")
 	{
-		console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: character branch");
-
 		if(game.PTUMoveMaster.ActorHasItemWithName(actor, species_name.toLowerCase(), "dexentry"))
 		{
 			return_value = true;
@@ -8697,11 +8691,7 @@ export function ThisActorOrTheirTrainerHasDexEntry(actor, species_name)
 	}
 	else if(actor_type == "pokemon")
 	{
-		console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: pokemon branch");
-
 		actors_trainer = game.actors.get( actor.data.data.owner );
-		console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: actors_trainer = ");
-		console.log(actors_trainer);
 
 		if(actors_trainer)
 		{
@@ -8711,8 +8701,6 @@ export function ThisActorOrTheirTrainerHasDexEntry(actor, species_name)
 			}
 		}
 	}
-
-	console.log("DEBUG: ThisActorOrTheirTrainerHasDexEntry: return_value = "+return_value);
 
 	return return_value;
 }
