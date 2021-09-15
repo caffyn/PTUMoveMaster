@@ -113,7 +113,7 @@ export class SidebarForm extends FormApplication {
     // event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
     // this._dragType = dragData.type;
 
-    let li = event.currentTarget.closest(".directory-item");
+    let li = event.currentTarget.closest(".belt-pokeball");
 
     let dragData = {type: 'Actor', id: li.dataset.entityId};
 
