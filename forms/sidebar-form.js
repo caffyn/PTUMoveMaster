@@ -8,6 +8,7 @@ export class SidebarForm extends FormApplication {
             classes: ["pokemon", "ptu", "ptu-sidebar"],
             title: "PTU Sidebar",
             template: "modules/PTUMoveMaster/templates/forms/sidebar-form.hbs",
+            dragDrop: [{dragSelector: ".directory-item", dropSelector: null}],
         });
     }
 
@@ -42,6 +43,10 @@ export class SidebarForm extends FormApplication {
             obj.setPosition({left: $(window).width() - 515})
           }
         })
+
+
+        // const dragHandle = html.find("#dragHandle");
+        // new Draggable(this, html, dragHandle, false);
 
         // console.log("______________this.object_______________");
         // console.log(this.object);
@@ -87,6 +92,35 @@ export class SidebarForm extends FormApplication {
       }
 
     /* -------------------------------------------- */
+
+
+  
+  /** @override */
+  _onDragStart(event) 
+  {
+    console.log("DEBUG: _onDragStart");
+    console.log(event);
+
+    //   let li = event.currentTarget.closest(".directory-item");
+
+    //   console.log("DEBUG: _onDragStart");
+    //   console.log(li);
+
+    //   const isActor = li.classList.contains("actor");
+    // const dragData = isActor ?
+    //   { type: "Actor", id: li.dataset.id, documentName: this.constructor.documentName } :
+    //   { type: this.constructor.documentName, id: li.dataset.entityId };
+    // event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+    // this._dragType = dragData.type;
+
+    let li = event.currentTarget.closest(".directory-item");
+
+    let dragData = {type: 'Actor', id: li.dataset.entityId};
+
+    event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+  }
+
+
 	/**
 	 * Submit the MoveMasterSidebarDialog by selecting one of its buttons
 	 * @param {Object} button     The configuration of the chosen button

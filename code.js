@@ -250,6 +250,15 @@ function _loadModuleSettings() {
         category: "other"
     });
 
+	game.settings.register("PTUMoveMaster", "UnavailablePokemonFolderName", {
+		name: "GM Setting: Unavailable Pokemon Folder Name",
+		hint: "Pokemon that are in any folder whose name contains this string (case insensitive) will be considered to be unavailable, and will not show up on the sidebar 'belt' of their trainers.",
+		scope: "world",
+		config: true,
+		type: String,
+		default: "Bench"
+	});
+
 } 
 
 var MoveMasterSidebar = {};
@@ -1223,21 +1232,91 @@ Hooks.once("dragRuler.ready", (SpeedProvider) => {
 var stats = ["atk", "def", "spatk", "spdef", "spd"];
 
 var move_stage_changes = {
-	"Blank Template"  :   {
-		"roll-trigger": 20,
-		"atk"   : 0,
-		"def"   : 0,
-		"spatk" : 0,
-		"spdef" : 0,
-		"spd"   : 0,
-		"accuracy": 0,
-		"pct-healing": 0,
-		"pct-self-damage": 0,
-		"recoil": 0,
-		"crit-range": 20,
-		"effect-range": 20,
-		"weather": "Clear"
-	},
+	// "Blank Template"  :   {
+	// 	"roll-trigger": 20,
+	// 	"atk"   : 0,
+	// 	"def"   : 0,
+	// 	"spatk" : 0,
+	// 	"spdef" : 0,
+	// 	"spd"   : 0,
+	// 	"accuracy": 0,
+	// 	"pct-healing": 0,
+	// 	"pct-self-damage": 0,
+	// 	"recoil": 0,
+	// 	"crit-range": 20,
+	// 	"effect-range": 20,
+	// 	"weather": "Clear"
+	// },
+
+	// "Example Move Name":	{
+
+	// 	"self_effects":
+	// 	{
+	// 		"healing":				{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"healing_pct":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"set_hitpoint_to":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"set_hitpoint_to_pct":	{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"inflict_ticks":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"heal_ticks":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"condition_cure":		
+	// 		{
+	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		},
+	// 		"condition_inflict":	
+	// 		{ 
+	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+	// 		},
+	// 		"stage_change":			{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
+	// 		"crit_mod":				{"value": 0, "duration": {"rounds":0} },
+	// 		"accuracy_mod":			{"value": 0, "duration": {"rounds":0} },
+	// 		"substitute":			{"value": 0.25, "effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+	// 		"above_battlefield":	{"duration": {"rounds":1} },
+	// 		"below_battlefield":	{"duration": {"rounds":1} },
+	// 		"replace_actor_type": 	{"value": ["Fire", "Water"], "duration": {"rounds":0, "scene": true} },
+	// 		"add_actor_type": 		{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+	// 		"remove_actor_type": 	{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+	// 	},
+		
+	// 	"target_effects":
+	// 	{
+	// 		"healing":				{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"healing_pct":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"set_hitpoint_to":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"set_hitpoint_to_pct":	{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"inflict_ticks":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"heal_ticks":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		"condition_cure":		
+	// 		{
+	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+	// 		},
+	// 		"condition_inflict":	
+	// 		{ 
+	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+	// 		},
+	// 		"stage_change":			{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
+	// 		"crit_mod":				{"value": 0, "duration": {"rounds":0} },
+	// 		"accuracy_mod":			{"value": 0, "duration": {"rounds":0} },
+	// 		"substitute":			{"value": 0.25, "effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+	// 		"above_battlefield":	{"duration": {"rounds":1} },
+	// 		"below_battlefield":	{"duration": {"rounds":1} },
+	// 		"replace_actor_type": 	{"value": ["Fire", "Water"], "duration": {"rounds":0, "scene": true} },
+	// 		"add_actor_type": 		{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+	// 		"remove_actor_type": 	{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+	// 	},
+
+	// 	"harms_loyalty":		false,
+	// 	"weather": 				{"value": "Rainy", "duration":{"rounds":5, "scene": false}},
+	// 	"crit-range": 			20,
+	// 	"recoil_pct": 			0.33,
+	// 	"dynamic_damage_base": 	{ "formula_to_eval_to_DB": "" },
+	// 	"dynamic_damage_mod": 	{ "formula_to_eval_to_damage_add": "", "formula_to_eval_to_damage_subtract": "" },
+	// 	"use_a_different_move_from_this_list_instead": ["Thunder", "Quick Attack", ],
+	// },
+
 	"Calm Mind"  :   {
 		"spatk" : 1,
 		"spdef" : 1
@@ -1909,6 +1988,7 @@ export function PTUAutoFight()
 		let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
 
 		let showEffectivenessMode = game.settings.get("PTUMoveMaster", "showEffectiveness");
+		let UnavailablePokemonFolderName = game.settings.get("PTUMoveMaster", "UnavailablePokemonFolderName").toLowerCase();
 		
 		var items=actor.data.items;
 		var item_entities=actor.items;
@@ -2190,7 +2270,7 @@ export function PTUAutoFight()
 			}
 
 
-			buttons["recalledPokemonDivider"] = {noRefresh: true, id:"recalledPokemonDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_RecalledPokemon.png' style='border:none; width:200px;'>",
+			buttons["recalledPokemonDivider"] = {noRefresh: true, id:"recalledPokemonDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_PokeballBelt.png' style='border:none; width:200px;'>",
 			callback: () => {
 
 			}};
@@ -2201,8 +2281,19 @@ export function PTUAutoFight()
 				let trainerId = actor.id;
 				let pokemon_is_active = false;
 				let owned_pokemon_health_color = await GetActorHealthColor(recalled_pokemon);
+				let pokemon_is_in_bench_folder = false;
+				let folder_name = "";
 
-				if( (ownerId == trainerId) && (recalled_pokemon.type == "pokemon") )
+				if(recalled_pokemon.folder) 
+				{
+					folder_name = recalled_pokemon.folder.data.name;
+					if(folder_name.toLowerCase().includes(UnavailablePokemonFolderName))
+					{
+						pokemon_is_in_bench_folder = true;
+					}
+				}
+
+				if( (ownerId == trainerId) && (recalled_pokemon.type == "pokemon") && (!pokemon_is_in_bench_folder) )
 				{
 					for(const active_pokemon in active_pokemon_list)
 					{
@@ -2212,13 +2303,14 @@ export function PTUAutoFight()
 							break;
 						}
 					}
-
+					// '<li class="directory-item entity actor flexrow" data-entity-id="322vMosc6AXORbin" draggable="true" style="display: flex;">';
 					let draggableAttrs = {
 						draggable: "true",
 						"data-entity": recalled_pokemon.documentType,
 						"data-id": recalled_pokemon.id,
 					};
-					let draggable_attr_string = `draggable="true" data-entity="${recalled_pokemon.documentType}" data-id="${recalled_pokemon.id}"`;
+					// let draggable_attr_string = `data-entity="${recalled_pokemon.documentType}" data-entity-id="${recalled_pokemon.id}" draggable="true"`;
+					let draggable_attr_string = `data-entity-id="${recalled_pokemon.id}" draggable="true"`;
 				
 					
 					let pokeball_type = recalled_pokemon.data.data.pokeball;
@@ -2227,16 +2319,16 @@ export function PTUAutoFight()
 						pokeball_type = "Basic Ball";
 					}
 					// let recalled_pokemon_pokeball_image = "<img src='"+item_icon_path+pokeball_type+".png' style='border:none'>";
-					let recalled_pokemon_pokeball_image = '<div style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-																<img src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
-																<img src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
+					let recalled_pokemon_pokeball_image = '<div class="directory-item entity actor" '+draggable_attr_string+'" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
+																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
 															</div>';
 
 					if(pokemon_is_active)
 					{
-						recalled_pokemon_pokeball_image = '<div class="directory-item entity actor flexrow" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-																<img src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
-																<img src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
+						recalled_pokemon_pokeball_image = '<div class="directory-item entity actor" '+draggable_attr_string+'" class="directory-item entity actor flexrow" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
+																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
 															</div>';
 					}
 
@@ -2245,7 +2337,7 @@ export function PTUAutoFight()
 					{
 						noRefresh: true, 
 						id:("recalled_pokemon_PokeballButton"+recalled_pokemon.id), 
-						label: "<div class='entity actor' "+draggable_attr_string+" title='"+recalled_pokemon.name+"'	style='	background-color: #333333;	color:#cccccc;	border-left:5px solid "+owned_pokemon_health_color+"; 	width:100%; color: #666;	height:50px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;	align-items: center;'>"+recalled_pokemon_pokeball_image+"</div>",
+						label: "<div class='directory-item entity actor' "+draggable_attr_string+" title='"+recalled_pokemon.name+"'	style='	background-color: #333333;	color:#cccccc;	border-left:5px solid "+owned_pokemon_health_color+"; 	width:100%; color: #666;	height:50px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;	align-items: center;'>"+recalled_pokemon_pokeball_image+"</div>",
 						callback: () => 
 						{
 							// let owned_pokemon_token = recalled_pokemon.getActiveTokens().slice(-1)[0];
@@ -4810,7 +4902,7 @@ export function GetActorFromToken(token)
 export function GetTokenFromActor(actor)
 {
 	let actor_id = actor.id;
-	let scene_tokens = game.scenes.active.data.tokens; // TODO: fix this looking at *active* scene instead of viewed scene
+	let scene_tokens = game.scenes.current.data.tokens; // TODO: fix this looking at *active* scene instead of viewed scene
 
 	let token = false;
 
@@ -7514,8 +7606,8 @@ export async function UseInventoryItem(actor_token, target_token, inventory_item
 			"condition_cure":	[],
 			"repulsive":		false,
 			"stage_change":		{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
-			"crit_boost":		0,
-			"accuracy_boost":	0,
+			"crit_mod":		0,
+			"accuracy_mod":	0,
 			"guard_spec":		false,
 		},
 		"Potion":	{
@@ -7583,7 +7675,7 @@ export async function UseInventoryItem(actor_token, target_token, inventory_item
 			"stage_change":		{"spd":2},
 		},
 		"Dire Hit":	{
-			"crit_boost":		2,
+			"crit_mod":		2,
 		},
 		"Guard Spec":	{
 			"guard_spec":		true,
@@ -7980,8 +8072,6 @@ export async function SetCurrentWeather(new_weather)
 			Hooks.call("updateWeather", [
 				fxmaster_weather_presets[new_weather]
 			]);
-
-			// Hooks.call("switchWeather", fxmaster_weather_presets[new_weather]);
 		}
 	}
 }
