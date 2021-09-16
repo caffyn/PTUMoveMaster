@@ -98,22 +98,13 @@ export class SidebarForm extends FormApplication {
   /** @override */
   _onDragStart(event) 
   {
-    console.log("DEBUG: _onDragStart");
+    console.log("DEBUG: _onDragStart: event");
     console.log(event);
 
-    //   let li = event.currentTarget.closest(".directory-item");
+    let li = event.currentTarget.closest(".directory-item.belt-pokeball");
 
-    //   console.log("DEBUG: _onDragStart");
-    //   console.log(li);
-
-    //   const isActor = li.classList.contains("actor");
-    // const dragData = isActor ?
-    //   { type: "Actor", id: li.dataset.id, documentName: this.constructor.documentName } :
-    //   { type: this.constructor.documentName, id: li.dataset.entityId };
-    // event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
-    // this._dragType = dragData.type;
-
-    let li = event.currentTarget.closest(".belt-pokeball");
+    console.log("DEBUG: _onDragStart: li");
+    console.log(li);
 
     let dragData = {type: 'Actor', id: li.dataset.entityId};
 
