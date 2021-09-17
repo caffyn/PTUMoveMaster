@@ -2366,12 +2366,12 @@ export function PTUAutoFight()
 
 					// $('.directory-item .belt-pokeball').on("dragstart", game.PTUMoveMaster.MoveMasterSidebar._onDragStart);
 
-					$('.directory-item.belt-pokeball').on("dragstart", (event) => {
-						console.log("DEBUG: dragstart");
-						let li = event.currentTarget.closest(".directory-item.belt-pokeball");
-						let dragData = {type: 'Actor', id: li.dataset.entityId};
-						event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
-					});
+					// $('.directory-item.belt-pokeball').on("dragstart", (event) => {
+					// 	console.log("DEBUG: dragstart");
+					// 	let li = event.currentTarget.closest(".directory-item.belt-pokeball");
+					// 	let dragData = {type: 'Actor', id: li.dataset.entityId};
+					// 	event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+					// });
 
 					
 				}
