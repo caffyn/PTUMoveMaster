@@ -2318,33 +2318,62 @@ export function PTUAutoFight()
 					{
 						pokeball_type = "Basic Ball";
 					}
-					// let recalled_pokemon_pokeball_image = "<img src='"+item_icon_path+pokeball_type+".png' style='border:none'>";
-					let recalled_pokemon_pokeball_image = '<div class="directory-item entity actor" '+draggable_attr_string+'" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
-																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
+
+					let recalled_pokemon_pokeball_image = '<div style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+																<img src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
+																<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
 															</div>';
 
 					if(pokemon_is_active)
 					{
-						recalled_pokemon_pokeball_image = '<div class="directory-item entity actor" '+draggable_attr_string+'" class="directory-item entity actor flexrow" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
-																<img class="directory-item entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
+						recalled_pokemon_pokeball_image = '<div class="belt-pokeball entity actor" '+draggable_attr_string+'" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+																<img src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
+																<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
 															</div>';
 					}
+
+					// let recalled_pokemon_pokeball_image = '<div class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
+					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
+					// 										</div>';
+
+					// if(pokemon_is_active)
+					// {
+					// 	recalled_pokemon_pokeball_image = '<div class="belt-pokeball entity actor" '+draggable_attr_string+'" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
+					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
+					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
+					// 										</div>';
+					// }
 
 					
 					buttons[("recalled_pokemon_PokeballButton"+recalled_pokemon.id)] = 
 					{
 						noRefresh: true, 
 						id:("recalled_pokemon_PokeballButton"+recalled_pokemon.id), 
-						label: "<div class='directory-item entity actor' "+draggable_attr_string+" title='"+recalled_pokemon.name+"'	style='	background-color: #333333;	color:#cccccc;	border-left:5px solid "+owned_pokemon_health_color+"; 	width:100%; color: #666;	height:50px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;	align-items: center;'>"+recalled_pokemon_pokeball_image+"</div>",
+						label: "<div title='"+recalled_pokemon.name+"'	style='	background-color: #333333;	color:#cccccc;	border-left:5px solid "+owned_pokemon_health_color+"; 	width:100%; color: #666;	height:50px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;	align-items: center;'>"+recalled_pokemon_pokeball_image+"</div>",
 						callback: () => 
 						{
-							// let owned_pokemon_token = recalled_pokemon.getActiveTokens().slice(-1)[0];
-							// owned_pokemon_token.control(true);
 							recalled_pokemon.sheet.render(true);
 						}
 					};
+
+					// let this_img_tag = document.querySelector("data-entity-id="+recalled_pokemon.id);
+					// console.log("this_img_tag");
+					// console.log(this_img_tag);
+					// this_img_tag.addEventListener("dragstart", _onDragStart);
+
+					// buttons[("recalled_pokemon_PokeballButton"+recalled_pokemon.id)].addEventListener("dragstart", _onDragStart);
+
+					// $('.directory-item .belt-pokeball').on("dragstart", game.PTUMoveMaster.MoveMasterSidebar._onDragStart);
+
+					// $('.directory-item.belt-pokeball').on("dragstart", (event) => {
+					// 	console.log("DEBUG: dragstart");
+					// 	let li = event.currentTarget.closest(".directory-item.belt-pokeball");
+					// 	let dragData = {type: 'Actor', id: li.dataset.entityId};
+					// 	event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+					// });
+
+					
 				}
 			}
 

@@ -8,7 +8,7 @@ export class SidebarForm extends FormApplication {
             classes: ["pokemon", "ptu", "ptu-sidebar"],
             title: "PTU Sidebar",
             template: "modules/PTUMoveMaster/templates/forms/sidebar-form.hbs",
-            dragDrop: [{dragSelector: ".directory-item", dropSelector: null}],
+            dragDrop: [{dragSelector: ".directory-item.belt-pokeball", dropSelector: null}],
         });
     }
 
@@ -64,6 +64,18 @@ export class SidebarForm extends FormApplication {
 
     }
 
+
+      
+  /** @override */
+  _onDragStart(event) 
+  {
+    let li = event.currentTarget.closest(".directory-item.belt-pokeball");
+    let dragData = {type: 'Actor', id: li.dataset.entityId};
+
+    event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
+  }
+
+
     /** @override */
     _updateObject(event, formData) {}
 
@@ -73,7 +85,15 @@ export class SidebarForm extends FormApplication {
     /** @override */
     activateListeners(html) {
         html.find(".MoveMaster-button").click(this._onClickButton.bind(this));
-        // if ( this.data.render instanceof Function ) this.data.render(this.options.jQuery ? html : html[0]);
+
+        html.find('.directory-item.belt-pokeball')
+        .on('dragstart', (ev1) => {
+          
+          let li = ev1.originalEvent.currentTarget.closest(".directory-item.belt-pokeball");
+          let dragData = {type: 'Actor', id: li.dataset.entityId};
+          this._onDragStart(ev1.originalEvent);
+
+        })
     }
 
     /**
@@ -83,42 +103,12 @@ export class SidebarForm extends FormApplication {
 	 */
 	_onClickButton(event) {
         const id = event.currentTarget.dataset.button;
-        // console.log("___________ event _________________");
-        // console.log(event);
-        // console.log("___________ event.currentTarget _________________");
-        // console.log(event.currentTarget);
         const button = this.object.buttons[id];
         this.submit(button);
       }
 
     /* -------------------------------------------- */
 
-
-  
-  /** @override */
-  _onDragStart(event) 
-  {
-    console.log("DEBUG: _onDragStart");
-    console.log(event);
-
-    //   let li = event.currentTarget.closest(".directory-item");
-
-    //   console.log("DEBUG: _onDragStart");
-    //   console.log(li);
-
-    //   const isActor = li.classList.contains("actor");
-    // const dragData = isActor ?
-    //   { type: "Actor", id: li.dataset.id, documentName: this.constructor.documentName } :
-    //   { type: this.constructor.documentName, id: li.dataset.entityId };
-    // event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
-    // this._dragType = dragData.type;
-
-    let li = event.currentTarget.closest(".directory-item");
-
-    let dragData = {type: 'Actor', id: li.dataset.entityId};
-
-    event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
-  }
 
 
 	/**
