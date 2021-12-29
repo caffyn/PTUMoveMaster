@@ -415,6 +415,14 @@ Hooks.on("ready", async () => {
 	ui.sidebar.render();
 });
 
+Hooks.on("renderChatMessage", (message) => {
+	if(!message.isRoll)
+	{
+		message.data.sound = null; // Suppress dice sounds for Move Master roll templates
+	}
+});
+  
+
 Hooks.on("endTurn", async (combat, actor, round_and_turn, diff, id) => {
 
 	if(game.user.isGM)
@@ -4728,41 +4736,43 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		roll2_hit = true;
 	}
 
-	await game.PTUMoveMaster.sendMoveRollMessage(moveName, acRoll, acRoll2, {
-		speaker: ChatMessage.getSpeaker({
-			actor: actor
-		}),
-		move: move,
-		moveName: moveName,
-		damageRoll: damageRoll,
-		damageRollTwoHits: damageRollTwoHits,
-		critDamageRoll: critDamageRoll,
-		critDamageRollOneHitOneCrit: critDamageRollOneHitOneCrit,
-		critDamageRollTwoCrits: critDamageRollTwoCrits,
-		templateType: MoveMessageTypes.FULL_ATTACK,
-		crit: crit,
-		crit2: crit2,
-		hasAC: hasAC,
-		hasExtraEffect: currentHasExtraEffect,
-		extraEffectText: currentExtraEffectText,
-		isUntyped: isUntyped,
-		isFiveStrike: isFiveStrike,
-		fiveStrikeHits: (fiveStrikeCount+1),
-		isDoubleStrike: isDoubleStrike,
-		hasSTAB: hasSTAB,
-		finalDB: finalDB,
-		targetEvasion: target_evasion,
-		targetEvasionType: target_evasion_type,
-		targeted: targeted,
-		targetName: target_name,
-		hit1: roll1_hit,
-		hit2: roll2_hit,
-		moveRange: move_range,
-		rangeToTarget: range_to_target,
-		inRange: in_range,
-		actorImage: actor_image,
-		targetImage: target_image
-	});//.then(data => console.log(data));
+	setTimeout( async () => { 
+		await game.PTUMoveMaster.sendMoveRollMessage(moveName, acRoll, acRoll2, {
+			speaker: ChatMessage.getSpeaker({
+				actor: actor
+			}),
+			move: move,
+			moveName: moveName,
+			damageRoll: damageRoll,
+			damageRollTwoHits: damageRollTwoHits,
+			critDamageRoll: critDamageRoll,
+			critDamageRollOneHitOneCrit: critDamageRollOneHitOneCrit,
+			critDamageRollTwoCrits: critDamageRollTwoCrits,
+			templateType: MoveMessageTypes.FULL_ATTACK,
+			crit: crit,
+			crit2: crit2,
+			hasAC: hasAC,
+			hasExtraEffect: currentHasExtraEffect,
+			extraEffectText: currentExtraEffectText,
+			isUntyped: isUntyped,
+			isFiveStrike: isFiveStrike,
+			fiveStrikeHits: (fiveStrikeCount+1),
+			isDoubleStrike: isDoubleStrike,
+			hasSTAB: hasSTAB,
+			finalDB: finalDB,
+			targetEvasion: target_evasion,
+			targetEvasionType: target_evasion_type,
+			targeted: targeted,
+			targetName: target_name,
+			hit1: roll1_hit,
+			hit2: roll2_hit,
+			moveRange: move_range,
+			rangeToTarget: range_to_target,
+			inRange: in_range,
+			actorImage: actor_image,
+			targetImage: target_image
+		});//.then(data => console.log(data));
+	}, 1000);
 
 	var moveSoundFile = ((move.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
 
@@ -4839,8 +4849,10 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 					}
 				}];
 
+			setTimeout( async () => {
 			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 			await TokenMagic.addFilters(target_token, dodge_params);
+			}, 1000);
 		}
 		else // Hit! Play hit animation on target.
 		{
@@ -4871,7 +4883,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 				}
 			}];
 
-			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
 			let damageSoundFile = "Hit%20Normal%20Damage.mp3";
 			if(crit == "hit")
