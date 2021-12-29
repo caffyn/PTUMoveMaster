@@ -342,6 +342,7 @@ Hooks.once('init', async function()
 		ApplyTrainingToActorsActivePokemon,
 		GetActorHealthColor,
 		ThisActorOrTheirTrainerHasDexEntry,
+		ActivateDigestionBuff,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -451,7 +452,7 @@ Hooks.on("preDeleteCombat", (combat, misc, tokenID) => {
 
 
 			}
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 		},
 		defaultYes: false 
 	})
@@ -539,7 +540,7 @@ Hooks.on("closeSettingsConfig", async (ExtendedSettingsConfig, S) => {
 });
 
 Hooks.on("renderChatMessage", (message, html, data) => {
-    setTimeout(() => {
+    setTimeout( async () => {
 		$(html).find(".skill-button-1").click("click", function(){game.PTUMoveMaster.RollSkillCheck(
 			this.dataset.skill
 		)});
@@ -610,7 +611,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 			game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is fainted - automatically skipping to next turn.");
 			await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
 			await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-			setTimeout(() => {  
+			setTimeout( async () => {  
 				game.combat.nextTurn();
 			}, 100);
 		}
@@ -621,7 +622,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is frozen - automatically skipping to end of turn.");
 				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
 				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-				setTimeout(() => {  
+				setTimeout( async () => {  
 					game.combat.nextTurn();
 				}, 100);
 			}
@@ -630,7 +631,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 				game.PTUMoveMaster.chatMessage(current_actor, current_actor.name+" is asleep - automatically skipping to end of turn.");
 				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
 				await game.PTUMoveMaster.TakeAction(current_actor, "Standard");
-				setTimeout(() => {  
+				setTimeout( async () => {  
 					game.combat.nextTurn();
 				}, 100);
 			}
@@ -648,7 +649,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 
 	if(current_token_species && not_fainted)
 	{
-		setTimeout(() => {
+		setTimeout( async () => {
 			game.ptu.PlayPokemonCry(current_token_species);
 		}, 500);
 	}
@@ -659,8 +660,10 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 
 Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 
-	let current_actor = combatant._actor;
-	let current_token_species = current_actor.data.data.species;
+	console.log("DEBUG: Hooks.on(endTurn): combatant");
+	console.log(combatant);
+	let current_actor = combatant.actor;
+	// let current_token_species = current_actor.data.data.species;
 	let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
 	let actor_type_1 = "Untyped";
 	let actor_type_2 = "Untyped";
@@ -777,7 +780,7 @@ Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 		actor_type_2 = current_actor.data.data.typing[1];
 	}
 
-	setTimeout(() => {
+	setTimeout( async () => {
 
 		if(currentWeather == "Sandstorm")
 		{
@@ -854,7 +857,8 @@ Hooks.on("controlToken", async (token, selected) => {
 		else
 		{
 			game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
-			game.PTUMoveMaster.MoveMasterSidebar.render(true);
+			await game.PTUMoveMaster.MoveMasterSidebar.render(true);
+			await game.PTUMoveMaster.MoveMasterSidebar.close();
 		}
 	}
 	
@@ -884,7 +888,7 @@ Hooks.on("updateToken", async (token, change, diff, userid) => {
 			if(change.x > 0 || change.y > 0)
 			{
 				game.PTUMoveMaster.TakeAction(current_actor, "Shift");
-				setTimeout(() => { 
+				setTimeout( async () => { 
 					PTUAutoFight().ChatWindow(current_actor);
 				}, 1000);
 			}
@@ -970,11 +974,11 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						
 						if(enable_pokeball_animation)
 						{
-							await target_token.update({ "alpha": (0) });
+							await target_token.document.update({ "alpha": (0) });
 						}
 	
 						// ui.notifications.info(`Target square is ${rangeToTarget}m away, which is within your ${throwRange}m throwing range!`);
-						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+						await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 	
 						let transitionType = 9;
 						let targetImagePath = item_icon_path+pokeball+".png";
@@ -1078,7 +1082,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 	
 							setTimeout( async () => {  
 								await target_token.TMFXaddUpdateFilters(pokeballShoop_params); 
-								await target_token.update({ "alpha": (1) });
+								await target_token.document.update({ "alpha": (1) });
 							}, 1000);
 						}
 						setTimeout( async () => {  
@@ -1087,7 +1091,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							{
 								if(game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 								{
-									await target_token.update({
+									await target_token.document.update({
 										// "scale": original_scale,
 										"bar1.attribute": "health",
 										"displayBars": 50,
@@ -1097,7 +1101,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 								}
 								else
 								{
-									await target_token.update({
+									await target_token.document.update({
 										// "scale": original_scale,
 										"displayName": 50,
 										"alpha": (1)
@@ -1106,7 +1110,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							}
 							else if (game.settings.get("PTUMoveMaster", "alwaysDisplayTokenHealth") == true)
 							{
-								await target_token.update({
+								await target_token.document.update({
 									// "scale": original_scale,
 									"bar1.attribute": "health",
 									"displayBars": 50,
@@ -1115,18 +1119,18 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 							}
 							else
 							{
-								// await target_token.update({"scale": original_scale, "alpha": (1) });
-								await target_token.update({ "alpha": (1) });
+								// await target_token.document.update({"scale": original_scale, "alpha": (1) });
+								await target_token.document.update({ "alpha": (1) });
 							}
 
 							// setTimeout( async() =>{
-							// 	await target_token.update({"scale": original_scale});
+							// 	await target_token.document.update({"scale": original_scale});
 							// }, 500);
 							
 						}, 2000);
 	
 						setTimeout( async () => { 
-							AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true); 
+							await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true); 
 						}, 500);
 					}
 				}
@@ -1136,7 +1140,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					{
 						if(always_display_token_health)
 						{
-							await target_token.update({
+							await target_token.document.update({
 								"name": (current_token_nature+current_token_species),
 								"bar1.attribute": "health",
 								"displayBars": 50,
@@ -1146,7 +1150,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 						}
 						else
 						{
-							await target_token.update({
+							await target_token.document.update({
 								"name": (current_token_nature+current_token_species),
 								"displayName": 50,
 								"alpha": (1)
@@ -1155,7 +1159,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					}
 					else if (always_display_token_health)
 					{
-						await target_token.update({
+						await target_token.document.update({
 							// "name": (current_token_nature+current_token_species),
 							"bar1.attribute": "health",
 							"displayBars": 50,
@@ -1164,14 +1168,14 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					}
 					else
 					{
-						await target_token.update({/*"name": (current_token_nature+current_token_species),*/ "alpha": (1) });
+						await target_token.document.update({/*"name": (current_token_nature+current_token_species),*/ "alpha": (1) });
 					}	
 					game.ptu.PlayPokemonCry(current_token_species);	
 				}
 				
 				if(game.combat)
 				{
-					target_token.toggleCombat().then(() => game.combat.rollAll({rollMode: 'gmroll'}));
+					await target_token.toggleCombat().then(() => game.combat.rollAll({rollMode: 'gmroll'}));
 					// game.combat.rollAll({rollMode: 'gmroll'});
 	
 				}
@@ -1248,74 +1252,74 @@ var move_stage_changes = {
 	// 	"weather": "Clear"
 	// },
 
-	// "Example Move Name":	{
+	"Example Move Name":	{
 
-	// 	"self_effects":
-	// 	{
-	// 		"healing":				{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"healing_pct":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"set_hitpoint_to":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"set_hitpoint_to_pct":	{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"inflict_ticks":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"heal_ticks":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"condition_cure":		
-	// 		{
-	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		},
-	// 		"condition_inflict":	
-	// 		{ 
-	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
-	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
-	// 		},
-	// 		"stage_change":			{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
-	// 		"crit_mod":				{"value": 0, "duration": {"rounds":0} },
-	// 		"accuracy_mod":			{"value": 0, "duration": {"rounds":0} },
-	// 		"substitute":			{"value": 0.25, "effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
-	// 		"above_battlefield":	{"duration": {"rounds":1} },
-	// 		"below_battlefield":	{"duration": {"rounds":1} },
-	// 		"replace_actor_type": 	{"value": ["Fire", "Water"], "duration": {"rounds":0, "scene": true} },
-	// 		"add_actor_type": 		{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
-	// 		"remove_actor_type": 	{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
-	// 	},
+		"self_effects":
+		{
+			"healing":				{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"healing_pct":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"set_hitpoint_to":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"set_hitpoint_to_pct":	{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"inflict_ticks":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"heal_ticks":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"condition_cure":		
+			{
+				"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+				"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+			},
+			"condition_inflict":	
+			{ 
+				"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+				"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+			},
+			"stage_change":			{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
+			"crit_mod":				{"value": 0, "duration": {"rounds":0} },
+			"accuracy_mod":			{"value": 0, "duration": {"rounds":0} },
+			"substitute":			{"value": 0.25, "effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+			"above_battlefield":	{"duration": {"rounds":1} },
+			"below_battlefield":	{"duration": {"rounds":1} },
+			"replace_actor_type": 	{"value": ["Fire", "Water"], "duration": {"rounds":0, "scene": true} },
+			"add_actor_type": 		{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+			"remove_actor_type": 	{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+		},
 		
-	// 	"target_effects":
-	// 	{
-	// 		"healing":				{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"healing_pct":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"set_hitpoint_to":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"set_hitpoint_to_pct":	{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"inflict_ticks":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"heal_ticks":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		"condition_cure":		
-	// 		{
-	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
-	// 		},
-	// 		"condition_inflict":	
-	// 		{ 
-	// 			"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
-	// 			"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
-	// 		},
-	// 		"stage_change":			{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
-	// 		"crit_mod":				{"value": 0, "duration": {"rounds":0} },
-	// 		"accuracy_mod":			{"value": 0, "duration": {"rounds":0} },
-	// 		"substitute":			{"value": 0.25, "effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
-	// 		"above_battlefield":	{"duration": {"rounds":1} },
-	// 		"below_battlefield":	{"duration": {"rounds":1} },
-	// 		"replace_actor_type": 	{"value": ["Fire", "Water"], "duration": {"rounds":0, "scene": true} },
-	// 		"add_actor_type": 		{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
-	// 		"remove_actor_type": 	{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
-	// 	},
+		"target_effects":
+		{
+			"healing":				{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"healing_pct":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"set_hitpoint_to":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"set_hitpoint_to_pct":	{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"inflict_ticks":		{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"heal_ticks":			{ "value": {"default":50, "Clear":50, "Sunny":75, "Rainy":25, "Hail":25, "Sandstorm":25 }, "effect_threshold": 20, "effect_even_or_odd": "even" },
+			"condition_cure":		
+			{
+				"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+				"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even" },
+			},
+			"condition_inflict":	
+			{ 
+				"Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+				"Badly Poisoned": {"effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+			},
+			"stage_change":			{"atk":0, "def":0, "spatk":0, "spdef":0, "spd":0 },
+			"crit_mod":				{"value": 0, "duration": {"rounds":0} },
+			"accuracy_mod":			{"value": 0, "duration": {"rounds":0} },
+			"substitute":			{"value": 0.25, "effect_threshold": 20, "effect_even_or_odd": "even", "duration": {"rounds":0, "scene": false} },
+			"above_battlefield":	{"duration": {"rounds":1} },
+			"below_battlefield":	{"duration": {"rounds":1} },
+			"replace_actor_type": 	{"value": ["Fire", "Water"], "duration": {"rounds":0, "scene": true} },
+			"add_actor_type": 		{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+			"remove_actor_type": 	{"value": ["Ghost", "Fairy"], "duration": {"rounds":0, "scene": true} },
+		},
 
-	// 	"harms_loyalty":		false,
-	// 	"weather": 				{"value": "Rainy", "duration":{"rounds":5, "scene": false}},
-	// 	"crit-range": 			20,
-	// 	"recoil_pct": 			0.33,
-	// 	"dynamic_damage_base": 	{ "formula_to_eval_to_DB": "" },
-	// 	"dynamic_damage_mod": 	{ "formula_to_eval_to_damage_add": "", "formula_to_eval_to_damage_subtract": "" },
-	// 	"use_a_different_move_from_this_list_instead": ["Thunder", "Quick Attack", ],
-	// },
+		"harms_loyalty":		false,
+		"weather": 				{"value": "Rainy", "duration":{"rounds":5, "scene": false}},
+		"crit-range": 			20,
+		"recoil_pct": 			0.33,
+		"dynamic_damage_base": 	{ "formula_to_eval_to_DB": "" },
+		"dynamic_damage_mod": 	{ "formula_to_eval_to_damage_add": "", "formula_to_eval_to_damage_subtract": "" },
+		"use_a_different_move_from_this_list_instead": ["Thunder", "Quick Attack", ],
+	},
 
 	"Calm Mind"  :   {
 		"spatk" : 1,
@@ -1702,6 +1706,134 @@ const Orders_Inspired_Training_Mark_on = 	"<div title='Inspired Orders: +1 bonus
 const Orders_Critical_Moment_Mark_on = 	"<div title='Critical Moment: The bonuses from your Pokemon’s [Training] are tripled until the end of your next turn.' 		style='background-color: #333333; color:#cccccc; border-left:5px solid green; 		width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Critical Moment!</div>";
 
 
+const nature_flavor_table = 
+{
+	"Cuddly":	["salty", "spicy"],
+	"Distracted":["salty", "sour"],
+	"Proud":	["salty", "dry"],
+	"Decisive":	["salty", "bitter"],
+	"Patient":	["salty", "sweet"],
+	"Desperate":["spicy", "salty"],
+	"Lonely":	["spicy", "sour"],
+	"Adamant":	["spicy", "dry"],
+	"Naughty":	["spicy", "bitter"],
+	"Brave":	["spicy", "sweet"],
+	"Stark":	["sour", "salty"],
+	"Bold":		["sour", "spicy"],
+	"Impish":	["sour", "dry"],
+	"Lax":		["sour", "bitter"],
+	"Relaxed":	["sour", "sweet"],
+	"Curious":	["dry", "salty"],
+	"Modest":	["dry", "spicy"],
+	"Mild":		["dry", "sour"],
+	"Rash":		["dry", "bitter"],
+	"Quiet":	["dry", "sweet"],
+	"Dreamy":	["bitter", "salty"],
+	"Calm":		["bitter", "spicy"],
+	"Gentle":	["bitter", "sour"],
+	"Careful":	["bitter", "dry"],
+	"Sassy":	["bitter", "sweet"],
+	"Skittish":	["sweet", "salty"],
+	"Timid":	["sweet", "spicy"],
+	"Hasty":	["sweet", "sour"],
+	"Jolly":	["sweet", "dry"],
+	"Naive":	["sweet", "bitter"],
+	"Hardy":	["neutral", "neutral"],
+	"Docile":	["neutral", "neutral"],
+	"Bashful":	["neutral", "neutral"],
+	"Quirky":	["neutral", "neutral"],
+	"Serious":	["neutral", "neutral"],
+	"Composed":	["neutral", "neutral"]
+};
+
+const digestionsBuffs = 
+{
+	"candy bar": {"description": "Snack. Grants a Digestion Buff that heals 5 Hit Points.", "self_effects":{ "healing": 5 } },
+	"honey": {"description": "Snack. Grants a Digestion Buff that heals 5 Hit Points. May be used as Bait.", "self_effects":{ "healing": 5 } },
+	"leftovers": {"description": "Snack. When their Digestion Buff is traded in, the user recovers 1/16th of their max Hit Points at the beginning of each turn for the rest of the encounter.", "self_effects":{ "healing_fraction": 16 }, "duration":{ "scene": true } },
+	"black sludge": {"description": "Poison-Type Pokémon may consume the Black Sludge as a Snack Item; when the Digestion Buff is traded in, they recover 1/8th of their Max Hit Points at the beginning of each turn for the rest of the encounter.", "self_effects":{ "healing_fraction": 8 }, "duration":{ "scene": true } },
+	
+	"salty surprise": {"description": "The user may trade in this Snack’s Digestion Buff when being hit by an attack to gain 5 Temporary Hit Points. If the user likes Salty Flavors, they gain 10 Temporary Hit Points Instead. If the user dislikes Salty Food, they become Enraged.", "flavor":"salty", "self_effects":{ "healing": 5 }, "enjoyed_effects":{ "healing": 10 }, "disliked_effects":{ "condition_inflict": "Rage" }, },
+	"spicy wrap": {"description": "The user may trade in this Snack’s Digestion Buff when making a Physical attack to deal +5 additional Damage. If the user prefers Spicy Food, it deals +10 additional Damage instead. If the user dislikes Spicy Food, they become Enraged.", "flavor":"spicy", "self_effects":{ "physical_damage_mod": 5 }, "enjoyed_effects":{ "physical_damage_mod": 10 }, "disliked_effects":{ "condition_inflict": "Rage" }, },
+	"sour candy": {"description": "The user may trade in this Snack’s Digestion Buff when being hit by a Physical Attack to increase their Damage Reduction by +5 against that attack. If the user prefers Sour Food, they gain +10 Damage Reduction instead. If the user dislikes Sour Food, they become Enraged.", "flavor":"sour", "self_effects":{ "physical_damage_reduction_mod": 5 }, "enjoyed_effects":{ "physical_damage_reduction_mod": 10 }, "disliked_effects":{ "condition_inflict": "Rage" }, },
+	"dry wafer": {"description": "The user may trade in this Snack’s Digestion Buff when making a Special attack to deal +5 additional Damage. If the user prefers Dry Food, it deals +10 additional Damage instead. If the user dislikes Dry Food, they become Enraged.", "flavor":"dry", "self_effects":{ "special_damage_mod": 5 }, "enjoyed_effects":{ "special_damage_mod": 10 }, "disliked_effects":{ "condition_inflict": "Rage" }, },
+	"bitter treat": {"description": "The user may trade in this Snack’s Digestion Buff when being hit by a Special Attack to increase their Damage Reduction by +5 against that attack. If the user prefers Bitter Food, they gain +10 Damage Reduction instead. If the user dislikes Bitter Food, they become Enraged.", "flavor":"bitter", "self_effects":{ "special_damage_reduction_mod": 5 }, "enjoyed_effects":{ "special_damage_reduction_mod": 10 }, "disliked_effects":{ "condition_inflict": "Rage" }, },
+	"sweet confection": {"description": "The user may trade in this Snack’s Digestion Buff to gain +4 Evasion until the end of their next turn. If the user prefers Sweet Food, they gain +4 Accuracy as well. If the user dislikes Sweet Food, they become Enraged.", "flavor":"sweet", "self_effects":{ "evasion_mod": 4 }, "enjoyed_effects":{ "evasion_mod": 4, "accuracy_mod": 4 }, "disliked_effects":{ "condition_inflict": "Rage" }, "duration":{ "rounds":1 } },
+
+	"mental herb": {"description": "Cures all Volatile Status Effects.", "self_effects":{ "cure_condition": "BadSleep", "cure_condition": "Sleep", "cure_condition": "Flinch", "cure_condition": "Cursed", "cure_condition": "Confused", "cure_condition": "Disabled", "cure_condition": "Infatuation", "cure_condition": "Rage", "cure_condition": "Suppressed", } },
+	"power herb": {"description": "Eliminates the Set-Up turn of Moves with the Set-Up Keyword.", "self_effects":{ "negate_setup":true } },
+	"white herb": {"description": "Any negative Combat Stages are set to 0.", "self_effects":{ "reset_negative_combat_stages":true } },
+
+	"cheri berry": {"description": "Cures Paralysis, Cool Poffin Ingredient.", "self_effects":{ "cure_condition": "Paralysis" } },
+	"chesto berry": {"description": "Cures Sleep, Beauty Poffin Ingredient", "self_effects":{ "cure_condition": "Sleep" } },
+	"pecha berry": {"description": "Cures Poison, Cute Poffin Ingredient", "self_effects":{ "cure_condition": "Poisoned" } },
+	"rawst berry": {"description": "Cures Burn, Smart Poffin Ingredient", "self_effects":{ "cure_condition": "Burned" } },
+	"aspear berry": {"description": "Cures Freeze, Tough Poffin Ingredient", "self_effects":{ "cure_condition": "Frozen" } },
+	"oran berry": {"description": "Restores 5 Hit Points", "self_effects":{ "healing": 5 } },
+	"persim berry": {"description": "Cures Confusion", "self_effects":{ "cure_condition": "Confused" } },
+	"razz berry": {"description": "Cool Poffin Ingredient" },
+	"bluk berry": {"description": "Beauty Poffin Ingredient" },
+	"nanab berry": {"description": "Cute Poffin Ingredient" },
+	"wepear berry": {"description": "Smart Poffin Ingredient" },
+	"pinap berry": {"description": "Tough Poffin Ingredient" },
+	"lum berry": {"description": "Cures any single status ailment", "self_effects":{ "cure_any_one_condition":true } },
+	"sitrus berry": {"description": "Restores 15 Hit Points", "self_effects":{ "healing": 15 } },
+	"figy berry": {"description": "Spicy Treat, Cool Poffin Ingredient.", "flavor":"spicy", "self_effects":{ "healing_fraction_divisor": 8 }, "enjoyed_effects":{ "healing_fraction_divisor": 6 }, "disliked_effects":{ "condition_inflict": "Confused" }, },
+	"wiki berry": {"description": "Dry Treat, Beauty Poffin Ingredient.", "flavor":"dry", "self_effects":{ "healing_fraction_divisor": 8 }, "enjoyed_effects":{ "healing_fraction_divisor": 6 }, "disliked_effects":{ "condition_inflict": "Confused" }, },
+	"mago berry": {"description": "Sweet Treat, Cute Poffin Ingredient.", "flavor":"sweet", "self_effects":{ "healing_fraction_divisor": 8 }, "enjoyed_effects":{ "healing_fraction_divisor": 6 }, "disliked_effects":{ "condition_inflict": "Confused" }, },
+	"aguav berry": {"description": "Bitter Treat, Smart Poffin Ingredient.", "flavor":"bitter", "self_effects":{ "healing_fraction_divisor": 8 }, "enjoyed_effects":{ "healing_fraction_divisor": 6 }, "disliked_effects":{ "condition_inflict": "Confused" }, },
+	"iapapa berry": {"description": "Sour Treat, Tough Poffin Ingredient.", "flavor":"sour", "self_effects":{ "healing_fraction_divisor": 8 }, "enjoyed_effects":{ "healing_fraction_divisor": 6 }, "disliked_effects":{ "condition_inflict": "Confused" }, },
+	"liechi berry": {"description": "+1 Attack CS.", "self_effects":{ "stage_change":{"atk":1}, } },
+	"ganlon berry": {"description": "+1 Defense CS.", "self_effects":{ "stage_change":{"def":1}, } },
+	"salac berry": {"description": "+1 Speed CS.", "self_effects":{ "stage_change":{"spd":1}, } },
+	"petaya berry": {"description": "+1 Special Attack CS.", "self_effects":{ "stage_change":{"spatk":1}, } },
+	"apicot berry": {"description": "+1 Special Defense CS.", "self_effects":{ "stage_change":{"spdef":1}, } },
+	"lansat berry": {"description": "Increases Critical Range by +1 for the remainder of the encounter.", "self_effects":{ "crit_mod":{"value": 1, "duration": {"scene":true} }, } },
+	"starf berry": {"description": "+2 CS to a random Stat. May be used only at 25% HP or lower.", "self_effects":{ "stage_change":{"random":2}, } },
+	"enigma berry": {"description": "User gains Temporary HP equal to 1/6th of their Max HP when hit by a Super Effective Move", "self_effects":{ "temp_pct_HP_divisor":6, } },
+	"micle berry": {"description": "Increases Accuracy by +1", "self_effects":{ "accuracy_mod":{"value": 1, "duration": {"scene":true} }, } },
+	"jaboca berry": {"description": "Foe dealing Physical Damage to the user loses 1/8 of their Maximum HP.", "physical_damager_effects":{ "damage_pct_divisor":8, } },
+	"rowap berry": {"description": "Foe dealing Special Damage to the user loses 1/8 of their Maximum HP.", "special_damager_effects":{ "damage_pct_divisor":8, } },
+	"cornn berry": {"description": "Cures Disabled Condition", "self_effects":{ "cure_condition": "Disabled" } },
+	"magost berry": {"description": "Cures Disabled Condition", "self_effects":{ "cure_condition": "Rage" } },
+	"rabuta berry": {"description": "Cures Disabled Condition", "self_effects":{ "cure_condition": "Suppressed" } },
+	"nomel berry": {"description": "Cures Disabled Condition", "self_effects":{ "cure_condition": "Infatuated" } },
+	"spelon berry": {"description": "Cool or Beauty Poffin Ingredient" },
+	"pamtre berry": {"description": "Cute or Beauty Poffin Ingredient" },
+	"watmel berry": {"description": "Cute or Smart Poffin Ingredient" },
+	"durin berry": {"description": "Smart or Tough Poffin Ingredient" },
+	"belue berry": {"description": "Cool or Tough Poffin Ingredient" },
+	"leppa berry": {"description": "Restores a Scene Move.", "self_effects":{ "refresh_one_scene_move": true } },
+	"pomeg berry": {"description": "HP Suppressant." },
+	"kelpsy berry": {"description": "Attack Suppressant." },
+	"qualot berry": {"description": "Defense Suppressant." },
+	"hondew berry": {"description": "Special Attack Suppressant." },
+	"grepa berry": {"description": "Special Defense Suppressant." },
+	"tamato berry": {"description": "Speed Suppressant." },
+	"occa berry": {"description": "Weakens foe’s super effective Fire-type move.", "self_effects":{ "resist_SE_move_of_type": "fire" } },
+	"passho berry": {"description": "Weakens foe’s super effective Water-type move.", "self_effects":{ "resist_SE_move_of_type": "water" } },
+	"wacan berry": {"description": "Weakens foe’s super effective Electric-type move.", "self_effects":{ "resist_SE_move_of_type": "electric" } },
+	"rindo berry": {"description": "Weakens foe’s super effective Grass-type move.", "self_effects":{ "resist_SE_move_of_type": "grass" } },
+	"yache berry": {"description": "Weakens foe’s super effective Ice-type move.", "self_effects":{ "resist_SE_move_of_type": "ice" } },
+	"chople berry": {"description": "Weakens foe’s super effective Fighting-type move.", "self_effects":{ "resist_SE_move_of_type": "fighting" } },
+	"kebia berry": {"description": "Weakens foe’s super effective Poison-type move.", "self_effects":{ "resist_SE_move_of_type": "poison" } },
+	"shuca berry": {"description": "Weakens foe’s super effective Ground-type move.", "self_effects":{ "resist_SE_move_of_type": "ground" } },
+	"coba berry": {"description": "Weakens foe’s super effective Flying-type move.", "self_effects":{ "resist_SE_move_of_type": "flying" } },
+	"payapa berry": {"description": "Weakens foe’s super effective Psychic-type move.", "self_effects":{ "resist_SE_move_of_type": "psychic" } },
+	"tanga berry": {"description": "Weakens foe’s super effective Bug-type move.", "self_effects":{ "resist_SE_move_of_type": "bug" } },
+	"charti berry": {"description": "Weakens foe’s super effective Rock-type move.", "self_effects":{ "resist_SE_move_of_type": "rock" } },
+	"kasib berry": {"description": "Weakens foe’s super effective Ghost-type move.", "self_effects":{ "resist_SE_move_of_type": "ghost" } },
+	"haban berry": {"description": "Weakens foe’s super effective Dragon-type move.", "self_effects":{ "resist_SE_move_of_type": "dragon" } },
+	"colbur berry": {"description": "Weakens foe’s super effective Dark-type move.", "self_effects":{ "resist_SE_move_of_type": "dark" } },
+	"babiri berry": {"description": "Weakens foe’s super effective Steel-type move.", "self_effects":{ "resist_SE_move_of_type": "steel" } },
+	"chilan berry": {"description": "Weakens foe’s super effective Normal-type move.", "self_effects":{ "resist_SE_move_of_type": "normal" } },
+	"roseli berry": {"description": "Weakens foe’s super effective Fairy-type move.", "self_effects":{ "resist_SE_move_of_type": "fairy" } },
+	"custap berry": {"description": "Grants the Priority keyword to any Move. May only be used at 25% HP or lower.", "self_effects":{ "grant_priority": true } },
+	"kee berry": {"description": "+1 Defense CS. Activates as a Free Action when hit by a Physical Move.", "self_effects":{ "stage_change":{"def":1}, } },
+	"maranga berry": {"description": "+1 Special Defense CS. Activates as a Free Action when hit by a Special Move.", "self_effects":{ "stage_change":{"spdef":1}, } },
+
+};
+
 // const AbilityIcon = "Ability: ";
 const AbilityIcon = "";
 
@@ -1957,7 +2089,7 @@ export function PTUAutoFight()
 					}
 				}
 			}
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 		}
 		
 	};
@@ -1979,7 +2111,7 @@ export function PTUAutoFight()
 	async function ChatWindow(actor)
 	{
 
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 
 		let target = Array.from(game.user.targets)[0];
 		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
@@ -2031,19 +2163,19 @@ export function PTUAutoFight()
 		buttons["skillsMenu"] = {noRefresh: true, id:"skillsMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Skills 💬"+"</div></center>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowSkillsMenu(actor);
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
 		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowStruggleMenu(actor);
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
 		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
 		callback: async () => {
 			await game.PTUMoveMaster.ShowManeuverMenu(actor);
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 		}};
 
 		if(actor.data.type == "character")
@@ -2073,7 +2205,7 @@ export function PTUAutoFight()
 				buttons["pokedexScanBigButton"] = {noRefresh:true, id:"pokedexScanBigButton", label: "<center><div style='background-color:none;color:black;border-bottom:2px solid black;width:"+bigButtonWidth+";height:35px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"<img title='No Pokedex to Use' src='"+AlternateIconPath+"Gen_I_dex_No.png' style='height:33px; border:none'></div></center>",
 				callback: async () => {
 					ui.notifications.warn("You have no Pokedex in your inventory!");
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 			}};
 			}
 			
@@ -2089,7 +2221,7 @@ export function PTUAutoFight()
 			if(trainer_token_on_field)
 			{
 				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+bigButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"🔎 Select Trainer 🔍"+"</div></center>",
-				callback: () => {
+				callback: async () => {
 			
 					trainer_token_on_field.control(true);
 					//PerformStruggleAttack ("Normal", "Physical");
@@ -2099,10 +2231,10 @@ export function PTUAutoFight()
 			else
 			{
 				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<center><div style='background-color:lightred;color:black;border:2px solid black;width:"+bigButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"❌ Trainer Unavailable ❌"+"</div></center>",
-				callback: () => {
+				callback: async () => {
 			
 					ui.notifications.warn("Trainer is not on the field.")
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, false);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, false);
 				}};
 			}
 		}
@@ -2187,7 +2319,7 @@ export function PTUAutoFight()
 							callback: async () => 
 							{
 								await game.PTUMoveMaster.ApplyTrainingToActorsActivePokemon(actor, order, "off", active_pokemon_list);
-								AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 								await game.PTUMoveMaster.TakeAction(actor, "Standard")
 							}
 						};
@@ -2201,7 +2333,7 @@ export function PTUAutoFight()
 							callback: async () => 
 							{
 								await game.PTUMoveMaster.ApplyTrainingToActorsActivePokemon(actor, order, "on", active_pokemon_list);
-								AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 								await game.PTUMoveMaster.TakeAction(actor, "Standard")
 							}
 						};
@@ -2219,7 +2351,7 @@ export function PTUAutoFight()
 							label: OrdersToggleAuto_on_Mark,
 							callback: async () => 
 							{
-								// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 								await game.PTUMoveMaster.ActorSetAutoOrders(actor, order, false);
 							}
 						};
@@ -2233,7 +2365,7 @@ export function PTUAutoFight()
 							label: OrdersToggleAuto_off_Mark,
 							callback: async () => 
 							{
-								// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+								// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 								await game.PTUMoveMaster.ActorSetAutoOrders(actor, order, true);
 							}
 						};
@@ -2332,19 +2464,6 @@ export function PTUAutoFight()
 															</div>';
 					}
 
-					// let recalled_pokemon_pokeball_image = '<div class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;"/>\
-					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter:drop-shadow(1px 1px 2px black);"/>\
-					// 										</div>';
-
-					// if(pokemon_is_active)
-					// {
-					// 	recalled_pokemon_pokeball_image = '<div class="belt-pokeball entity actor" '+draggable_attr_string+'" style="position:absolute; top:0; left:5px; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none;">\
-					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+item_icon_path+pokeball_type+'.png" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: blur(5px);"/>\
-					// 											<img class="directory-item belt-pokeball entity actor" '+draggable_attr_string+'"  src="'+recalled_pokemon.data.img+'" style="position:absolute; top:0; left:0; border:none; max-width: 50px; max-height: 50px; padding:none; margins:none; filter: brightness(0%);"/>\
-					// 										</div>';
-					// }
-
 					
 					buttons[("recalled_pokemon_PokeballButton"+recalled_pokemon.id)] = 
 					{
@@ -2353,31 +2472,127 @@ export function PTUAutoFight()
 						label: "<div title='"+recalled_pokemon.name+"'	style='	background-color: #333333;	color:#cccccc;	border-left:5px solid "+owned_pokemon_health_color+"; 	width:100%; color: #666;	height:50px;font-size:16px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;	align-items: center;'>"+recalled_pokemon_pokeball_image+"</div>",
 						callback: () => 
 						{
+							// let owned_pokemon_token = recalled_pokemon.getActiveTokens().slice(-1)[0];
+							// owned_pokemon_token.control(true);
 							recalled_pokemon.sheet.render(true);
 						}
 					};
-
-					// let this_img_tag = document.querySelector("data-entity-id="+recalled_pokemon.id);
-					// console.log("this_img_tag");
-					// console.log(this_img_tag);
-					// this_img_tag.addEventListener("dragstart", _onDragStart);
-
-					// buttons[("recalled_pokemon_PokeballButton"+recalled_pokemon.id)].addEventListener("dragstart", _onDragStart);
-
-					// $('.directory-item .belt-pokeball').on("dragstart", game.PTUMoveMaster.MoveMasterSidebar._onDragStart);
-
-					// $('.directory-item.belt-pokeball').on("dragstart", (event) => {
-					// 	console.log("DEBUG: dragstart");
-					// 	let li = event.currentTarget.closest(".directory-item.belt-pokeball");
-					// 	let dragData = {type: 'Actor', id: li.dataset.entityId};
-					// 	event.dataTransfer.setData("text/plain", JSON.stringify(dragData));
-					// });
-
-					
 				}
 			}
 
 		}
+
+
+
+		buttons["heldItemDivider"] = {noRefresh: true, id:"heldItemDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_HeldItem.png' style='border:none; width:200px;'>",
+		callback: () => {
+
+		}};
+
+		if( (actor.data.data.heldItem.toLowerCase() != "none") && (actor.data.data.heldItem.toLowerCase() != "") )
+		{
+			let heldItem = actor.data.data.heldItem.toLowerCase();
+
+			let heldItem_color = "darkgray";
+			let heldItem_description = "";
+
+			let item_to_describe = game.ptu.items.find(i => i.name.toLowerCase().includes(heldItem.toLowerCase()));
+      		if(item_to_describe) 
+			{
+				heldItem_description = item_to_describe.data.data.effect;
+			}
+
+			let heldItem_item_icon = await game.PTUMoveMaster.GetItemArt(heldItem);
+
+			let heldItem_mark = 	"<div style='background-image: url(\""+heldItem_item_icon+"\"); background-size: contain; background-repeat: no-repeat; background-position: left center; background-color: #333333; color:#cccccc; border-left:5px solid "+heldItem_color+"; width:100%; height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'><p title='"+heldItem_description+"'>"+heldItem+"</p></div>";
+
+			console.log("DEBUG: heldItem");
+			console.log(heldItem);
+
+			buttons["heldItem"] = 
+			{
+				id:"heldItem", 
+				label: heldItem_mark,
+				callback: async () => 
+				{
+					// await game.PTUMoveMaster.ApplyTrainingToActorsActivePokemon(actor, order, "off", active_pokemon_list);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				}
+			};
+		}
+		else
+		{
+			const HeldItem_none_Mark = 	"<div style='background-color: #333333; color:#666666; border-left:5px solid black;	width:100%;	height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'><p  title='No Held Item'>No Held Item</p></div>";
+
+			buttons["heldItem"] = 
+			{
+				noRefresh: true,
+				id:"heldItem", 
+				label: HeldItem_none_Mark,
+				callback: async () => 
+				{
+					// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				}
+			};
+		}
+
+
+		buttons["digestionBuffDivider"] = {noRefresh: true, id:"digestionBuffDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_DigestionBuff.png' style='border:none; width:200px;'>",
+		callback: () => {
+
+		}};
+
+		if(actor.data.data.digestionBuff)
+		{
+			let digestionBuff = actor.data.data.digestionBuff.toLowerCase();
+			let digestionBuffState = false;
+			let digestionBuffState_description = digestionsBuffs[digestionBuff]["description"];
+			let digestionBuffState_color = "darkgray";
+
+			if(actor.data.flags)
+			{
+				if(actor.data.flags.ptu)
+				{
+					if(actor.data.flags.ptu.digestionBuffActive)
+					{
+						digestionBuffState = true;
+						digestionBuffState_color = "green";
+					}
+				}
+			}
+
+			let disgestion_item_icon = await game.PTUMoveMaster.GetItemArt(digestionBuff);
+
+			let digestion_mark = 	"<div  style='background-image: url(\""+disgestion_item_icon+"\"); background-size: contain; background-repeat: no-repeat; background-position: left center; background-color: #333333; color:#cccccc; border-left:5px solid "+digestionBuffState_color+"; width:100%; height:25px;font-size:20px; font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'><p title='"+digestionBuffState_description+"'>"+digestionBuff+"</p></div>";
+
+			buttons["digestionBuff"] = 
+			{
+				id:"digestionBuff", 
+				label: digestion_mark,
+				callback: async () => 
+				{
+					await game.PTUMoveMaster.ActivateDigestionBuff(actor, digestionBuff, digestionBuffState);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				}
+			};
+		}
+		else
+		{
+			const DigestionBuff_none_Mark = 	"<div style='background-color: #333333; color:#666666; border-left:5px solid black;	width:100%;	height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'><p title='No Digestion Buff'>No Digestion Buff</p></div>";
+
+			buttons["digestionBuff"] = 
+			{
+				noRefresh: true,
+				id:"digestionBuff", 
+				label: DigestionBuff_none_Mark,
+				callback: async () => 
+				{
+					// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				}
+			};
+		}
+
+
 
 		buttons["abilityDivider"] = {noRefresh: true, id:"abilityDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Abilities.png' style='border:none; width:200px;'>",
 		callback: () => {
@@ -2425,7 +2640,7 @@ export function PTUAutoFight()
 			buttons[currentid]={id:currentid, label: "<center><div title='"+(item_data.frequency+"\n"+item_data.effect).replace("'","&#39;")+"' style='background-image: url("+AbilityActionBackground+");background-color: #333333; color:#cccccc; border-left:5px solid darkgray; width:200px; height:25px;font-size:20px;font-family:Modesto Condensed;display: flex;justify-content: center;align-items: center;'>"+AbilityIcon+currentlabel+"</div></center>",
 				callback: async () => {
 					
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 
 					
@@ -2766,14 +2981,15 @@ export function PTUAutoFight()
 					label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+ButtonHeight+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item_data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 					callback: async () => {
 
-						if(!ThisPokemonsTrainerCommandCheck(actor))
+						let command_check_result = await ThisPokemonsTrainerCommandCheck(actor);
+						if(!command_check_result)
 						{
 							game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
 							return;
 						}
 						let key_shift = keyboard.isDown("Shift");
 
-						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+						await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 						let diceRoll = await PerformFullAttack (actor,item.data.data, item.name);
 
@@ -2841,24 +3057,24 @@ export function PTUAutoFight()
 										{
 											if (move_stage_changes[searched_move][searched_stat] != null)
 											{
-												adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+												await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
 											}
 										}
 										if(move_stage_changes[searched_move]["pct-healing"] != null)
 										{
-											healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+											await healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 										}
 										if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 										{
-											damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+											await damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 										}
 										if(move_stage_changes[searched_move]["weather"] != null)
 										{
-											game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+											await game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
 										}
 										if(move_stage_changes[searched_move]["accuracy"] != null)
 										{
-											adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+											await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 										}
 									}
 								}
@@ -2868,24 +3084,24 @@ export function PTUAutoFight()
 									{
 										if (move_stage_changes[searched_move][searched_stat] != null)
 										{
-											adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+											await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
 										}
 									}
 									if(move_stage_changes[searched_move]["pct-healing"] != null)
 									{
-										healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+										await healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 									}
 									if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 									{
-										damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+										await damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 									}
 									if(move_stage_changes[searched_move]["weather"] != null)
 									{
-										game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+										await game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
 									}
 									if(move_stage_changes[searched_move]["accuracy"] != null)
 									{
-										adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+										await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 									}
 								}
 								
@@ -3337,7 +3553,9 @@ export function PTUAutoFight()
 					id:currentid, 
 					label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight+3)+"px;font-size:24px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:24px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px' title='"+(item_data.effect).replace("'","&#39;")+"'>"+currentlabel+"</div>"+currentCooldownLabel+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 					callback: async () => {
-							if(!ThisPokemonsTrainerCommandCheck(actor))
+
+							let command_check_result = await ThisPokemonsTrainerCommandCheck(actor);
+							if(!command_check_result)
 							{
 								game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
 								return;
@@ -3349,7 +3567,7 @@ export function PTUAutoFight()
 							}
 							else
 							{
-								game.PTUMoveMaster.RollDamageMove(actor, item, item.name, finalDB, typeStrategist, 0);
+								await game.PTUMoveMaster.RollDamageMove(actor, item, item.name, finalDB, typeStrategist, 0);
 							}
 						}
 
@@ -3363,37 +3581,37 @@ export function PTUAutoFight()
 
 		buttons["resetEOT"] = {id:"resetEOT", label: ResetEOTMark,
 			callback: async () => {
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				game.PTUMoveMaster.resetEOTMoves(actor);
 		}};
 
 		buttons["resetScene"] = {id:"resetScene", label: ResetSceneMark,
 			callback: async () => {
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				game.PTUMoveMaster.resetSceneMoves(actor);
 		}};
 
 		buttons["resetDaily"] = {id:"resetDaily", label: ResetDailyMark,
 		callback: async () => {
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				game.PTUMoveMaster.resetDailyMoves(actor);
 		}};
 
 		buttons["resetStandard"] = {id:"resetStandard", label: ResetStandardMark,
 		callback: async () => {
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				game.PTUMoveMaster.resetStandardAction(actor);
 		}};
 
 		buttons["resetShift"] = {id:"resetShift", label: ResetShiftMark,
 		callback: async () => {
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				game.PTUMoveMaster.resetShiftAction(actor);
 		}};
 
 		buttons["resetSwift"] = {id:"resetSwift", label: ResetSwiftMark,
 		callback: async () => {
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				game.PTUMoveMaster.resetSwiftAction(actor);
 		}};
 
@@ -3406,21 +3624,21 @@ export function PTUAutoFight()
 		buttons["tickDamage_reset"] = {id:"tickDamage_reset", label: TickDamageMark,
 			callback: async () => {
 
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				game.PTUMoveMaster.damageActorTick(actor);
 		}};
 
 		buttons["tickHeal_reset"] = {id:"tickHeal_reset", label: TickHealMark,
 		callback: async () => {
 
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			game.PTUMoveMaster.healActorTick(actor);
 		}};
 
 		buttons["rest_reset"] = {id:"rest_reset", label: RestMark,
 		callback: async () => {
 
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 			game.PTUMoveMaster.healActorRestPrompt(actor);
 		}};
 
@@ -3628,7 +3846,7 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 			ApplyInjuries(token.actor, final_effective_damage);
 			
 		}
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 
 
@@ -3670,7 +3888,7 @@ export async function ResetStagesToDefault(actor, silent=false)
 	if(!silent)
 	{
 		game.PTUMoveMaster.chatMessage(actor, actor.name + " All Stages Reset!");
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 	}
 }
 
@@ -3683,7 +3901,7 @@ export function GetSoundDirectory()
 export async function RollDamageMove(actor, item_initial, moveName, finalDB, typeStrategist, bonusDamage)
 	{
 		var item = item_initial.data.data;
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
 		var item_entities=actor.items;
 		let diceRoll = await game.PTUMoveMaster.PerformFullAttack (actor, item, moveName, finalDB, bonusDamage);
@@ -3756,20 +3974,20 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 						{
 							if (move_stage_changes[searched_move][searched_stat] != null)
 							{
-								game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+								await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
 							}
 						}
 						if(move_stage_changes[searched_move]["pct-healing"] != null)
 						{
-							game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+							await game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 						}
 						if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 						{
-							game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+							await game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 						}
 						if(move_stage_changes[searched_move]["accuracy"] != null)
 						{
-							adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+							await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 						}
 					}
 				}
@@ -3779,20 +3997,20 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 					{
 						if (move_stage_changes[searched_move][searched_stat] != null)
 						{
-							game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+							await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
 						}
 					}
 					if(move_stage_changes[searched_move]["pct-healing"] != null)
 					{
-						game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+						await game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
 					}
 					if(move_stage_changes[searched_move]["pct-self-damage"] != null)
 					{
-						game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+						await game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
 					}
 					if(move_stage_changes[searched_move]["accuracy"] != null)
 					{
-						adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+						await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 					}
 				}
 				
@@ -3837,9 +4055,9 @@ export const CritOptions = {
 	CRIT_HIT: 'hit'
 };
 
-export function adjustActorStage(actor, stat, change)
+export async function adjustActorStage(actor, stat, change)
 {
-	setTimeout(() => {
+	setTimeout( async () => {
 		let effects = actor.effects;
 		let AE_changes = [];
 		let is_simple = game.PTUMoveMaster.ActorHasItemWithName(actor, "Simple", "ability");
@@ -3863,11 +4081,11 @@ export function adjustActorStage(actor, stat, change)
 
 		if(change > 0)
 		{
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 		}
 		else
 		{
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 		}
 
 		let old_stage = eval("(Number(actor.data.data.stats."+stat+".stage))");
@@ -3880,7 +4098,7 @@ export function adjustActorStage(actor, stat, change)
 
 		if(is_simple)
 		{
-			setTimeout(() => {  
+			setTimeout( async () => {  
 				let effects = actor.effects;
 				let AE_changes = [];
 				let is_simple = game.PTUMoveMaster.ActorHasItemWithName(actor, "Simple", "ability");
@@ -3904,11 +4122,11 @@ export function adjustActorStage(actor, stat, change)
 
 				if(change > 0)
 				{
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 				}
 				else
 				{
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 				}
 
 				let old_stage = eval("(Number(actor.data.data.stats."+stat+".stage))");
@@ -3924,49 +4142,49 @@ export function adjustActorStage(actor, stat, change)
 }
 
 
-export function healActorPercent(actor,pct_healing)
+export async function healActorPercent(actor,pct_healing)
 {
 	let difference_to_max = Number(actor.data.data.health.max - actor.data.data.health.value);
 	let final_healing_amount = Math.min(Math.floor(pct_healing*actor.data.data.health.total), difference_to_max)
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	actor.modifyTokenAttribute("health", (final_healing_amount), true, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed '+ pct_healing*100 +'% of their max hit points!');
 }
 
 
-export function healActor(actor, healing_amount)
+export async function healActor(actor, healing_amount)
 {
 	let difference_to_max = Number(actor.data.data.health.max - actor.data.data.health.value);
 	let final_healing_amount = Math.min(healing_amount, difference_to_max)
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	actor.modifyTokenAttribute("health", (final_healing_amount), true, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed '+ final_healing_amount +' hit points!');
 }
 
 
-export function setActorHealth(actor, new_health)
+export async function setActorHealth(actor, new_health)
 {
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	actor.modifyTokenAttribute("health", (new_health), false, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + '\'s health was set to '+ new_health +' hit points!');
 }
 
 
-export function setActorHealthPercent(actor, new_health_percent) // Percent expressed as fractions of 1. 30% would be 0.3, etc.
+export async function setActorHealthPercent(actor, new_health_percent) // Percent expressed as fractions of 1. 30% would be 0.3, etc.
 {
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	actor.modifyTokenAttribute("health", (new_health_percent*actor.data.data.health.total), false, true);
 	game.PTUMoveMaster.chatMessage(actor, actor.name + '\'s health was set to '+ new_health_percent*100 +'% of their max hit points!');
 }
 
 
-export function damageActorPercent(actor,pct_damage)
+export async function damageActorPercent(actor,pct_damage)
 {
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	let finalDamage = (Math.floor(pct_damage*actor.data.data.health.total));
 
@@ -3976,9 +4194,9 @@ export function damageActorPercent(actor,pct_damage)
 }
 
 
-export function damageActorFlatValue(actor, damage_value, source="")
+export async function damageActorFlatValue(actor, damage_value, source="")
 {
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	let finalDamage = damage_value;
 	let source_string = "";
@@ -3994,7 +4212,7 @@ export function damageActorFlatValue(actor, damage_value, source="")
 }
 
 
-export function damageActorTick(actor, source="", tick_count=1)
+export async function damageActorTick(actor, source="", tick_count=1)
 {
 	let tick_DR = 0;
 	let tick_DR_flavor = "";
@@ -4011,7 +4229,7 @@ export function damageActorTick(actor, source="", tick_count=1)
 		tick_DR_flavor = ", after "+tick_DR+" Tick DR from Trainer's Stat Mastery (Special Defense)";
 	}
 
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damage_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	let finalDamage = Math.max((Math.floor(0.10*actor.data.data.health.total*tick_count)) - (tick_DR*tick_count), 0);
 	let source_string = "";
@@ -4021,15 +4239,15 @@ export function damageActorTick(actor, source="", tick_count=1)
 		source_string = " from "+source;
 	}
 
-	actor.modifyTokenAttribute("health", -finalDamage, true, true);
-	game.PTUMoveMaster.chatMessage(actor, actor.name + ' took '+tick_count+' tick of damage ('+ finalDamage +' Hit Points)'+source_string+tick_DR_flavor+'!');
-	game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
+	await actor.modifyTokenAttribute("health", -finalDamage, true, true);
+	await game.PTUMoveMaster.chatMessage(actor, actor.name + ' took '+tick_count+' tick of damage ('+ finalDamage +' Hit Points)'+source_string+tick_DR_flavor+'!');
+	await game.PTUMoveMaster.ApplyInjuries(actor, finalDamage);
 }
 
 
-export function healActorTick(actor, source="")
+export async function healActorTick(actor, source="")
 {
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	let finalhealing = (Math.floor(0.10*actor.data.data.health.total));
 	let source_string = "";
@@ -4039,14 +4257,14 @@ export function healActorTick(actor, source="")
 		source_string = " from "+source;
 	}
 
-	actor.modifyTokenAttribute("health", finalhealing, true, true);
-	game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed a tick of damage ('+ finalhealing +' Hit Points)'+source_string+'!');
+	await actor.modifyTokenAttribute("health", finalhealing, true, true);
+	await game.PTUMoveMaster.chatMessage(actor, actor.name + ' healed a tick of damage ('+ finalhealing +' Hit Points)'+source_string+'!');
 }
 
 
-export function healActorRest(actor, hours=8, bandage_used=false)
+export async function healActorRest(actor, hours=8, bandage_used=false)
 {
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	let health_fractions_healed = hours;
 	let health_fraction_size = (bandage_used ? 4 : 8);
@@ -4066,23 +4284,23 @@ export function healActorRest(actor, hours=8, bandage_used=false)
 	}
 	if(hours >= 4)
 	{
-		game.PTUMoveMaster.resetEOTMoves(actor, true);
-		game.PTUMoveMaster.resetSceneMoves(actor, true);
-		game.PTUMoveMaster.resetDailyMoves(actor, true);
+		await game.PTUMoveMaster.resetEOTMoves(actor, true);
+		await game.PTUMoveMaster.resetSceneMoves(actor, true);
+		await game.PTUMoveMaster.resetDailyMoves(actor, true);
 
 		let conditions = ["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned", "Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed",];
 
 		for(let affliction of conditions)
 		{
-			game.PTUMoveMaster.cureActorAffliction(actor, affliction);
+			await game.PTUMoveMaster.cureActorAffliction(actor, affliction);
 		}
 	}
 
-	actor.update({'data.health.injuries': Math.max(Number(actor.data.data.health.injuries - injuries_healed), 0) });
+	await actor.update({'data.health.injuries': Math.max(Number(actor.data.data.health.injuries - injuries_healed), 0) });
 
-	setTimeout(() => {  
-		actor.modifyTokenAttribute("health", finalhealing, true, true);
-		game.PTUMoveMaster.chatMessage(actor, actor.name + ' rested for '+hours+' hours, healing '+ finalhealing +' Hit Points and '+injuries_healed+' injuries!');
+	setTimeout( async () => {  
+		await actor.modifyTokenAttribute("health", finalhealing, true, true);
+		await game.PTUMoveMaster.chatMessage(actor, actor.name + ' rested for '+hours+' hours, healing '+ finalhealing +' Hit Points and '+injuries_healed+' injuries!');
 	}, 750);
 }
 
@@ -4128,7 +4346,7 @@ export async function cureActorAffliction(actor, affliction_name, silent=false)
 
 			if(!silent)
 			{
-				game.PTUMoveMaster.chatMessage(actor, actor.name + ' was cured of '+ affliction_name +'!');
+				await game.PTUMoveMaster.chatMessage(actor, actor.name + ' was cured of '+ affliction_name +'!');
 			}
 
 			return true;
@@ -4145,7 +4363,7 @@ export async function cureActorAffliction(actor, affliction_name, silent=false)
 }
 
 
-export function CalculateAcRoll (moveData, actorData)   {
+export async function CalculateAcRoll (moveData, actorData)   {
 	
 	let blindness_mod = 0;
 	if(actorData.flags.ptu)
@@ -4398,10 +4616,10 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		isDoubleStrike = true;
 	}
 
-	let acRoll = game.PTUMoveMaster.CalculateAcRoll(move, actor.data);
+	let acRoll = await game.PTUMoveMaster.CalculateAcRoll(move, actor.data);
 	let diceResult = await game.PTUMoveMaster.GetDiceResult(acRoll);
 
-	let acRoll2 = game.PTUMoveMaster.CalculateAcRoll(move, actor.data);
+	let acRoll2 = await game.PTUMoveMaster.CalculateAcRoll(move, actor.data);
 	let diceResult2 = await game.PTUMoveMaster.GetDiceResult(acRoll2);
 
 	let move_crit_base = 20;
@@ -4416,38 +4634,41 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 	let crit = diceResult === 1 ? CritOptions.CRIT_MISS : diceResult >= Number(move_crit_base - actor.data.data.modifiers.critRange.total) ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
 	let crit2 = diceResult2 === 1 ? CritOptions.CRIT_MISS : diceResult2 >= Number(move_crit_base - actor.data.data.modifiers.critRange.total) ? CritOptions.CRIT_HIT : CritOptions.NORMAL;
 
-	let damageRoll = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
-	if(damageRoll) damageRoll.roll();
-	let critDamageRoll = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
+	let damageRoll = await game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
+	if(damageRoll) 
+	{
+		await damageRoll.roll();
+	}
+	let critDamageRoll = await game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 1, 0, bonusDamage);
 	if(!move.name)
 	{
 		move.name=move.name;
 	}
 	if(critDamageRoll)
 	{
-		critDamageRoll.roll();
+		await critDamageRoll.roll();
 	}
 	if(damageRoll && damageRoll._total)
 	{
-		game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.category,move.type);
+		await game.macros.getName("backend_set_flags")?.execute(damageRoll._total,critDamageRoll._total,move.category,move.type);
 	}
 
-	let damageRollTwoHits = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 0, bonusDamage);
+	let damageRollTwoHits = await game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'normal', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 0, bonusDamage);
 	if(damageRollTwoHits)
 	{
-		damageRollTwoHits.roll();
+		await damageRollTwoHits.roll();
 	}
 
-	let critDamageRollOneHitOneCrit = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 1, bonusDamage);
+	let critDamageRollOneHitOneCrit = await game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 1, bonusDamage);
 	if(critDamageRollOneHitOneCrit)
 	{
-		critDamageRollOneHitOneCrit.roll();
+		await critDamageRollOneHitOneCrit.roll();
 	}
 
-	let critDamageRollTwoCrits = game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 2, bonusDamage);
+	let critDamageRollTwoCrits = await game.PTUMoveMaster.CalculateDmgRoll(move, actor.data.data, 'hit', userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, 2, 2, bonusDamage);
 	if(critDamageRollTwoCrits)
 	{
-		critDamageRollTwoCrits.roll();
+		await critDamageRollTwoCrits.roll();
 	}
 
 	let isUntyped = false;
@@ -4507,7 +4728,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		roll2_hit = true;
 	}
 
-	game.PTUMoveMaster.sendMoveRollMessage(moveName, acRoll, acRoll2, {
+	await game.PTUMoveMaster.sendMoveRollMessage(moveName, acRoll, acRoll2, {
 		speaker: ChatMessage.getSpeaker({
 			actor: actor
 		}),
@@ -4564,19 +4785,19 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 	}
 
 	moveSoundFile.replace(/ /g,"%20");
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 
 	if(move.range.includes("Full Action"))
 	{
-		game.PTUMoveMaster.TakeAction(actor, "Full", move.category);
+		await game.PTUMoveMaster.TakeAction(actor, "Full", move.category);
 	}
 	else if(move.name == "Splash")
 	{
-		game.PTUMoveMaster.TakeAction(actor, "Shift", move.category);
+		await game.PTUMoveMaster.TakeAction(actor, "Shift", move.category);
 	}
 	else
 	{
-		game.PTUMoveMaster.TakeAction(actor, "Standard", move.category);
+		await game.PTUMoveMaster.TakeAction(actor, "Standard", move.category);
 	}
 
 	return diceResult;
@@ -4604,7 +4825,7 @@ export async function GetDiceResult(roll)
 };
 
 
-export function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, hitCount, critCount, bonusDamage) 
+export async function CalculateDmgRoll(moveData, actorData, isCrit, userHasTechnician, userHasAdaptability, isDoubleStrike, isFiveStrike, fiveStrikeCount, hitCount, critCount, bonusDamage) 
 {
 	if (moveData.category === "Status") return;
 
@@ -4738,12 +4959,12 @@ export async function sendMoveRollMessage(moveName, rollData, rollData2, message
 {
 	if (!rollData._evaluated) 
 	{
-		rollData.evaluate();
+		await rollData.evaluate();
 	}
 
 	if (!rollData2._evaluated) 
 	{
-		rollData2.evaluate();
+		await rollData2.evaluate();
 	}
 
 	messageData = mergeObject({
@@ -4790,46 +5011,46 @@ export async function ApplyInjuries(target, final_effective_damage, damage_type=
 			if(final_effective_damage >= massiveDamageThreshold)
 			{
 				injuryCount++;
-				game.PTUMoveMaster.chatMessage(target, target.name + " suffered massive damage and sustains an injury!");
+				await game.PTUMoveMaster.chatMessage(target, target.name + " suffered massive damage and sustains an injury!");
 			}
 
 			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints50Pct) )
 			{
 				injuryCount++;
-				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the 50% health threshold and sustains an injury!");
+				await game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the 50% health threshold and sustains an injury!");
 			}
 
 			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPoints0Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPoints0Pct) )
 			{
 				injuryCount++;
-				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the 0% health threshold and sustains an injury! "+target.name+" has *fainted*!");
+				await game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the 0% health threshold and sustains an injury! "+target.name+" has *fainted*!");
 			}
 
 			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative50Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative50Pct) )
 			{
 				injuryCount++;
-				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -50% health threshold and sustains an injury!");
+				await game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -50% health threshold and sustains an injury!");
 			}
 
 			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative100Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative100Pct) )
 			{
 				injuryCount++;
-				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -100% health threshold and sustains an injury!");
+				await game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -100% health threshold and sustains an injury!");
 			}
 
 			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative150Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative150Pct) )
 			{
 				injuryCount++;
-				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -150% health threshold and sustains an injury!");
+				await game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -150% health threshold and sustains an injury!");
 			}
 
 			if( (final_effective_damage >= 1) && (targetHealthCurrent > hitPointsNegative200Pct) && ((targetHealthCurrent - final_effective_damage) <= hitPointsNegative200Pct) )
 			{
 				injuryCount++;
-				game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -200% health threshold and sustains an injury! If using death rules, "+target.name+" *dies*!");
+				await game.PTUMoveMaster.chatMessage(target, target.name + " was damaged to below the -200% health threshold and sustains an injury! If using death rules, "+target.name+" *dies*!");
 			}
 
-			target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
+			await target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
 		}
 
 	if( (targetHealthCurrent > 0) && (Number(targetHealthCurrent - final_effective_damage) <= 0) )
@@ -5164,11 +5385,13 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 	{
 		if(throwing_actor.data.flags.ptu.is_totally_blind)
 		{
-			blindness_mod = -10;
+			blindness_mod = 0;
+			// blindness_mod = -10;
 		}
 		else if(throwing_actor.data.flags.ptu.is_blind)
 		{
-			blindness_mod = -6;
+			blindness_mod = 0;
+			// blindness_mod = -6;
 		}
 	}
 
@@ -5197,9 +5420,9 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 		let numDice=1;
 		let dieSize = "d20";
 
-		let roll= new Roll(`${numDice}${dieSize}-${pokeballThrowAC}+${attack_mod}`).evaluate()
+		let roll = await new Roll(`${numDice}${dieSize}-${pokeballThrowAC}+${attack_mod}`).evaluate()
 
-		roll.toMessage()
+		await roll.toMessage()
 
 		function castSpell(effect) {
 			canvas.specials.drawSpecialToward(effect, actor_token, target_token);
@@ -5224,7 +5447,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 				},
 			});
 			ui.notifications.info(`Rolled ${roll.total} vs ${TargetSpeedEvasion}, hit!`);
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
 			
 			let pokeballShoop_params =
@@ -5403,7 +5626,8 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 			setTimeout( async () => {
 				  await polymorphFunc(); 
 
-				  await target_token.update({"scale": (0.25/target_token.data.width)});
+				  let new_token_scale = Math.max((0.25/target_token.data.width), 0.2)
+				  await target_token.document.update({"scale": new_token_scale});
 				  setTimeout( async () => {  await target_token.TMFXaddUpdateFilters(pokeballWiggle_params); }, 3500);
 			}, 1000);
 			
@@ -5463,7 +5687,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 					y: 0.5,
 				},
 			});
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 			ui.notifications.info(`Rolled ${roll.total} vs ${TargetSpeedEvasion}, miss...`);
 			return "Missed"
 		}
@@ -5473,7 +5697,7 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 };
 
 
-export function SpeakPokemonName(pokemon_actor)
+export async function SpeakPokemonName(pokemon_actor)
 {
 	let pokemon_name_sound_path = game.settings.get("PTUMoveMaster", "pokedexNameSoundDirectory");
 
@@ -5496,7 +5720,7 @@ export function SpeakPokemonName(pokemon_actor)
 	}
 
 	let pokedexSpeechSoundFile = species_number_string+" - "+capitalizeFirstLetter((species).toLowerCase())+".wav";
-	AudioHelper.play({src: pokemon_name_sound_path+pokedexSpeechSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: pokemon_name_sound_path+pokedexSpeechSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 };
 
 
@@ -5511,13 +5735,13 @@ export async function PokedexScan(trainer_token, target_pokemon_token)
 	if(distance > pokedex_range)
 	{
 		ui.notifications.warn(`Target is ${distance}m away, which is past the Pokedex's scan range of ${pokedex_range}m!`);
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 		return;
 	}
 	if(target_pokemon_actor.data.type != "pokemon")
 	{
 		ui.notifications.warn(`Target is not a pokemon!`);
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 		return;
 	}
 
@@ -5561,21 +5785,21 @@ export async function PokedexScan(trainer_token, target_pokemon_token)
 	// 	}
 	// }
 
-	await current_actor_to_add_DEX_entry_for.createOwnedItem({name: species.toLowerCase(), type: "dexentry", data: {
+	await current_actor_to_add_DEX_entry_for.createEmbeddedDocuments("Item", [{name: species.toLowerCase(), type: "dexentry", data: {
 		entry: "",
 		id: species_number,
 		owned: false
-	}});
+	}}]);
 
 	if(target_pokemon_token.data.disposition == -1)
 	{
-		target_pokemon_token.update({"disposition": 0});
+		await target_pokemon_token.document.update({"disposition": 0});
 	}
 	
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokedex_ding.wav", volume: 0.5, autoplay: true, loop: false}, true);
-	setTimeout(() => {  SpeakPokemonName(target_pokemon_actor); }, 800);
-	target_pokemon_token.update
-	game.PTUMoveMaster.TakeAction(trainer_actor, "Standard");
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokedex_ding.wav", volume: 0.5, autoplay: true, loop: false}, true);
+	setTimeout( async () => {  SpeakPokemonName(target_pokemon_actor); }, 800);
+	// target_pokemon_token.update
+	await game.PTUMoveMaster.TakeAction(trainer_actor, "Standard");
 	return;
 };
 
@@ -6124,7 +6348,7 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 	let numDice=1;
 	let dieSize = "d100";
 
-	let roll= new Roll(`${numDice}${dieSize}+${CaptureRollModifier}`).roll()
+	let roll = await new Roll(`${numDice}${dieSize}+${CaptureRollModifier}`).roll()
 
 	let pokeballShoop_params =
 	[
@@ -6265,18 +6489,18 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 		await target_token.TMFXaddUpdateFilters(polymorph_params);
 	};
 
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_catch_attempt.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_catch_attempt.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
 	setTimeout( async () => {  
 		chatMessage(target, ("Pokeball hit! The ball wiggles..."));
 		// ui.notifications.info(`The ball wiggles!`);
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_escape_attempt.mp3", volume: 1.0, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_escape_attempt.mp3", volume: 1.0, autoplay: true, loop: false}, true);
 		
 		setTimeout( async () => {  
-			roll.toMessage();
+			await roll.toMessage();
 			if(Number(roll._total) <= CaptureRate)
 			{
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_catch_confirmed.mp3", volume: 0.8, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_catch_confirmed.mp3", volume: 0.8, autoplay: true, loop: false}, true);
 				chatMessage(target, (target.name + " was captured! Capture DC was " + CaptureRate + ", and you rolled "+Number(roll._total)+"!"));
 
 				target_token.TMFXdeleteFilters("pokeballWiggle");
@@ -6307,7 +6531,7 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 
 				setTimeout( async () => {  window.confetti.shootConfetti(shootConfettiProps); }, 750);//364);
 				setTimeout( async () => {  
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_success_jingle.wav", volume: 0.8, autoplay: true, loop: false}, true);
 				}, 750);
 
 				game.PTUMoveMaster.RemoveThrownPokeball(trainer, pokeball_item);
@@ -6328,7 +6552,7 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 					{
 						if(item.data.name)
 						{
-							if( (item.data.name.replace("é", "e") == species.toLowerCase()) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(species.toLowerCase())) ) )
+							if( (item.data.name.replace("é", "e") == species.toLowerCase()) || (item.data.name.replace("é", "e").toLowerCase().includes(species.toLowerCase())) )
 							{
 								item.update(
 									{
@@ -6362,11 +6586,11 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 				setTimeout( async () => {  target_token.TMFXaddUpdateFilters(pokeballShoop_params); }, 800);
 				setTimeout( async () => {  
 					polymorphFunc(); 
-					setTimeout(() => { target_token.update({"scale": 1}); 
+					setTimeout( async () => { target_token.document.update({"scale": 1}); 
 					target_token.TMFXdeleteFilters("pokeball");
 					}, 1000);
 				}, 500);
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 				chatMessage(target, (target.name + " escaped the "+pokeball+"! Capture DC was " + CaptureRate + ", and you rolled "+Number(roll._total)+"."));
 				target_token.TMFXdeleteFilters("pokeballWiggle");
 
@@ -6377,7 +6601,7 @@ export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, 
 };
 
 
-export function PokeballRelease(token)
+export async function PokeballRelease(token)
 {
 	let pokeballShoop_params =
 	[
@@ -6450,15 +6674,15 @@ export function PokeballRelease(token)
 		}
 	];
 
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_release.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 	token.TMFXaddUpdateFilters(pokeballShoop_params);
-	token.update({"scale": 1});
+	token.document.update({"scale": 1});
 	token.TMFXdeleteFilters("pokeballWiggle");
 	token.TMFXdeleteFilters("pokeball");
 };
 
 
-export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
+export async function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 {
 	let return_value = true;
 	let trainer_actor = game.actors.get(pokemon_actor.data.data.owner)
@@ -6511,8 +6735,8 @@ export function ThisPokemonsTrainerCommandCheck(pokemon_actor)
 		let dieSize = "d6";
 		let dieModifier = (trainer_actor.data.data.skills[commanding_skill].modifier.total);
 
-		let roll= new Roll(`${numDice}${dieSize}+${dieModifier}`).roll()
-		roll.toMessage(
+		let roll= await new Roll(`${numDice}${dieSize}+${dieModifier}`).roll()
+		await roll.toMessage(
 			{flavor: `${trainer_actor.name} attempts a ${commanding_skill} check to control a disloyal pokemon.`,
 			speaker: ChatMessage.getSpeaker({token: trainer_actor}),}
 		)
@@ -6531,8 +6755,8 @@ export async function ShowPokeballMenu(actor)
 {
 	let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
 
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/pokeball_grow.mp3", volume: 0.8, autoplay: true, loop: false}, false);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/pokeball_grow.mp3", volume: 0.8, autoplay: true, loop: false}, false);
 	let pokeball_inventory = [];
 	let pokeball_buttons = [];
 
@@ -6584,7 +6808,7 @@ export async function ShowPokeballMenu(actor)
 				if(!target_pokemon_token || target_pokemon_token.actor.data.type != "pokemon" || target_pokemon_token.actor.data.data.owner != "0")
 				{
 					ui.notifications.warn("You must target an unowned Pokemon to throw a Pokeball");
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 					return;
 				}
 
@@ -6596,12 +6820,12 @@ export async function ShowPokeballMenu(actor)
 					}
 					else
 					{
-						AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+						await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 					}
 				}
 				else
 				{
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 				}
 			}
 		};
@@ -6627,7 +6851,7 @@ export async function ShowPokeballMenu(actor)
 
 export async function ShowInventoryMenu(actor)
 {
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 	let item_buttons = [];
 	let item_inventory = [];
 
@@ -6689,7 +6913,7 @@ export async function ShowInventoryMenu(actor)
 				}
 				else
 				{
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
 				}
 
 			}
@@ -7057,7 +7281,7 @@ export async function ShowManeuverMenu(actor)
 			}
 
 			let checkDieSize = "d6";
-			let user_check_roll = new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
+			let user_check_roll = await new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
 			// console.log("user_check_roll");
 			// console.log(user_check_roll);
 
@@ -7103,7 +7327,7 @@ export async function ShowManeuverMenu(actor)
 			}
 
 			let checkDieSize = "d6";
-			let user_check_roll = new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
+			let user_check_roll = await new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
 			// console.log("user_check_roll");
 			// console.log(user_check_roll);
 
@@ -7141,7 +7365,8 @@ export async function ShowManeuverMenu(actor)
 			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;padding-top: 0px !important;width:200px;height:"+Number(ButtonHeight-20)+"px;font-size:20px;font-family:Modesto Condensed;line-height:1;'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px'title='"+(originalEffectText).replace("'","&#39;")+"'>"+currentlabel+"</div>"/*+currentCooldownLabel*/+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 			callback: async () => {
 
-				if(!game.PTUMoveMaster.ThisPokemonsTrainerCommandCheck(this_actor))
+				let command_check_result = await game.PTUMoveMaster.ThisPokemonsTrainerCommandCheck(this_actor);
+				if(!command_check_result)
 				{
 					game.PTUMoveMaster.chatMessage(this_actor, "But they did not obey!")
 					return;
@@ -7176,11 +7401,11 @@ export async function ShowManeuverMenu(actor)
 					{
 						await game.PTUMoveMaster.cureActorAffliction(actor, affliction);
 					}
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 				}
 				else
 				{
-					AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 				}
 			}
 		};
@@ -7226,7 +7451,7 @@ export async function ShowSkillsMenu(actor)
 	skill_buttons["backToMainSidebar"] = {noRefresh:true, id:"backToMainSidebar", label: "<img title='Go back to main move menu.' src='"+AlternateIconPath+"BackButton.png' style='border:none; margin-top:10px;'>",
 			callback: async () => {
 
-				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				PTUAutoFight().ChatWindow(actor);
 				}
 			};
@@ -7280,13 +7505,13 @@ export async function ShowSkillsMenu(actor)
 				let dieSize = "d6";
 				let dieModifier = currentModifier;
 
-				let roll= new Roll(`${numDice}${dieSize}+${dieModifier}`).roll()
-				roll.toMessage(
+				let roll = await new Roll(`${numDice}${dieSize}+${dieModifier}`).roll()
+				await roll.toMessage(
 					{flavor: `${actor.name} attempts a ${skill} check.`,
 					speaker: ChatMessage.getSpeaker({token: actor}),}
 				)
 
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 			}
 		};
 	}
@@ -7425,7 +7650,7 @@ export async function ShowStruggleMenu(actor)
 	struggle_buttons["backToMainSidebar"] = {noRefresh:true, id:"backToMainSidebar", label: "<img title='Go back to main move menu.' src='"+AlternateIconPath+"BackButton.png' style='border:none; margin-top:10px;'>",
 			callback: async () => {
 
-				// AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+				// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				PTUAutoFight().ChatWindow(actor);
 				}
 			};
@@ -7595,7 +7820,8 @@ export async function ShowStruggleMenu(actor)
 			label: "<center><div style='background-color:"+ MoveButtonBackgroundColor +";color:"+ MoveButtonTextColor +";border-left:"+EffectivenessBorderThickness+"px solid; border-color:"+effectivenessBackgroundColor+"; padding-left: 0px ;width:200px;height:"+Number(ButtonHeight-25+3)+"px;font-size:20px;font-family:Modesto Condensed;line-height:0.6'><h3 style='padding: 0px;font-family:Modesto Condensed;font-size:20px; color: white; background-color: #272727 ; overflow-wrap: normal ! important; word-break: keep-all ! important;'><div style='padding-top:5px;padding-bottom:5px'>"+currentlabel+"</div>"/*+currentCooldownLabel*/+currentMoveTypeLabel+"</h3>"+STABBorderImage+DBBorderImage+"<h6 style='padding-top: 4px;padding-bottom: 0px;font-size:"+RangeFontSize+"px;'>"+currentMoveRangeIcon+effectivenessText+"</h6>"+"</div></center>",
 			callback: async () => {
 
-				if(!game.PTUMoveMaster.ThisPokemonsTrainerCommandCheck(this_actor))
+				let command_check_result = await game.PTUMoveMaster.ThisPokemonsTrainerCommandCheck(this_actor);
+				if(!command_check_result)
 				{
 					game.PTUMoveMaster.chatMessage(this_actor, "But they did not obey!")
 					return;
@@ -7603,14 +7829,14 @@ export async function ShowStruggleMenu(actor)
 				let key_shift = keyboard.isDown("Shift");
 				if (key_shift) 
 				{
-					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, struggle, finalDB, false);
+					await game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, struggle, finalDB, false);
 				}
 				else
 				{
-					game.PTUMoveMaster.RollDamageMove(this_actor, created_move_item, struggle, finalDB, false, 0);
+					await game.PTUMoveMaster.RollDamageMove(this_actor, created_move_item, struggle, finalDB, false, 0);
 				}
 
-				AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 			}
 		};
 	}
@@ -7734,7 +7960,7 @@ export async function UseInventoryItem(actor_token, target_token, inventory_item
 			{
 				await game.PTUMoveMaster.cureActorAffliction(target_token.actor, affliction);
 			}
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 		}
 	}
 
@@ -7750,7 +7976,7 @@ export async function UseInventoryItem(actor_token, target_token, inventory_item
 
 	// TODO: Repulsive tracking from item handling
 
-	setTimeout(() => {  game.PTUMoveMaster.TakeAction(actor_token.actor, "Standard"); }, 1000);
+	setTimeout( async () => {  game.PTUMoveMaster.TakeAction(actor_token.actor, "Standard"); }, 1000);
 }
 
 
@@ -7859,7 +8085,7 @@ export function GetTargetTypingHeader(target, actor)
 		{
 			effectiveness = target.actor.data.data.effectiveness.All;
 	
-			if(targetType2 == "null")
+			if(targetType2 == "null" || targetType2 == null)
 			{
 				targetType2 = "";
 			}
@@ -7953,7 +8179,15 @@ export async function ExpendItem(owning_actor, item_object)
 		return false;
 	}
 
-	await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.data.quantity-1) }); // Decrement the spent item count
+	await owning_actor.updateEmbeddedDocuments(
+		"Item", 
+		[
+			{
+				_id: item_object.id, 
+				"data.quantity": Number(item_object.data.data.quantity-1)
+			}
+		]
+		); // Decrement the spent item count
 	// await item_object.update( { "data.quantity": Number(item_object.data.quantity-1) }); // Decrement the spent item count
 
 	if(item_object.data.name.includes("Ball")) 	// For balls, create a thrown version that can be picked up after battle (this will be changed to 
@@ -7964,12 +8198,20 @@ export async function ExpendItem(owning_actor, item_object)
 		let item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 		if(item) 
 		{
-			await owning_actor.updateOwnedItem({_id: item._id, "data.quantity": Number(duplicate(item).data.quantity)+1});
+			await owning_actor.updateEmbeddedDocuments(
+				"Item", 
+				[
+					{
+						_id: item.id, 
+						"data.quantity": Number(duplicate(item).data.quantity+1)
+					}
+				]
+				);
 			// await item_object.update({"data.quantity": Number(duplicate(item).data.quantity)+1});
 		}
 		else // If we get here, then we never found an existing thrown version to increment, so create new thrown version
 		{
-			await owning_actor.createOwnedItem({
+			await owning_actor.createEmbeddedDocuments("Item", [{
 				"name": "Thrown "+(item_object.data.name),
 				"type": "item",
 				"data": {
@@ -7979,7 +8221,7 @@ export async function ExpendItem(owning_actor, item_object)
 					"origin": item_object.data.effect,
 					"quantity": 1
 				}
-			});
+			}]);
 		}
 		return true;
 	}
@@ -7997,7 +8239,7 @@ export async function BreakPokeball(owning_actor, item_object)
 	let thrown_item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 	if(thrown_item)
 	{
-		await owning_actor.updateOwnedItem({_id: thrown_item._id, "data.quantity": Number(duplicate(thrown_item).data.quantity)-1});
+		await owning_actor.updateEmbeddedDocuments("Item", [{_id: thrown_item.id, "data.quantity": Number(duplicate(thrown_item).data.quantity)-1}]);
 	}
 
 	if(game.settings.get("PTUMoveMaster", "trackBrokenPokeballs"))
@@ -8005,11 +8247,11 @@ export async function BreakPokeball(owning_actor, item_object)
 		let broken_item = owning_actor.items.find(x => x.name == `Broken ${item_object.data.name}`) // Search through existing items to see if we have a broken entry for this item already
 		if(broken_item)
 		{
-			await owning_actor.updateOwnedItem({_id: broken_item._id, "data.quantity": Number(duplicate(broken_item).data.quantity)+1});
+			await owning_actor.updateEmbeddedDocuments("Item", [{_id: broken_item.id, "data.quantity": Number(duplicate(broken_item).data.quantity)+1}]);
 		}
 		else // If we get here, then we never found an existing broken version to increment, so create new broken version
 		{
-			await owning_actor.createOwnedItem({
+			await owning_actor.createEmbeddedDocuments("Item", [{
 				"name": "Broken "+(item_object.data.name),
 				"type": "item",
 				"data": {
@@ -8019,7 +8261,7 @@ export async function BreakPokeball(owning_actor, item_object)
 					"origin": item_object.data.effect,
 					"quantity": 1
 				}
-			});
+			}]);
 		}
 	}
 	
@@ -8031,7 +8273,7 @@ export async function RemoveThrownPokeball(owning_actor, item_object)
 	let thrown_item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 	if(thrown_item)
 	{
-		await owning_actor.updateOwnedItem({_id: thrown_item._id, "data.quantity": Number(duplicate(thrown_item).data.quantity)-1});
+		await owning_actor.updateEmbeddedDocuments("Item", [{_id: thrown_item.id, "data.quantity": Number(duplicate(thrown_item).data.quantity)-1}]);
 	}
 }
 
@@ -8431,7 +8673,7 @@ export async function resetEOTMoves(actor, silent=false)
 	if(!silent)
 	{
 		chatMessage(actor, (actor.name + " refreshes their EOT-frequency moves!"))
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 }
 
@@ -8462,7 +8704,7 @@ export async function resetSceneMoves(actor, silent=false)
 	if(!silent)
 	{
 		chatMessage(actor, (actor.name + " refreshes their Scene-frequency moves!"))
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshSceneMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 }
 
@@ -8493,7 +8735,7 @@ export async function resetDailyMoves(actor, silent=false)
 	if(!silent)
 	{
 		chatMessage(actor, (actor.name + " refreshes their Daily-frequency moves!"))
-		AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshDailyMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 	}
 }
 
@@ -8508,7 +8750,7 @@ export async function resetStandardAction(actor)
 		"flags.ptu.actions_taken.support": false
 	});
 	chatMessage(actor, (actor.name + " resets their standard action!"))
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 }
 
 
@@ -8518,7 +8760,7 @@ export async function resetShiftAction(actor)
 		"flags.ptu.actions_taken.shift": false
 	});
 	chatMessage(actor, (actor.name + " resets their shift action!"))
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 }
 
 
@@ -8528,7 +8770,7 @@ export async function resetSwiftAction(actor)
 		"flags.ptu.actions_taken.swift": false
 	});
 	chatMessage(actor, (actor.name + " resets their swift action!"))
-	AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
+	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+RefreshEOTMovesSound, volume: 0.8, autoplay: true, loop: false}, true);
 }
 
 
@@ -8617,15 +8859,15 @@ export async function recallPokemon(target_actor)
 
 export async function adjustActorAccuracy(actor, change)
 {
-	setTimeout(() => {
+	setTimeout( async () => {
 
 		if(change > 0)
 		{
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_up_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 		}
 		else
 		{
-			AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 		}
 
 		let old_stage = Number(actor.data.data.modifiers.acBonus.value);
@@ -8822,4 +9064,120 @@ export function ThisActorOrTheirTrainerHasDexEntry(actor, species_name)
 	}
 
 	return return_value;
+}
+
+
+export async function ActivateDigestionBuff(actor, digestionBuff, currentDigestionBuffState)
+{
+	let new_state = true;
+	let new_state_string = "turned in";
+	let digestion_description = digestionsBuffs[digestionBuff]["description"];
+	let snack_flavor = digestionsBuffs[digestionBuff]["flavor"];
+	let actor_nature = actor.data.data.nature;
+	let liked_disliked_neutral = "self_effects";
+
+	if(snack_flavor && actor_nature)
+	{
+		if(nature_flavor_table[actor_nature][0] == snack_flavor)
+		{
+			liked_disliked_neutral = "enjoyed_effects";
+		}
+		else if (nature_flavor_table[actor_nature][1] == snack_flavor)
+		{
+			liked_disliked_neutral = "disliked_effects";
+		}
+	}
+
+	if(currentDigestionBuffState == true)
+	{
+		new_state = false;
+		new_state_string = "cleared";
+	}
+	
+	actor.update({"flags.ptu.digestionBuffActive": new_state });
+
+	chatMessage(actor, actor.name+" "+new_state_string+" the digestion buff for "+digestionBuff+"!<br><br>("+digestion_description+")");
+
+
+	if(new_state == true)
+	{
+		for(let effect in digestionsBuffs[digestionBuff][liked_disliked_neutral])
+		{
+			console.log(effect);
+
+			if(effect == "cure_condition")
+			{
+				game.PTUMoveMaster.cureActorAffliction(actor, digestionsBuffs[digestionBuff][liked_disliked_neutral][effect], false);
+			}
+
+			if(effect == "condition_inflict")
+			{
+				game.PTUMoveMaster.inflictActorAffliction(actor, digestionsBuffs[digestionBuff][liked_disliked_neutral][effect], false);
+			}
+
+			if(effect == "healing")
+			{
+				game.PTUMoveMaster.healActor(actor, digestionsBuffs[digestionBuff][liked_disliked_neutral][effect]);
+			}
+
+			if(effect == "healing_fraction")
+			{
+				game.PTUMoveMaster.healActorPercent(actor, Number(1/digestionsBuffs[digestionBuff][liked_disliked_neutral][effect]));
+			}
+		}
+	}
+	
+
+	return;
+}
+
+
+export async function inflictActorAffliction(actor, affliction_name, silent=false) // TODO
+{
+	// let affliction_table = {
+	// 	"paralysis":	"is_paralyzed",
+	// 	"flinch":		"is_flinched",
+	// 	"infatuation":	"is_infatuated",
+	// 	"rage":			"is_raging",
+	// 	"sleep":		"is_sleeping",
+	// 	"badsleep":	"is_badly_sleeping",
+	// 	"blindness":	"is_blind",
+	// 	"total_blindness":"is_totally_blind",
+	// 	"fainted":		"is_fainted"
+	// };
+
+	// let lowercase_affliction_name = "is_"+(affliction_name.toLowerCase().replace(" ", "_"));
+
+	// if(affliction_table[affliction_name.toLowerCase()])
+	// {
+	// 	lowercase_affliction_name = affliction_table[affliction_name.toLowerCase()];
+	// }
+
+	// let effects = actor.effects;
+
+	// if(actor.data.flags.ptu)
+	// {
+	// 	if(eval('actor.data.flags.ptu.'+lowercase_affliction_name) == "true")
+	// 	{
+	// 		for(let effect of actor.effects.filter(x => x.data.label == affliction_name))
+  	// 		{
+	// 			await effect.delete();
+	// 		}
+
+	// 		if(!silent)
+	// 		{
+	// 			game.PTUMoveMaster.chatMessage(actor, actor.name + ' was cured of '+ affliction_name +'!');
+	// 		}
+
+	// 		return true;
+	// 	}
+	// 	else
+	// 	{
+	// 		return false;
+	// 	}
+	// }
+	// else
+	// {
+	// 	return false;
+	// }
 }
