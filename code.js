@@ -452,7 +452,7 @@ Hooks.on("preDeleteCombat", (combat, misc, tokenID) => {
 
 
 			}
-			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"Stat%20Fall%20Down.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+stat_down_sound_file, volume: 0.5, autoplay: true, loop: false}, true);
 		},
 		defaultYes: false 
 	})
@@ -1958,7 +1958,7 @@ export function PTUAutoFight()
 			var damage_type=event.currentTarget.dataset.type;
 			var mode=event.currentTarget.dataset.mode;
 			var crit=event.currentTarget.dataset.crit;
-			let damageSoundFile = "";
+			let damageSoundFile = "Hit%20Normal%20Damage.mp3";
 	
 			for(let token of canvas.tokens.controlled)
 			{
@@ -4798,6 +4798,91 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 	else
 	{
 		await game.PTUMoveMaster.TakeAction(actor, "Standard", move.category);
+	}
+
+	if((targeted) && (move.category == "Physical" || move.category == "Special"))
+	{
+		if(!roll1_hit && !(roll2_hit && isDoubleStrike)) // Miss! Play dodge animation on target.
+		{
+			let dodge_params =
+				[{
+					filterType: "transform",
+					filterId: "jumpedDodge",
+					autoDestroy: true,
+					padding: 80,
+					animated:
+					{
+						translationY:
+						{
+							animType: "cosOscillation",
+							val1: 0,
+							val2: -0.225,
+							loops: 1,
+							loopDuration: 900
+						},
+						scaleY:
+						{
+							animType: "cosOscillation",
+							val1: 1,
+							val2: 0.65,
+							loops: 2,
+							loopDuration: 450,
+						},
+						scaleX:
+						{
+							animType: "cosOscillation",
+							val1: 1,
+							val2: 0.65,
+							loops: 2,
+							loopDuration: 450,
+						}
+					}
+				}];
+
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_miss.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+			await TokenMagic.addFilters(target_token, dodge_params);
+		}
+		else // Hit! Play hit animation on target.
+		{
+			let hit_params =
+			[{
+				filterType: "transform",
+				filterId: "jumpedHit",
+				autoDestroy: true,
+				padding: 80,
+				animated:
+				{
+					translationX:
+					{
+						animType: "sinOscillation",
+						val1: 0.05,
+						val2: -0.05,
+						loops: 5,
+						loopDuration: 100
+					},
+					translationX:
+					{
+						animType: "cosOscillation",
+						val1: 0.05,
+						val2: -0.05,
+						loops: 5,
+						loopDuration: 50
+					},
+				}
+			}];
+
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
+
+			let damageSoundFile = "Hit%20Normal%20Damage.mp3";
+			if(crit == "hit")
+			{
+				damageSoundFile = "Hit%20Super%20Effective.mp3";
+			}
+			setTimeout( async () => {
+				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+				await TokenMagic.addFilters(target_token, hit_params);
+			}, 1000);
+		}
 	}
 
 	return diceResult;
