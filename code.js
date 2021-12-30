@@ -362,6 +362,9 @@ Hooks.once('init', async function()
 		ThisActorOrTheirTrainerHasDexEntry,
 		ActivateDigestionBuff,
 		injuryTokenSplash,
+		elementalHitEffect,
+		elementalAttackEffect,
+		elementalBlastEffect,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -4867,6 +4870,11 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 
 	moveSoundFile.replace(/ /g,"%20");
 	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+moveSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
+	await elementalAttackEffect(actor, move);
+	if(targeted)
+	{
+		await elementalBlastEffect(actor, target_actor, move);
+	}
 
 	if(move.range.includes("Full Action"))
 	{
@@ -4964,6 +4972,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 			setTimeout( async () => {
 				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 				await TokenMagic.addFilters(target_token, hit_params);
+				await elementalHitEffect(target_actor, move);
 			}, 1000);
 		}
 	}
@@ -9405,9 +9414,6 @@ export async function injuryTokenSplash(actor)
 	let actor_tokens = actor.getActiveTokens();
 	let actor_token = actor_tokens[0];
 
-	console.log("actor_token");
-	console.log(actor_token);
-
 	if(injury_splash_allowed)
 	{
 		if( (actor.data.data.health.injuries >= 5) && (blood_allowed) )
@@ -9419,6 +9425,329 @@ export async function injuryTokenSplash(actor)
 			await actor_token.TMFXaddUpdateFilters(soot_splash_params);
 		}
 	}
+}
+
+
+export async function elementalHitEffect(actor, move)
+{
+	let actor_tokens = actor.getActiveTokens();
+	let actor_token = actor_tokens[0];
+
+
+	const generic_hit_params =
+	[{
+		filterType: "electric",
+		filterId: "elementalHitEffect",
+		color: 0xFFFFFF,
+		time: 0,
+		blend: 0.1,
+		intensity: 2,
+		autoDestroy: true,
+		animated :
+		{
+		time : 
+		{ 
+			active: true, 
+			speed: 0.0040, 
+			animType: "move",
+			loops: 1,
+			loopDuration: 500
+			
+		}
+		}
+	}];
+
+	const hit_param_table = {
+		"Electric":{
+			"Physical":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xeeff00,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0040, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 500
+					
+				}
+				}
+			}],
+			"Special":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xeeff00,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0040, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 500
+					
+				}
+				}
+			}],
+			"Status":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xeeff00,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0040, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 500
+					
+				}
+				}
+			}],
+		},
+	};
+
+	let filter_data;
 	
+	if(hit_param_table[move.type])
+	{
+		if(hit_param_table[move.type][move.category])
+		{
+			filter_data = hit_param_table[move.type][move.category];
+		}
+		else
+		{
+			filter_data = generic_hit_params;
+		}
+	}
+	else
+	{
+		filter_data = generic_hit_params;
+	}
 	
+	await actor_token.TMFXaddUpdateFilters(filter_data);
+	
+}
+
+
+export async function elementalAttackEffect(actor, move)
+{
+	let actor_tokens = actor.getActiveTokens();
+	let actor_token = actor_tokens[0];
+
+
+	const generic_attack_params =
+	[{
+		filterType: "electric",
+		filterId: "elementalHitEffect",
+		color: 0xFFFFFF,
+		time: 0,
+		blend: 0.1,
+		intensity: 2,
+		autoDestroy: true,
+		animated :
+		{
+		time : 
+		{ 
+			active: true, 
+			speed: 0.0020, 
+			animType: "move",
+			loops: 1,
+			loopDuration: 1000
+			
+		}
+		}
+	}];
+
+	const attack_param_table = {
+		"Electric":{
+			"Physical":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xeeff00,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0020, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 1000
+					
+				}
+				}
+			}],
+			"Special":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xeeff00,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0020, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 1000
+					
+				}
+				}
+			}],
+			"Status":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xeeff00,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0020, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 1000
+					
+				}
+				}
+			}],
+		},
+	};
+
+
+	let filter_data;
+	
+	if(attack_param_table[move.type])
+	{
+		if(attack_param_table[move.type][move.category])
+		{
+			filter_data = attack_param_table[move.type][move.category];
+		}
+		else
+		{
+			filter_data = generic_attack_params;
+		}
+	}
+	else
+	{
+		filter_data = generic_attack_params;
+	}
+	
+	await actor_token.TMFXaddUpdateFilters(filter_data);
+
+}
+
+
+export async function elementalBlastEffect(actor, target, move)
+{
+
+	const generic_move_effect = "";
+
+	const specific_move_effect_table = {
+		"Hyper Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Yellow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false},
+		"Gust":{path:"modules/jb2a_patreon/Library/2nd_Level/Gust_Of_Wind/GustOfWind_01_White_VeryFast_1200x200.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false},
+		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false},
+		"Thunder Shock":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false},
+		"Thunderbolt":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false},
+		"Thunder Wave":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc"},
+		"Thunder Wave [OG]":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc"},
+		"Thunder":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningStrike_01b_800x800.webm", scale: 2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:"OutCirc"},
+
+		
+	};
+
+	let actor_tokens = actor.getActiveTokens();
+	let actor_token = actor_tokens[0];
+	let actor_token_scale = 1;
+	if(actor_token.data.height >1 || actor_token.data.width >1)
+	{
+		actor_token_scale = Math.max(actor_token.data.height, actor_token.data.width)
+	}
+
+	let target_tokens = target.getActiveTokens();
+	let target_token = target_tokens[0];
+
+	let rangeToTarget = GetDistanceBetweenTokens(actor_token, target_token);
+	let effect_path = generic_move_effect;
+	let effect_scale = 0.9;
+	let effect_anchor_x = 0.15;
+	let effect_anchor_y = 0.5;
+	let effect_speed = 0.1;
+	let effect_ease = false;
+
+	if(specific_move_effect_table[move.name])
+	{
+		effect_path = specific_move_effect_table[move.name]["path"];
+		effect_scale = specific_move_effect_table[move.name]["scale"];
+		effect_anchor_x = specific_move_effect_table[move.name]["anchor_x"];
+		effect_anchor_y = specific_move_effect_table[move.name]["anchor_y"];
+		effect_speed = specific_move_effect_table[move.name]["speed"];
+		effect_ease = specific_move_effect_table[move.name]["ease"];
+	}
+
+	function castSpell(effect) {
+		canvas.specials.drawSpecialToward(effect, actor_token, target_token);
+	}
+
+	castSpell({
+		file: effect_path,
+		// anchor: {
+		// 	x: -.08,
+		// 	y: 0.5
+		// },
+		// speed: "auto",
+		// angle: 0,
+		// scale: {
+		// 	x: 1,
+		// 	y: 1
+		// },
+		// animationDelay: {
+		// 	start: 0.5,
+		// 	end: 0.2
+		// },
+		// ease: "InCirc"
+	
+		anchor: {
+			x: effect_anchor_x,
+			y: effect_anchor_y,
+		},
+		speed: effect_speed,
+		angle: 0,
+		scale: {
+			x: Number(effect_scale * actor_token_scale),
+			y: Number(effect_scale * actor_token_scale),
+		},
+		ease: effect_ease,
+	});
 }
