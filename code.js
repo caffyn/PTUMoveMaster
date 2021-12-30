@@ -8506,13 +8506,46 @@ export async function SetCurrentWeather(new_weather)
 				"Clear":{ name: "MoveMasterWeather", type: "", options: {} },
 				"Sunny":{ name: "MoveMasterWeather", type: "embers", options: {} },
 				"Rainy":{ name: "MoveMasterWeather", type: "rain", options: {} },
-				"Hail":{ name: "MoveMasterWeather", type: "snowstorm", options: {scale: 1, speed:5000, density:5000, direction:30} },
-				"Sandstorm":{ name: "MoveMasterWeather", type: "clouds", options: {scale: 2, speed:1000, density:100, direction:180, tint: {apply: true, value: "#baa24a"} } },
+				"Hail":{
+					name: "MoveMasterWeather",
+					options:
+					{
+						density: 1,
+						direction: 30,
+						scale: 1,
+						speed: 10,
+						tint:
+						{
+							apply: false,
+							value: "#FFFFFF"
+						},
+					},
+					type: "snowstorm"
+				},
+				//{ name: "MoveMasterWeather", type: "snowstorm", options: {scale: 1, speed:5000, density:5000, direction:30} },
+				"Sandstorm":{
+					name: "MoveMasterWeather",
+					options:
+					{
+						density: 0,
+						direction: 180,
+						scale: 2,
+						speed: 10,
+						tint:
+						{
+							apply: true,
+							value: "#baa24a"
+						},
+					},
+					type: "clouds"
+				},
+				//{ name: "MoveMasterWeather", type: "clouds", options: {scale: 2, speed:1000, density:100, direction:180, tint: {apply: true, value: "#baa24a"} } },
 			};
 			console.log("fxmaster_weather_presets[new_weather]");
 			console.log(fxmaster_weather_presets[new_weather]);
 
-			Hooks.call("updateWeather", [
+			
+			await Hooks.call("fxmaster.updateWeather", [
 				fxmaster_weather_presets[new_weather]
 			]);
 		}
