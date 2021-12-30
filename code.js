@@ -9523,6 +9523,72 @@ export async function elementalHitEffect(actor, move)
 				}
 			}],
 		},
+
+		"Fighting":{
+			"Physical":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xff0000,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0040, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 500
+					
+				}
+				}
+			}],
+			"Special":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xff0000,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0040, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 500
+					
+				}
+				}
+			}],
+			"Status":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xff0000,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0040, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 500
+					
+				}
+				}
+			}],
+		},
 	};
 
 	let filter_data;
@@ -9643,6 +9709,72 @@ export async function elementalAttackEffect(actor, move)
 				}
 			}],
 		},
+
+		"Fighting":{
+			"Physical":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xff0000,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0020, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 1000
+					
+				}
+				}
+			}],
+			"Special":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xff0000,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0020, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 1000
+					
+				}
+				}
+			}],
+			"Status":[{
+				filterType: "electric",
+				filterId: "elementalHitEffect",
+				color: 0xff0000,
+				time: 0,
+				blend: 0.1,
+				intensity: 5,
+				autoDestroy: true,
+				animated :
+				{
+				time : 
+				{ 
+					active: true, 
+					speed: 0.0020, 
+					animType: "move",
+					loops: 1,
+					loopDuration: 1000
+					
+				}
+				}
+			}],
+		},
 	};
 
 
@@ -9675,14 +9807,19 @@ export async function elementalBlastEffect(actor, target, move)
 	const generic_move_effect = "";
 
 	const specific_move_effect_table = {
-		"Hyper Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Yellow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
-		"Gust":{path:"modules/jb2a_patreon/Library/2nd_Level/Gust_Of_Wind/GustOfWind_01_White_VeryFast_1200x200.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
-		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true},
-		"Thunder Shock":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
-		"Thunderbolt":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
-		"Thunder Wave":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc", melee:false},
-		"Thunder Wave [OG]":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc", melee:false},
-		"Thunder":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningStrike_01b_800x800.webm", scale: 2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:"OutCirc", melee:false},
+		"Hyper Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Yellow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Solar Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Rainbow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Gust":{path:"modules/jb2a_patreon/Library/2nd_Level/Gust_Of_Wind/GustOfWind_01_White_VeryFast_1200x200.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
+		"Wake-Up Slap":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Unarmed_Strike/UnarmedStrike_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:2},
+		"Dual Chop":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Regular_Blue_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:2},
+		"Thunder Shock":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Thunderbolt":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Thunder Wave":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc", melee:false, count:1},
+		"Thunder Wave [OG]":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc", melee:false, count:1},
+		"Thunder":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningStrike_01b_800x800.webm", scale: 2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:"OutCirc", melee:false, count:1},
+		"Bullet Seed":{path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Ranged/Bullet_01_Regular_Green_30ft_1600x400.webm", scale: 0.6, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:5},
+		"Flamethrower":{path:"modules/jb2a_patreon/Library/Generic/Fire/FireJet_01_Orange_30ft_1200x200.webm", scale: 0.4, anchor_x: 0.05, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
 
 		
 	};
@@ -9705,6 +9842,8 @@ export async function elementalBlastEffect(actor, target, move)
 	let effect_anchor_y = 0.5;
 	let effect_speed = 0.1;
 	let effect_ease = false;
+	let effect_count = 1;
+	let effects_cast_so_far = 0;
 
 	if(specific_move_effect_table[move.name])
 	{
@@ -9714,6 +9853,7 @@ export async function elementalBlastEffect(actor, target, move)
 		effect_anchor_y = specific_move_effect_table[move.name]["anchor_y"];
 		effect_speed = specific_move_effect_table[move.name]["speed"];
 		effect_ease = specific_move_effect_table[move.name]["ease"];
+		effect_count = specific_move_effect_table[move.name]["count"];
 		if(!specific_move_effect_table[move.name]["melee"])
 		{
 			actor_token_scale = 1;
@@ -9724,34 +9864,25 @@ export async function elementalBlastEffect(actor, target, move)
 		canvas.specials.drawSpecialToward(effect, actor_token, target_token);
 	}
 
-	castSpell({
-		file: effect_path,
-		// anchor: {
-		// 	x: -.08,
-		// 	y: 0.5
-		// },
-		// speed: "auto",
-		// angle: 0,
-		// scale: {
-		// 	x: 1,
-		// 	y: 1
-		// },
-		// animationDelay: {
-		// 	start: 0.5,
-		// 	end: 0.2
-		// },
-		// ease: "InCirc"
+	while(effects_cast_so_far < effect_count)
+	{
+		setTimeout( async () => { 
+			castSpell({
+				file: effect_path,
+				anchor: {
+					x: effect_anchor_x,
+					y: effect_anchor_y,
+				},
+				speed: effect_speed,
+				angle: 0,
+				scale: {
+					x: Number(effect_scale * actor_token_scale),
+					y: Number(effect_scale * actor_token_scale),
+				},
+				ease: effect_ease,
+			});
+		}, Number(200*effects_cast_so_far));
+		effects_cast_so_far++;
+	}
 	
-		anchor: {
-			x: effect_anchor_x,
-			y: effect_anchor_y,
-		},
-		speed: effect_speed,
-		angle: 0,
-		scale: {
-			x: Number(effect_scale * actor_token_scale),
-			y: Number(effect_scale * actor_token_scale),
-		},
-		ease: effect_ease,
-	});
 }
