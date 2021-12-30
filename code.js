@@ -8503,7 +8503,7 @@ export async function SetCurrentWeather(new_weather)
 		if(FXMaster_module)
 		{
 			let fxmaster_weather_presets = {
-				"Clear":{ name: "MoveMasterWeather", type: "", options: {} },
+				"Clear":{ name: "MoveMasterWeather", type: "none", options: {} },
 				"Sunny":{ name: "MoveMasterWeather", type: "embers", options: {} },
 				"Rainy":{ name: "MoveMasterWeather", type: "rain", options: {} },
 				"Hail":{
@@ -8544,10 +8544,18 @@ export async function SetCurrentWeather(new_weather)
 			console.log("fxmaster_weather_presets[new_weather]");
 			console.log(fxmaster_weather_presets[new_weather]);
 
+			if(new_weather == "Clear")
+			{
+				// await Hooks.call("fxmaster.updateWeather", []);
+				canvas.scene.unsetFlag("fxmaster", "effects");
+			}
+			else
+			{
+				await Hooks.call("fxmaster.updateWeather", [
+					fxmaster_weather_presets[new_weather]
+				]);
+			}
 			
-			await Hooks.call("fxmaster.updateWeather", [
-				fxmaster_weather_presets[new_weather]
-			]);
 		}
 	}
 }
