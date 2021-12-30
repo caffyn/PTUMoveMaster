@@ -22,6 +22,24 @@ function _loadModuleSettings() {
 	  default: "true"
 	});
 
+	game.settings.register("PTUMoveMaster", "useInjurySplashes", {
+		name: "GM Setting: Apply visual splashes of dirt/soot to tokens when they take auto-applied injuries.",
+		hint: "",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
+
+	game.settings.register("PTUMoveMaster", "useBloodSplashes", {
+		name: "GM Setting: Apply visual splashes of blood to tokens when they take auto-applied injuries once they reach 5+ injuries.",
+		hint: "This might not fit the tone of more lighthearted games, so it can be turned off here.",
+		scope: "world",
+		config: true,
+		type: Boolean,
+		default: true
+	});
+
 	game.settings.register("PTUMoveMaster", "showEffectiveness", {
 		name: "GM Setting: Show move effectiveness on current target",
 		hint: "",
@@ -343,6 +361,7 @@ Hooks.once('init', async function()
 		GetActorHealthColor,
 		ThisActorOrTheirTrainerHasDexEntry,
 		ActivateDigestionBuff,
+		injuryTokenSplash,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -1639,6 +1658,48 @@ var move_stage_changes = {
 		"crit-range":	2,
 	},
 };
+
+
+const soot_splash_params =
+[{
+	filterType: "splash",
+	filterId: "sootSplash",
+	rank:5,
+	color: 0x999999,
+	padding: 30,
+	time: Math.random()*1000,
+	seed: Math.random(),
+	splashFactor: 1,
+	spread: 0.4,
+	blend: 1,
+	dimX: 2,
+	dimY: 2,
+	cut: false,
+	textureAlphaBlend: true,
+	anchorX: 0.32+(Math.random()*0.36),
+	anchorY: 0.32+(Math.random()*0.36)
+}];
+
+const blood_splash_params =
+[{
+	filterType: "splash",
+	filterId: "bloodSplash",
+	rank:5,
+	color: 0x990505,
+	padding: 30,
+	time: Math.random()*1000,
+	seed: Math.random(),
+	splashFactor: 1,
+	spread: 0.4,
+	blend: 1,
+	dimX: 2,
+	dimY: 2,
+	cut: false,
+	textureAlphaBlend: true,
+	anchorX: 0.32+(Math.random()*0.36),
+	anchorY: 0.32+(Math.random()*0.36)
+}];
+
 
 const ButtonHeight = 100;
 const RangeFontSize = 14;
@@ -3043,7 +3104,7 @@ export function PTUAutoFight()
 
 									if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item_data.type) > -1) )
 									{
-										let oneThirdMaxHealth = Number(actor.data.data.health.max / 3);
+										let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
 										let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
 
 										await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item_data.type, "data.TypeStrategistDR": currentDR});
@@ -3065,7 +3126,9 @@ export function PTUAutoFight()
 										{
 											if (move_stage_changes[searched_move][searched_stat] != null)
 											{
-												await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+												setTimeout( async () => { 
+													await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+												}, 1000);
 											}
 										}
 										if(move_stage_changes[searched_move]["pct-healing"] != null)
@@ -3092,7 +3155,9 @@ export function PTUAutoFight()
 									{
 										if (move_stage_changes[searched_move][searched_stat] != null)
 										{
-											await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+											setTimeout( async () => { 
+												await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+											}, 1000);
 										}
 									}
 									if(move_stage_changes[searched_move]["pct-healing"] != null)
@@ -3982,7 +4047,9 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 						{
 							if (move_stage_changes[searched_move][searched_stat] != null)
 							{
-								await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+								setTimeout( async () => { 
+									await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+								}, 1000);
 							}
 						}
 						if(move_stage_changes[searched_move]["pct-healing"] != null)
@@ -4005,7 +4072,9 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 					{
 						if (move_stage_changes[searched_move][searched_stat] != null)
 						{
-							await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+							setTimeout( async () => { 
+								await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+							}, 1000);
 						}
 					}
 					if(move_stage_changes[searched_move]["pct-healing"] != null)
@@ -4379,10 +4448,12 @@ export async function CalculateAcRoll (moveData, actorData)   {
 		if(actorData.flags.ptu.is_totally_blind)
 		{
 			blindness_mod = -10;
+			// blindness_mod = 0;
 		}
 		else if(actorData.flags.ptu.is_blind)
 		{
 			blindness_mod = -6;
+			// blindness_mod = 0;
 		}
 	}
 
@@ -4810,7 +4881,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		await game.PTUMoveMaster.TakeAction(actor, "Standard", move.category);
 	}
 
-	if((targeted) && (move.category == "Physical" || move.category == "Special"))
+	if(targeted && !move.range.includes("Self"))
 	{
 		if(!roll1_hit && !(roll2_hit && isDoubleStrike)) // Miss! Play dodge animation on target.
 		{
@@ -5148,6 +5219,10 @@ export async function ApplyInjuries(target, final_effective_damage, damage_type=
 			}
 
 			await target.update({'data.health.injuries': Number(target.data.data.health.injuries + injuryCount) });
+			if(injuryCount)
+			{
+				await game.PTUMoveMaster.injuryTokenSplash(target);
+			}
 		}
 
 	if( (targetHealthCurrent > 0) && (Number(targetHealthCurrent - final_effective_damage) <= 0) )
@@ -5482,13 +5557,13 @@ export async function ThrowPokeball(actor_token, target_token, pokeball, pokebal
 	{
 		if(throwing_actor.data.flags.ptu.is_totally_blind)
 		{
-			blindness_mod = 0;
-			// blindness_mod = -10;
+			// blindness_mod = 0;
+			blindness_mod = -10;
 		}
 		else if(throwing_actor.data.flags.ptu.is_blind)
 		{
-			blindness_mod = 0;
-			// blindness_mod = -6;
+			// blindness_mod = 0;
+			blindness_mod = -6;
 		}
 	}
 
@@ -7179,7 +7254,7 @@ export async function ShowManeuverMenu(actor)
 			"Range":"Interrupt, Trigger", 
 			"User Checks":[ "acrobatics", "athletics" ],
 			"Target Checks":[],
-			"Success":"You must make an Acrobatics or Athletics Check, with a DC equal to three times the number of meters they have to move to reach the triggering Ally; If you succeed, you Push the triggering Ally 1 Meter away from you, and Shift to occupy their space, and are hit by the triggering attack. On Failure to make the Check, the user still Shifts a number of meters equal a third of their check result. Note: If the target that was Intercepted was hit by an Area of Effect Move, and the 1 meter push does not remove them from the Area of Effect, the Intercept has no effect since they are still in the area of the attack – it would cause the Interceptor to be hit by the Move however. <br><br>Additional Rules: <br>» Pokémon and Trainers may only Intercept against Priority and Interrupt Moves if they are faster than the user of those Moves. <br>» Moves that cannot miss (such as Aura Sphere or Swift) cannot be Intercepted.<br>» Pokémon and Trainers cannot attempt Intercepts if they are Asleep, Confused, Enraged, Frozen, Stuck, Paralyzed, or otherwise unable to move.<br>» Intercepts may not be used to move the Intercepting Pokémon or Trainer OUT of the way of an attack. They will always be hit, regardless.",
+			"Success":"You must make an Acrobatics or Athletics Check, with a DC equal to three times the number of meters they have to move to reach the triggering Ally; If you succeed, you Push the triggering Ally 1 Meter away from you, and Shift to occupy their space, and are hit by the triggering attack. On Failure to make the Check, the user still Shifts a number of meters equal a third of their check result. Note: If the target that was Intercepted was hit by an Area of Effect Move, and the 1 meter push does not remove them from the Area of Effect, the Intercept has no effect since they are still in the area of the attack - it would cause the Interceptor to be hit by the Move however. <br><br>Additional Rules: <br>» Pokémon and Trainers may only Intercept against Priority and Interrupt Moves if they are faster than the user of those Moves. <br>» Moves that cannot miss (such as Aura Sphere or Swift) cannot be Intercepted.<br>» Pokémon and Trainers cannot attempt Intercepts if they are Asleep, Confused, Enraged, Frozen, Stuck, Paralyzed, or otherwise unable to move.<br>» Intercepts may not be used to move the Intercepting Pokémon or Trainer OUT of the way of an attack. They will always be hit, regardless.",
 			"Failure":""
 		},
 		"Intercept Ranged": {
@@ -9277,4 +9352,32 @@ export async function inflictActorAffliction(actor, affliction_name, silent=fals
 	// {
 	// 	return false;
 	// }
+}
+
+
+export async function injuryTokenSplash(actor)
+{
+	// let actor_token = GetTokenFromActor(actor);
+	let injury_splash_allowed = game.settings.get("PTUMoveMaster", "useInjurySplashes");
+	let blood_allowed = game.settings.get("PTUMoveMaster", "useBloodSplashes");
+
+	let actor_tokens = actor.getActiveTokens();
+	let actor_token = actor_tokens[0];
+
+	console.log("actor_token");
+	console.log(actor_token);
+
+	if(injury_splash_allowed)
+	{
+		if( (actor.data.data.health.injuries >= 5) && (blood_allowed) )
+		{
+			await actor_token.TMFXaddUpdateFilters(blood_splash_params);
+		}
+		else
+		{
+			await actor_token.TMFXaddUpdateFilters(soot_splash_params);
+		}
+	}
+	
+	
 }
