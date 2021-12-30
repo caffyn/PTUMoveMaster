@@ -9675,14 +9675,14 @@ export async function elementalBlastEffect(actor, target, move)
 	const generic_move_effect = "";
 
 	const specific_move_effect_table = {
-		"Hyper Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Yellow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false},
-		"Gust":{path:"modules/jb2a_patreon/Library/2nd_Level/Gust_Of_Wind/GustOfWind_01_White_VeryFast_1200x200.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false},
-		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false},
-		"Thunder Shock":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false},
-		"Thunderbolt":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false},
-		"Thunder Wave":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc"},
-		"Thunder Wave [OG]":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc"},
-		"Thunder":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningStrike_01b_800x800.webm", scale: 2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:"OutCirc"},
+		"Hyper Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Yellow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
+		"Gust":{path:"modules/jb2a_patreon/Library/2nd_Level/Gust_Of_Wind/GustOfWind_01_White_VeryFast_1200x200.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
+		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true},
+		"Thunder Shock":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
+		"Thunderbolt":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.1, anchor_x: 0.03, anchor_y: 0.5, speed:0.1, ease:false, melee:false},
+		"Thunder Wave":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc", melee:false},
+		"Thunder Wave [OG]":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Regular_Green_400x400.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0, ease:"OutCirc", melee:false},
+		"Thunder":{path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningStrike_01b_800x800.webm", scale: 2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:"OutCirc", melee:false},
 
 		
 	};
@@ -9714,6 +9714,10 @@ export async function elementalBlastEffect(actor, target, move)
 		effect_anchor_y = specific_move_effect_table[move.name]["anchor_y"];
 		effect_speed = specific_move_effect_table[move.name]["speed"];
 		effect_ease = specific_move_effect_table[move.name]["ease"];
+		if(!specific_move_effect_table[move.name]["melee"])
+		{
+			actor_token_scale = 1;
+		}
 	}
 
 	function castSpell(effect) {
