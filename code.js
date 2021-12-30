@@ -2014,7 +2014,7 @@ export function PTUAutoFight()
 
 	async function ApplyDamage(event)
 	{
-		let key_shift = keyboard.isDown("Shift");
+		let key_shift = game.keyboard.downKeys.has("ShiftLeft");
 		if (key_shift) 
 		{
 			let form = new game.PTUMoveMaster.MoveMasterBonusDamageReductionOptions({event}, {"submitOnChange": false, "submitOnClose": true});
@@ -3056,7 +3056,7 @@ export function PTUAutoFight()
 							game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
 							return;
 						}
-						let key_shift = keyboard.isDown("Shift");
+						let key_shift = game.keyboard.downKeys.has("ShiftLeft");
 
 						await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 
@@ -3633,7 +3633,7 @@ export function PTUAutoFight()
 								game.PTUMoveMaster.chatMessage(actor, "But they did not obey!")
 								return;
 							}
-							let key_shift = keyboard.isDown("Shift");
+							let key_shift = game.keyboard.downKeys.has("ShiftLeft");
 							if (key_shift) 
 							{
 								rollDamageMoveWithBonus(actor , item, finalDB, typeStrategist);
@@ -7543,7 +7543,7 @@ export async function ShowManeuverMenu(actor)
 					game.PTUMoveMaster.chatMessage(this_actor, "But they did not obey!")
 					return;
 				}
-				let key_shift = keyboard.isDown("Shift");
+				let key_shift = game.keyboard.downKeys.has("ShiftLeft");
 				if (key_shift) 
 				{
 					// console.log("KEYBOARD SHIFT IS DOWN!");
@@ -7998,7 +7998,7 @@ export async function ShowStruggleMenu(actor)
 					game.PTUMoveMaster.chatMessage(this_actor, "But they did not obey!")
 					return;
 				}
-				let key_shift = keyboard.isDown("Shift");
+				let key_shift = game.keyboard.downKeys.has("ShiftLeft");
 				if (key_shift) 
 				{
 					await game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, struggle, finalDB, false);

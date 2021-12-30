@@ -126,7 +126,7 @@ export class SidebarForm extends FormApplication {
             let current_actor = game.actors.get(canvas.tokens.controlled[0].data.actorId);
             // console.log("Sidebar-form.js current_actor:")
             // console.log(current_actor);
-            setTimeout(() => {  PTUAutoFight().ChatWindow(current_actor); }, 150);
+            setTimeout( async () => { await PTUAutoFight().ChatWindow(current_actor); }, 150);
           }
           
         } catch(err) {
