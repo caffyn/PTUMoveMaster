@@ -10097,9 +10097,19 @@ export async function elementalBlastEffect(actor, target, move)
 
 	const specific_move_effect_table = {
 		"Hyper Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Yellow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
-		"Solar Beam":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Rainbow_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Solar Beam":{
+			path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Rainbow_30ft_1600x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Fireflies/Fireflies_01_Green_Many02_400x400.webm",
+			scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1,
+			precursor_delay:0, precursor_speed:0.1, precursor_scale:0.8, precursor_count:1, precursor_frequency:100, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
+		},
 		"Signal Beam":{path:"modules/jb2a_patreon/Library/6th_Level/Disintegrate/Disintegrate_01_Regular_Green01_30ft_1600x400.webm", scale: 0.5, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
-		"Moonblast":{path:"modules/jb2a_patreon/Library/Cantrip/Ray_Of_Frost/RayOfFrost_01_Regular_PurpleTeal_30ft_1600x400.webm", precursor:"modules/jb2a_patreon/Library/Generic/Energy/SwirlingSparkles_01_Regular_BluePink_400x400.webm", scale: 0.5, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1, delay:650},
+		"Moonblast":{
+			path:"modules/jb2a_patreon/Library/Cantrip/Ray_Of_Frost/RayOfFrost_01_Regular_PurpleTeal_30ft_1600x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Energy/SwirlingSparkles_01_Regular_BluePink_400x400.webm", 
+			scale: 0.5, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1, delay:650,
+			precursor_count:1, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
+		},
 		"Gust":{path:"modules/jb2a_patreon/Library/2nd_Level/Gust_Of_Wind/GustOfWind_01_White_VeryFast_1200x200.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
 		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
 		"Hammer Arm":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Unarmed_Strike/UnarmedStrike_01_Dark_Red_Physical02_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:500},
@@ -10123,7 +10133,13 @@ export async function elementalBlastEffect(actor, target, move)
 		"Crunch":{path:"modules/jb2a_patreon/Library/Generic/Creature/Bite_01_Regular_Purple_400x400.webm", scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
 		"Fire Fang":{path:"modules/jb2a_patreon/Library/Generic/Creature/Bite_01_Regular_Orange_400x400.webm", scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
 		"Thunder Fang":{path:"modules/jb2a_patreon/Library/Generic/Creature/Bite_01_Regular_Yellow_400x400.webm", scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
-		"Night Slash":{path:"modules/jb2a_patreon/Library/Generic/Creature/Claws_01_Dark_Red_400x400.webm", scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
+		"Night Slash":{path:"modules/jb2a_patreon/Library/Generic/Creature/Claws_01_Dark_Red_400x400.webm", scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:2, delay:200, frequency:600},
+		"Shadow Claw":{
+			path:"modules/jb2a_patreon/Library/Generic/Creature/Claws_01_Dark_Red_400x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/TMFX/OutPulse/Circle/OutPulse_01_Circle_Normal_500.webm", 
+			scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:400,
+			precursor_delay:0, precursor_speed:0.1, precursor_scale:0.8, precursor_count:1, precursor_frequency:100, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
+		},
 		"Metal Claw":{path:"modules/jb2a_patreon/Library/Generic/Creature/Claws_01_Bright_Blue_400x400.webm", scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
 		"Fury Swipes":{path:"modules/jb2a_patreon/Library/Generic/Creature/Claws_01_Bright_Orange_400x400.webm", scale: 0.5, anchor_x: 0.1, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:5},
 		"Double-Edge":{path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgSlashing_01_Regular_Yellow_2Handed_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
@@ -10136,18 +10152,27 @@ export async function elementalBlastEffect(actor, target, move)
 		"Air Slash":{
 			path:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_01_Regular_Blue_30ft_1600x400.webm", 
 			precursor:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_04_Regular_Blue_30ft_1600x400.webm",
-			scale: 0.6, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1,
-			precursor_count: 1,
+			scale: 0.6, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1, precursor_count: 1,
 		},
-
 		"Stored Power":{path:"modules/jb2a_patreon/Library/Cantrip/Eldritch_Blast/EldritchBlast_01_Regular_Pink_30ft_1600x400.webm", scale: 0.9, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:5},
 		"Zap Cannon":{path:"modules/jb2a_patreon/Library/3rd_Level/Lightning_Bolt/LightningBolt_01_Regular_Green_4000x400.webm", scale: 0.3, anchor_x: 0.00, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
-		"Earthquake":{path:"modules/jb2a_patreon/Library/Generic/Template/Circle/OutPulse/OutPulse_02_Regular_GreenOrange_Burst_600x600.webm", scale: 0.5, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:15},
+		"Earthquake":{
+			path:"modules/jb2a_patreon/Library/Generic/Template/Circle/OutPulse/OutPulse_02_Regular_GreenOrange_Burst_600x600.webm",
+			precursor:"modules/jb2a_patreon/Library/Generic/Impact/GroundCrackImpact_01_Regular_Orange_600x600.webm", 
+			scale: 1.2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:15,
+			precursor_count:1, precursor_scale: 1.5, precursor_frequency:200, precursor_delay: 800,
+		},
 		"Explosion":{
 			path:"modules/jb2a_patreon/Library/Generic/Explosion/Explosion_02_Orange_400x400.webm", 
 			precursor:"modules/jb2a_patreon/Library/Generic/Impact/GroundCrackImpact_01_Regular_Orange_600x600.webm", 
-			scale: 1.2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:4,
-			delay: 2000, frequency:150, precursor_count:1, precursor_delay:0, precursor_frequency:200,
+			scale: 1.2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:4, delay: 2000, frequency:150, 
+			precursor_count:1, precursor_delay:0, precursor_frequency:200,
+		},
+		"Self-Destruct":{
+			path:"modules/jb2a_patreon/Library/Generic/Explosion/Explosion_02_Orange_400x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Impact/GroundCrackImpact_01_Regular_Orange_600x600.webm", 
+			scale: 1.6, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:2, delay: 1000, frequency:2000, 
+			precursor_count:2, precursor_delay:0, precursor_frequency:3000,
 		},
 		"Aura Sphere":{
 			path:"modules/jb2a_patreon/Library/1st_Level/Shield/Shield_02_Regular_Blue_OutroExplode_400x400.webm", 
@@ -10156,7 +10181,24 @@ export async function elementalBlastEffect(actor, target, move)
 			precursor_delay:0, precursor_speed:0.1, precursor_scale:0.8, precursor_count:10, precursor_frequency:100,
 			precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
 		},
-
+		"Shadow Ball":{
+			path:"modules/jb2a_patreon/Library/Generic/Lightning/LightningBall_01_Dark_Purple_400x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/TMFX/OutPulse/Circle/OutPulse_01_Circle_Normal_500.webm", 
+			scale: 0.2, anchor_x: 0.15, anchor_y: 0.5, speed:"auto", ease:"InOutCirc", melee:false, count:1, delay:0, 
+			precursor_delay:0, precursor_speed:0.1, precursor_scale:0.8, precursor_count:1, precursor_frequency:100, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
+		},
+		"Energy Ball":{
+			path:"modules/jb2a_patreon/Library/2nd_Level/Flaming_Sphere/FlamingSphere_01_Green_200x200.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Ranged/Bullet_01_Regular_Green_30ft_1600x400.webm", 
+			scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:2000, ease:"InOutCirc", melee:false, count:1, delay:0, 
+			precursor_delay:1500, precursor_speed:0.1, precursor_count:13, precursor_frequency:100,
+			precursor_scale: 0.7, precursor_anchor_x: 0.15, precursor_anchor_y: 0.5, precursor_ease:false,
+		},
+		"Razor Leaf":{
+			path:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_02_Dark_Green_30ft_1600x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_04_Dark_Green_30ft_1600x400.webm",
+			scale: 0.2, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:7, precursor_count: 7, frequency: 100,
+		},
 
 		
 	};
@@ -10360,15 +10402,6 @@ export async function elementalBlastEffect(actor, target, move)
 	}
 
 	effects_precursor_cast_so_far = 0;
-
-	console.log("effect_precursor_count");
-	console.log(effect_precursor_count);
-
-	console.log("effect_precursor_angles");
-	console.log(effect_precursor_angles);
-
-	console.log("effect_precursor_delay");
-	console.log(effect_precursor_delay);
 
 	while(effects_precursor_cast_so_far < effect_precursor_count)
 	{
