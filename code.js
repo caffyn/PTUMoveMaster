@@ -882,13 +882,14 @@ Hooks.on("controlToken", async (token, selected) => {
 		{
 			let current_actor = game.actors.get(token.data.actorId);
 	
-			PTUAutoFight().ChatWindow(current_actor);
+			await PTUAutoFight().ChatWindow(current_actor);
+			await $("#ptu-sidebar").slideDown(200);
 		}
 		else
 		{
-			game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
+			game.PTUMoveMaster.MoveMasterSidebar = await new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"});
 			await game.PTUMoveMaster.MoveMasterSidebar.render(true);
-			await game.PTUMoveMaster.MoveMasterSidebar.close();
+			await $("#ptu-sidebar").slideUp(200);
 		}
 	}
 	
