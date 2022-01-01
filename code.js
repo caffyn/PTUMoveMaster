@@ -9702,6 +9702,366 @@ export async function elementalHitEffect(actor, move)
 			
 			],
 		},
+
+		"Dark":{
+			"Physical":[
+				{
+					filterType: "fumes",
+					filterId: "myFumes",
+					color: 0x303030,
+					time: 0,
+					blend: 8,
+					autoDestroy: true,
+					animated :
+					{
+					  time : 
+					  { 
+						active: true, 
+						speed: 0.001, 
+						animType: "move",
+						loops: 1,
+						loopDuration: 500,
+					  },
+					}
+				},
+				{
+				   filterType: "outline",
+				   filterId: "myOutline",
+				   padding: 10,
+				   color: 0x000000,
+				   thickness: 0,
+				   quality: 5,
+				   zOrder: 9,
+				   autoDestroy: true,
+				   animated :
+				   {
+					  thickness: 
+					  { 
+						 active: true,
+						 loopDuration: 500,
+						 loops: 1,
+						 animType: "cosOscillation",
+						 val1: 0, 
+						 val2: 4
+					  }
+				   }
+				}
+				],
+			"Special":[
+				{
+					filterType: "fumes",
+					filterId: "myFumes",
+					color: 0x303030,
+					time: 0,
+					blend: 8,
+					autoDestroy: true,
+					animated :
+					{
+					  time : 
+					  { 
+						active: true, 
+						speed: 0.001, 
+						animType: "move",
+						loops: 1,
+						loopDuration: 500,
+					  },
+					}
+				},
+				{
+				   filterType: "outline",
+				   filterId: "myOutline",
+				   padding: 10,
+				   color: 0x000000,
+				   thickness: 0,
+				   quality: 5,
+				   zOrder: 9,
+				   autoDestroy: true,
+				   animated :
+				   {
+					  thickness: 
+					  { 
+						 active: true,
+						 loopDuration: 500,
+						 loops: 1,
+						 animType: "cosOscillation",
+						 val1: 0, 
+						 val2: 4
+					  }
+				   }
+				}
+				],
+			"Status":[
+				{
+					filterType: "fumes",
+					filterId: "myFumes",
+					color: 0x303030,
+					time: 0,
+					blend: 8,
+					autoDestroy: true,
+					animated :
+					{
+					  time : 
+					  { 
+						active: true, 
+						speed: 0.001, 
+						animType: "move",
+						loops: 1,
+						loopDuration: 500,
+					  },
+					}
+				},
+				{
+				   filterType: "outline",
+				   filterId: "myOutline",
+				   padding: 10,
+				   color: 0x000000,
+				   thickness: 0,
+				   quality: 5,
+				   zOrder: 9,
+				   autoDestroy: true,
+				   animated :
+				   {
+					  thickness: 
+					  { 
+						 active: true,
+						 loopDuration: 500,
+						 loops: 1,
+						 animType: "cosOscillation",
+						 val1: 0, 
+						 val2: 4
+					  }
+				   }
+				}
+				],
+		},
+
+
+		"Ghost":{
+			"Physical":[{
+				filterType: "liquid",
+				filterId: "mySpectralBody",
+				color: 0x20AAEE,
+				time: 0,
+				blend: 8,
+				intensity: 0,
+				spectral: true,
+				scale: 0.9,
+				autoDestroy: true,
+				animated :
+				{
+				   time : 
+				   { 
+					  active: true, 
+					  speed: 0.0010, 
+					  animType: "move",
+					  loops: 1,
+					  loopduration: 500
+				   },
+				   color: 
+				   {
+					  active: true, 
+					  loopduration: 500, 
+					  loops: 1,
+					  animType: "colorOscillation", 
+					  val1:0xFFFFFF, 
+					  val2:0x00AAFF
+				   },
+				   intensity:
+					{
+					   active: true, 
+					   loopduration: 500, 
+					   loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			},
+			
+			{
+				filterType: "glow",
+				filterId: "superSpookyGlow",
+				outerStrength: 0,
+				innerStrength: 0,
+				color: 0x5099DD,
+				quality: 0.5,
+				padding: 10,
+				autoDestroy: true,
+				animated:
+				{
+					color: 
+					{
+					   active: true, 
+					   loopduration: 500,
+					   loops: 1, 
+					   animType: "colorOscillation", 
+					   val1:0x5099DD, 
+					   val2:0x90EEFF
+					},
+					outerStrength:
+					{
+					  active: true, 
+					  loopduration: 500, 
+					  loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			}
+			
+			],
+			"Special":[{
+				filterType: "liquid",
+				filterId: "mySpectralBody",
+				color: 0x20AAEE,
+				time: 0,
+				blend: 8,
+				intensity: 0,
+				spectral: true,
+				scale: 0.9,
+				autoDestroy: true,
+				animated :
+				{
+				   time : 
+				   { 
+					  active: true, 
+					  speed: 0.0010, 
+					  animType: "move",
+					  loops: 1,
+					  loopduration: 500
+				   },
+				   color: 
+				   {
+					  active: true, 
+					  loopduration: 500, 
+					  loops: 1,
+					  animType: "colorOscillation", 
+					  val1:0xFFFFFF, 
+					  val2:0x00AAFF
+				   },
+				   intensity:
+					{
+					   active: true, 
+					   loopduration: 500, 
+					   loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			},
+			
+			{
+				filterType: "glow",
+				filterId: "superSpookyGlow",
+				outerStrength: 0,
+				innerStrength: 0,
+				color: 0x5099DD,
+				quality: 0.5,
+				padding: 10,
+				autoDestroy: true,
+				animated:
+				{
+					color: 
+					{
+					   active: true, 
+					   loopduration: 500,
+					   loops: 1, 
+					   animType: "colorOscillation", 
+					   val1:0x5099DD, 
+					   val2:0x90EEFF
+					},
+					outerStrength:
+					{
+					  active: true, 
+					  loopduration: 500, 
+					  loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			}
+			
+			],
+			"Status":[{
+				filterType: "liquid",
+				filterId: "mySpectralBody",
+				color: 0x20AAEE,
+				time: 0,
+				blend: 8,
+				intensity: 0,
+				spectral: true,
+				scale: 0.9,
+				autoDestroy: true,
+				animated :
+				{
+				   time : 
+				   { 
+					  active: true, 
+					  speed: 0.0010, 
+					  animType: "move",
+					  loops: 1,
+					  loopduration: 500
+				   },
+				   color: 
+				   {
+					  active: true, 
+					  loopduration: 500, 
+					  loops: 1,
+					  animType: "colorOscillation", 
+					  val1:0xFFFFFF, 
+					  val2:0x00AAFF
+				   },
+				   intensity:
+					{
+					   active: true, 
+					   loopduration: 500, 
+					   loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			},
+			
+			{
+				filterType: "glow",
+				filterId: "superSpookyGlow",
+				outerStrength: 0,
+				innerStrength: 0,
+				color: 0x5099DD,
+				quality: 0.5,
+				padding: 10,
+				autoDestroy: true,
+				animated:
+				{
+					color: 
+					{
+					   active: true, 
+					   loopduration: 500,
+					   loops: 1, 
+					   animType: "colorOscillation", 
+					   val1:0x5099DD, 
+					   val2:0x90EEFF
+					},
+					outerStrength:
+					{
+					  active: true, 
+					  loopduration: 500, 
+					  loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			}
+			
+			],
+		}
+
+
 	};
 
 	let filter_data;
@@ -10064,6 +10424,365 @@ export async function elementalAttackEffect(actor, move)
 			
 			],
 		},
+
+		"Dark":{
+			"Physical":[
+				{
+					filterType: "fumes",
+					filterId: "myFumes",
+					color: 0x303030,
+					time: 0,
+					blend: 8,
+					autoDestroy: true,
+					animated :
+					{
+					  time : 
+					  { 
+						active: true, 
+						speed: 0.001, 
+						animType: "move",
+						loops: 1,
+						loopDuration: 2000,
+					  },
+					}
+				},
+				{
+				   filterType: "outline",
+				   filterId: "myOutline",
+				   padding: 10,
+				   color: 0x000000,
+				   thickness: 0,
+				   quality: 5,
+				   zOrder: 9,
+				   autoDestroy: true,
+				   animated :
+				   {
+					  thickness: 
+					  { 
+						 active: true,
+						 loopDuration: 2000,
+						 loops: 1,
+						 animType: "cosOscillation",
+						 val1: 0, 
+						 val2: 4
+					  }
+				   }
+				}
+				],
+			"Special":[
+				{
+					filterType: "fumes",
+					filterId: "myFumes",
+					color: 0x303030,
+					time: 0,
+					blend: 8,
+					autoDestroy: true,
+					animated :
+					{
+					  time : 
+					  { 
+						active: true, 
+						speed: 0.001, 
+						animType: "move",
+						loops: 1,
+						loopDuration: 2000,
+					  },
+					}
+				},
+				{
+				   filterType: "outline",
+				   filterId: "myOutline",
+				   padding: 10,
+				   color: 0x000000,
+				   thickness: 0,
+				   quality: 5,
+				   zOrder: 9,
+				   autoDestroy: true,
+				   animated :
+				   {
+					  thickness: 
+					  { 
+						 active: true,
+						 loopDuration: 2000,
+						 loops: 1,
+						 animType: "cosOscillation",
+						 val1: 0, 
+						 val2: 4
+					  }
+				   }
+				}
+				],
+			"Status":[
+				{
+					filterType: "fumes",
+					filterId: "myFumes",
+					color: 0x303030,
+					time: 0,
+					blend: 8,
+					autoDestroy: true,
+					animated :
+					{
+					  time : 
+					  { 
+						active: true, 
+						speed: 0.001, 
+						animType: "move",
+						loops: 1,
+						loopDuration: 2000,
+					  },
+					}
+				},
+				{
+				   filterType: "outline",
+				   filterId: "myOutline",
+				   padding: 10,
+				   color: 0x000000,
+				   thickness: 0,
+				   quality: 5,
+				   zOrder: 9,
+				   autoDestroy: true,
+				   animated :
+				   {
+					  thickness: 
+					  { 
+						 active: true,
+						 loopDuration: 2000,
+						 loops: 1,
+						 animType: "cosOscillation",
+						 val1: 0, 
+						 val2: 4
+					  }
+				   }
+				}
+				],
+		},
+
+		"Ghost":{
+			"Physical":[{
+				filterType: "liquid",
+				filterId: "mySpectralBody",
+				color: 0x20AAEE,
+				time: 0,
+				blend: 8,
+				intensity: 0,
+				spectral: true,
+				scale: 0.9,
+				autoDestroy: true,
+				animated :
+				{
+				   time : 
+				   { 
+					  active: true, 
+					  speed: 0.0010, 
+					  animType: "move",
+					  loops: 1,
+					  loopduration: 1000
+				   },
+				   color: 
+				   {
+					  active: true, 
+					  loopduration: 2000, 
+					  loops: 1,
+					  animType: "colorOscillation", 
+					  val1:0xFFFFFF, 
+					  val2:0x00AAFF
+				   },
+				   intensity:
+					{
+					   active: true, 
+					   loopduration: 2000, 
+					   loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			},
+			
+			{
+				filterType: "glow",
+				filterId: "superSpookyGlow",
+				outerStrength: 0,
+				innerStrength: 0,
+				color: 0x5099DD,
+				quality: 0.5,
+				padding: 10,
+				autoDestroy: true,
+				animated:
+				{
+					color: 
+					{
+					   active: true, 
+					   loopduration: 2000,
+					   loops: 1, 
+					   animType: "colorOscillation", 
+					   val1:0x5099DD, 
+					   val2:0x90EEFF
+					},
+					outerStrength:
+					{
+					  active: true, 
+					  loopduration: 2000, 
+					  loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			}
+			
+			],
+			"Special":[{
+				filterType: "liquid",
+				filterId: "mySpectralBody",
+				color: 0x20AAEE,
+				time: 0,
+				blend: 8,
+				intensity: 0,
+				spectral: true,
+				scale: 0.9,
+				autoDestroy: true,
+				animated :
+				{
+				   time : 
+				   { 
+					  active: true, 
+					  speed: 0.0010, 
+					  animType: "move",
+					  loops: 1,
+					  loopduration: 1000
+				   },
+				   color: 
+				   {
+					  active: true, 
+					  loopduration: 2000, 
+					  loops: 1,
+					  animType: "colorOscillation", 
+					  val1:0xFFFFFF, 
+					  val2:0x00AAFF
+				   },
+				   intensity:
+					{
+					   active: true, 
+					   loopduration: 2000, 
+					   loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			},
+			
+			{
+				filterType: "glow",
+				filterId: "superSpookyGlow",
+				outerStrength: 0,
+				innerStrength: 0,
+				color: 0x5099DD,
+				quality: 0.5,
+				padding: 10,
+				autoDestroy: true,
+				animated:
+				{
+					color: 
+					{
+					   active: true, 
+					   loopduration: 2000,
+					   loops: 1, 
+					   animType: "colorOscillation", 
+					   val1:0x5099DD, 
+					   val2:0x90EEFF
+					},
+					outerStrength:
+					{
+					  active: true, 
+					  loopduration: 2000, 
+					  loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			}
+			
+			],
+			"Status":[{
+				filterType: "liquid",
+				filterId: "mySpectralBody",
+				color: 0x20AAEE,
+				time: 0,
+				blend: 8,
+				intensity: 0,
+				spectral: true,
+				scale: 0.9,
+				autoDestroy: true,
+				animated :
+				{
+				   time : 
+				   { 
+					  active: true, 
+					  speed: 0.0010, 
+					  animType: "move",
+					  loops: 1,
+					  loopduration: 1000
+				   },
+				   color: 
+				   {
+					  active: true, 
+					  loopduration: 2000, 
+					  loops: 1,
+					  animType: "colorOscillation", 
+					  val1:0xFFFFFF, 
+					  val2:0x00AAFF
+				   },
+				   intensity:
+					{
+					   active: true, 
+					   loopduration: 2000, 
+					   loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			},
+			
+			{
+				filterType: "glow",
+				filterId: "superSpookyGlow",
+				outerStrength: 0,
+				innerStrength: 0,
+				color: 0x5099DD,
+				quality: 0.5,
+				padding: 10,
+				autoDestroy: true,
+				animated:
+				{
+					color: 
+					{
+					   active: true, 
+					   loopduration: 2000,
+					   loops: 1, 
+					   animType: "colorOscillation", 
+					   val1:0x5099DD, 
+					   val2:0x90EEFF
+					},
+					outerStrength:
+					{
+					  active: true, 
+					  loopduration: 2000, 
+					  loops: 1,
+					   animType: "cosOscillation",
+					   val1:0, 
+					   val2:4
+					}
+				}
+			}
+			
+			],
+		},
+
+
 	};
 
 
@@ -10112,7 +10831,7 @@ export async function elementalBlastEffect(actor, target, move)
 			precursor_count:1, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
 		},
 		"Gust":{path:"modules/jb2a_patreon/Library/2nd_Level/Gust_Of_Wind/GustOfWind_01_White_VeryFast_1200x200.webm", scale: 0.4, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
-		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1},
+		"Brick Break":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Flurry_Of_Blows/FlurryOfBlows_01_Dark_Red_Physical01_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:450},
 		"Hammer Arm":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Unarmed_Strike/UnarmedStrike_01_Dark_Red_Physical02_800x600.webm", scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:500},
 		"Thunder Punch":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Unarmed_Strike/UnarmedStrike_01_Regular_Yellow_Physical02_800x600.webm", scale: 0.8, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:500},
 		"Fire Punch":{path:"modules/jb2a_patreon/Library/Generic/Unarmed_Attacks/Unarmed_Strike/UnarmedStrike_01_Regular_Orange_Magical02_800x600.webm", scale: 0.8, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:500},
@@ -10200,8 +10919,68 @@ export async function elementalBlastEffect(actor, target, move)
 			precursor:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_04_Dark_Green_30ft_1600x400.webm",
 			scale: 0.2, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:7, precursor_count: 7, frequency: 100,
 		},
+		"Tackle":{path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgBludgeoning_01_Regular_Yellow_1Handed_800x600.webm", scale: 1.0, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:650},
+		"Quick Attack":{path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgPiercing_01_Regular_Yellow_2Handed_800x600.webm", scale: 0.6, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:300},
+		"Tail Whip":{
+			path:"modules/jb2a_patreon/Library/Generic/Energy/SwirlingSparkles_01_Regular_OrangePurple_400x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Template/Circle/OutPulse/OutPulse_02_Regular_BlueWhite_Burst_600x600.webm", 
+			scale: 1.2, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:2, delay: 0, frequency:500, 
+			precursor_count:1, precursor_delay:0, precursor_frequency:200, precursor_scale:0.6,
+		},
+		"Bone Rush":{
+			path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/GreatClub01_Fire_Regular_Blue_800x600.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Impact/GroundCrackImpact_02_Regular_Blue_600x600.webm",
+			scale: 0.3, anchor_x: 0.3, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:5,
+			precursor_count:1, precursor_scale: 0.5, precursor_frequency:200, precursor_delay: 1000, precursor_anchor_y: 0.5, precursor_anchor_x: 0.2,
+		},
+		"Ember":{path:"modules/jb2a_patreon/Library/Cantrip/Fire_Bolt/FireBolt_01_Regular_Orange_30ft_1600x400.webm", scale: 0.3, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:4, delay:0, frequency:150},
+		"Flame Burst":{
+			path:"modules/jb2a_patreon/Library/3rd_Level/Fireball/FireballExplosion_01_Orange_800x800.webm", 
+			precursor:"modules/jb2a_patreon/Library/Cantrip/Fire_Bolt/FireBolt_01_Regular_Orange_30ft_1600x400.webm", 
+			scale: 0.5, anchor_x: -1.0, anchor_y: 0.5, speed:0.1, ease:"InOutCirc", melee:false, count:1, delay:1000, 
+			precursor_delay:0, precursor_speed:0.1, precursor_scale:0.5, precursor_count:1, precursor_frequency:100, precursor_anchor_x:0.15, precursor_anchor_y:0.5, 
+		},
+		"Will-O-Wisp":{path:"modules/jb2a_patreon/Library/2nd_Level/Flaming_Sphere/FlamingSphere_02_Orange_200x200.webm", scale: 0.2, anchor_x: 0.15, anchor_y: 0.5, speed:200, ease:"OutCirc", melee:false, count:1},
+		"Confuse Ray":{path:"modules/jb2a_patreon/Library/Generic/Energy/EnergyBeam_01_Regular_Blue_30ft_1600x400.webm", scale: 0.5, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Feint Attack":{
+			path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgPiercing_01_Regular_Yellow_1Handed_800x600.webm", 
+			precursor:"modules/jb2a_patreon/Library/1st_Level/Sneak_Attack/Sneak_Attack_Dark_Red_300x300.webm", 
+			scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:800,
+			precursor_delay:0, precursor_speed:0.1, precursor_scale:0.8, precursor_count:1, precursor_frequency:100, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
+		},
+		"Take Down":{
+			path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgBludgeoning_01_Regular_Yellow_2Handed_800x600.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Conditions/Dizzy_Stars/DizzyStars_01_White_200x200.webm", 
+			scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:1, delay:800,
+			precursor_count:1, precursor_scale: 0.5, precursor_frequency:200, precursor_delay: 1000, precursor_anchor_y: 0.5, precursor_anchor_x: -1.0,
+		},
+		"Fire Spin":{
+			path:"modules/jb2a_patreon/Library/7th_Level/Whirlwind/Whirlwind_01_Red_400x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Cantrip/Fire_Bolt/FireBolt_01_Regular_Orange_30ft_1600x400.webm", 
+			scale: 0.5, anchor_x: -1.0, anchor_y: 0.5, speed:0.1, ease:"InOutCirc", melee:false, count:1, delay:1000, 
+			precursor_delay:0, precursor_speed:0.1, precursor_scale:0.2, precursor_count:10, precursor_frequency:100, precursor_anchor_x:0.15, precursor_anchor_y:0.5, 
+		},
+		"Payback":{
+			path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgPiercing_01_Regular_Yellow_1Handed_800x600.webm", 
+			precursor:"modules/jb2a_patreon/Library/1st_Level/Sneak_Attack/Sneak_Attack_Dark_Red_300x300.webm", 
+			scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:4, delay:2200, frequency:150,
+			precursor_delay:500, precursor_speed:0.1, precursor_scale:0.8, precursor_count:1, precursor_frequency:100, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
+		},
+		"Bubble":{path:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", scale: 0.8, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:5, delay: 0, frequency:200, },
+		"Bubblebeam":{
+			path:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", 
+			scale: 0.05, anchor_x: 0.15, anchor_y: 0.5, speed:150, ease:"OutCirc", melee:true, count:10, delay:0, frequency:300,
+			precursor_scale: 0.03, precursor_anchor_x: 0.15, precursor_anchor_y: 0.5, precursor_speed:150, precursor_ease:"OutCirc", melee:true, precursor_count:15, precursor_delay:0, frequency:250,
+		},
+		"Bubble Beam":{
+			path:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", 
+			scale: 0.05, anchor_x: 0.15, anchor_y: 0.5, speed:150, ease:"OutCirc", melee:true, count:10, delay:0, frequency:300,
+			precursor_scale: 0.03, precursor_anchor_x: 0.15, precursor_anchor_y: 0.5, precursor_speed:150, precursor_ease:"OutCirc", melee:true, precursor_count:15, precursor_delay:0, frequency:250,
+		},
 
-		
+
 	};
 
 	let actor_tokens = actor.getActiveTokens();
