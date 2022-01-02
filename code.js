@@ -366,6 +366,10 @@ Hooks.once('init', async function()
 		elementalAttackEffect,
 		elementalBlastEffect,
 		cleanInjuryTokenSplash,
+		isMoveOnCooldown,
+		getMoveUsesExpended,
+		getMoveCooldownStatusIcon,
+		expendMove,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -4548,7 +4552,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 	let move_range = 1;
 	let in_range = true;
 	let actor_token = game.PTUMoveMaster.GetTokenFromActor(actor);
-	let actor_image = actor_token.data.img;
+	let actor_image = actor.data.img;
 	let target_image = "";
 
 	if(target_token)
@@ -4565,7 +4569,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		let target_special_evasion = target_actor.data.data.evasion.special;
 		let target_speed_evasion = target_actor.data.data.evasion.speed;
 
-		target_image = target_token.data.img;
+		target_image = target_actor.data.img;
 
 		range_to_target = GetDistanceBetweenTokens( actor_token.data, target_token.data); //canvas.grid.measureDistance(actor_token.data, target_token.data);
 
@@ -8269,18 +8273,18 @@ export function GetTargetTypingHeader(target, actor)
 			}
 		}
 
-		let tokenImage;
-		let actorImage = actor.data.token.img;
+		let targetImage;
+		let actorImage = actor.data.img;
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
 		if (target.actor.token)
 			{
-				tokenImage = target.actor.token.data.img;
+				targetImage = target.actor.data.img;
 			}
 			else
 			{
-				tokenImage = target.actor.data.img;
+				targetImage = target.actor.data.img;
 			}
 		
 		if(!target.actor.data.data.effectiveness)
@@ -8297,7 +8301,7 @@ export function GetTargetTypingHeader(target, actor)
 					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+"; vertical-align: bottom; text-align: left;'></img>\
 				</div>\
 				<div class='column' style='width:100px !important; height=auto; text-align: right;'>\
-					<img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:auto; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
+					<img src='"+ targetImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:auto; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
 				</div>\
 			</div>";
 		}
@@ -8322,7 +8326,7 @@ export function GetTargetTypingHeader(target, actor)
 						<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+"; vertical-align: bottom; text-align: left;'></img>\
 					</div>\
 					<div class='column' style='width:100px; height=auto; text-align: right;'>\
-						<img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
+						<img src='"+ targetImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
 					</div>\
 				</div>";
 		}
@@ -8332,7 +8336,7 @@ export function GetTargetTypingHeader(target, actor)
 	}
 	else if (!target)
 	{
-		let actorImage = actor.data.token.img;
+		let actorImage = actor.data.img;
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
@@ -8352,16 +8356,16 @@ export function GetTargetTypingHeader(target, actor)
 	}
 	else
 	{
-		let tokenImage;
+		let targetImage;
 		if (target.actor.token)
 			{
-				tokenImage = target.actor.token.data.img;
+				targetImage = target.actor.data.img;
 			}
 			else
 			{
-				tokenImage = target.actor.data.img;
+				targetImage = target.actor.data.img;
 			}
-		let actorImage = actor.data.token.img;
+		let actorImage = actor.data.img;
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
@@ -8376,7 +8380,7 @@ export function GetTargetTypingHeader(target, actor)
 					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img>\
 				</div>\
 				<div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'>\
-					<img src='"+ tokenImage +"' height='"+tokenSize+"' style='border:none;'></img>\
+					<img src='"+ targetImage +"' height='"+tokenSize+"' style='border:none;'></img>\
 				</div>\
 			</div>";
 	}
@@ -11302,4 +11306,56 @@ export async function elementalBlastEffect(actor, target, move)
 	}
 	
 
+}
+
+
+export async function isMoveOnCooldown(move_item)
+{
+	let return_value = false;
+
+	// if()
+	// {
+
+	// }
+
+	return return_value;
+}
+
+
+export async function getMoveUsesExpended(move_item)
+{
+	let return_value = 0;
+
+	// if()
+	// {
+
+	// }
+
+	return return_value;
+}
+
+
+export async function expendMove(move_item)
+{
+	let return_value = 0;
+
+	// if()
+	// {
+
+	// }
+
+	return return_value;
+}
+
+
+export async function getMoveCooldownStatusIcon(move_item)
+{
+	let return_value = "";
+
+	// if()
+	// {
+
+	// }
+
+	return return_value;
 }
