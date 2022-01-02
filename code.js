@@ -365,6 +365,7 @@ Hooks.once('init', async function()
 		elementalHitEffect,
 		elementalAttackEffect,
 		elementalBlastEffect,
+		cleanInjuryTokenSplash,
 		applyDamageWithBonus: applyDamageWithBonusDR,
 		SidebarForm,
 		MoveMasterSidebar,
@@ -1704,6 +1705,32 @@ const blood_splash_params =
 	anchorY: 0.32+(Math.random()*0.36)
 }];
 
+const hit_params =
+[{
+	filterType: "transform",
+	filterId: "hit_shake",
+	autoDestroy: true,
+	padding: 80,
+	animated:
+	{
+		translationX:
+		{
+			animType: "sinOscillation",
+			val1: 0.05,
+			val2: -0.05,
+			loops: 5,
+			loopDuration: 100
+		},
+		translationX:
+		{
+			animType: "cosOscillation",
+			val1: 0.05,
+			val2: -0.05,
+			loops: 5,
+			loopDuration: 50
+		},
+	}
+}];
 
 const ButtonHeight = 100;
 const RangeFontSize = 14;
@@ -2161,6 +2188,9 @@ export function PTUAutoFight()
 						game.PTUMoveMaster.cureActorAffliction(token.actor, "BadSleep");
 					}
 				}
+
+				await elementalHitEffect(token.actor, event.currentTarget.dataset.move, damage_category, damage_type);
+				await TokenMagic.addFilters(token, hit_params);
 			}
 			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+damageSoundFile, volume: 0.8, autoplay: true, loop: false}, true);
 		}
@@ -3915,6 +3945,8 @@ export async function applyDamageWithBonusDR(event, bonusDamageReduction)
 			}
 			// ui.notifications.info(flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
+			await elementalHitEffect(token.actor, event.currentTarget.dataset.move, damage_category, damage_type);
+			await TokenMagic.addFilters(token, hit_params);
 			chatMessage(token, flavor + initial_damage_total + " Damage! "+ token.actor.name + "'s " + damage_category + " defense (after extra DR)" + extraDRNotes + " is " + DR + ", reducing the incoming damage to "+defended_damage+", and their defensive effectiveness against " + damage_type + " is x" + this_moves_effectiveness + "; They take " + final_effective_damage + " damage after effectiveness and defenses.");
 
 			// token.actor.update({'data.health.value': Number(token.actor.data.data.health.value - final_effective_damage) });
@@ -4343,15 +4375,19 @@ export async function healActorTick(actor, source="")
 }
 
 
-export async function healActorRest(actor, hours=8, bandage_used=false)
+export async function healActorRest(actor, hours=8, bandage_used=false, pokecenter=false)
 {
 	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+heal_sound_file, volume: 0.8, autoplay: true, loop: false}, true);
 
 	let health_fractions_healed = hours;
 	let health_fraction_size = (bandage_used ? 4 : 8);
+	let injuries = actor.data.data.health.injuries;
 
 	let healing_percent = (health_fractions_healed * (1/health_fraction_size));
-	let finalhealing = Math.min(Math.floor(actor.data.data.health.total * healing_percent), (actor.data.data.health.total-actor.data.data.health.value));
+	if(pokecenter)
+	{
+		healing_percent = 3.0;
+	}
 
 	let injuries_healed = 0;
 
@@ -4363,13 +4399,26 @@ export async function healActorRest(actor, hours=8, bandage_used=false)
 	{
 		injuries_healed += Math.floor(hours/24);
 	}
-	if(hours >= 4)
+
+	let days_spent = Math.ceil(hours/24);
+	if(pokecenter)
+	{
+		if(injuries >= 5)
+		{
+			injuries_healed = Math.min(Math.floor(hours*1), Math.floor(days_spent*3));
+		}
+		else
+		{
+			injuries_healed = Math.min(Math.floor(hours*2), Math.floor(days_spent*3));
+		}
+	}
+	if((hours >= 4) || (pokecenter))
 	{
 		await game.PTUMoveMaster.resetEOTMoves(actor, true);
 		await game.PTUMoveMaster.resetSceneMoves(actor, true);
 		await game.PTUMoveMaster.resetDailyMoves(actor, true);
 
-		let conditions = ["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned", "Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed",];
+		let conditions = ["Burned", "Frozen", "Paralysis", "Poisoned", "Badly Poisoned", "Flinch", "Sleep", "Cursed", "Confused", "Disabled", "Infatuation", "Rage", "BadSleep", "Suppressed", "Fainted"];
 
 		for(let affliction of conditions)
 		{
@@ -4379,10 +4428,13 @@ export async function healActorRest(actor, hours=8, bandage_used=false)
 
 	await actor.update({'data.health.injuries': Math.max(Number(actor.data.data.health.injuries - injuries_healed), 0) });
 
+
 	setTimeout( async () => {  
+		let finalhealing = Math.min(Math.floor(actor.data.data.health.total * healing_percent), (actor.data.data.health.total-actor.data.data.health.value));
+
 		await actor.modifyTokenAttribute("health", finalhealing, true, true);
 		await game.PTUMoveMaster.chatMessage(actor, actor.name + ' rested for '+hours+' hours, healing '+ finalhealing +' Hit Points and '+injuries_healed+' injuries!');
-	}, 750);
+	}, 1000);
 }
 
 
@@ -4936,32 +4988,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 		}
 		else // Hit! Play hit animation on target.
 		{
-			let hit_params =
-			[{
-				filterType: "transform",
-				filterId: "jumpedHit",
-				autoDestroy: true,
-				padding: 80,
-				animated:
-				{
-					translationX:
-					{
-						animType: "sinOscillation",
-						val1: 0.05,
-						val2: -0.05,
-						loops: 5,
-						loopDuration: 100
-					},
-					translationX:
-					{
-						animType: "cosOscillation",
-						val1: 0.05,
-						val2: -0.05,
-						loops: 5,
-						loopDuration: 50
-					},
-				}
-			}];
+			
 
 			// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokeball_sounds/"+"pokeball_hit.mp3", volume: 0.5, autoplay: true, loop: false}, true);
 
@@ -9429,11 +9456,21 @@ export async function injuryTokenSplash(actor)
 }
 
 
-export async function elementalHitEffect(actor, move)
+export async function cleanInjuryTokenSplash(actor)
 {
 	let actor_tokens = actor.getActiveTokens();
 	let actor_token = actor_tokens[0];
 
+	await actor_token.TMFXdeleteFilters("sootSplash");
+	await actor_token.TMFXdeleteFilters("bloodSplash");
+}
+
+
+
+export async function elementalHitEffect(actor, move, category="N/A", type="N/A")
+{
+	let actor_tokens = actor.getActiveTokens();
+	let actor_token = actor_tokens[0];
 
 	const generic_hit_params =
 	[{
@@ -10066,11 +10103,40 @@ export async function elementalHitEffect(actor, move)
 
 	let filter_data;
 	
-	if(hit_param_table[move.type])
+	if((move !== null) && (move !== undefined) && (typeof move !== 'string'))
 	{
-		if(hit_param_table[move.type][move.category])
+		if(hit_param_table[move.type])
 		{
-			filter_data = hit_param_table[move.type][move.category];
+			if(hit_param_table[move.type][move.category])
+			{
+				filter_data = hit_param_table[move.type][move.category];
+			}
+			else if(type != "N/A" && category != "N/A")
+			{
+				filter_data = hit_param_table[type][category];
+			}
+			else
+			{
+				filter_data = generic_hit_params;
+			}
+		}
+		else
+		{
+			filter_data = generic_hit_params;
+		}
+	}
+	else if(type != "N/A" && category != "N/A")
+	{
+		if(hit_param_table[type])
+		{
+			if(hit_param_table[type][category])
+			{
+				filter_data = hit_param_table[type][category];
+			}
+			else
+			{
+				filter_data = generic_hit_params;
+			}
 		}
 		else
 		{
@@ -10968,8 +11034,8 @@ export async function elementalBlastEffect(actor, target, move)
 		},
 		"Bubble":{path:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", scale: 0.8, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:5, delay: 0, frequency:200, },
 		"Bubblebeam":{
-			path:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", 
-			precursor:"modules/jb2a_patreon/Library/Generic/Marker/MarkerBubbleOutro_01_Regular_Blue_400x400.webm", 
+			path:"modules/jb2a_patreon/Library/Cantrip/Dancing_Lights/DancingLights_01_BlueTeal_200x200.webm", 
+			precursor:"modules/jb2a_patreon/Library/Cantrip/Dancing_Lights/DancingLights_01_BlueTeal_200x200.webm", 
 			scale: 0.05, anchor_x: 0.15, anchor_y: 0.5, speed:150, ease:"OutCirc", melee:true, count:10, delay:0, frequency:300,
 			precursor_scale: 0.03, precursor_anchor_x: 0.15, precursor_anchor_y: 0.5, precursor_speed:150, precursor_ease:"OutCirc", melee:true, precursor_count:15, precursor_delay:0, frequency:250,
 		},
@@ -10979,7 +11045,26 @@ export async function elementalBlastEffect(actor, target, move)
 			scale: 0.05, anchor_x: 0.15, anchor_y: 0.5, speed:150, ease:"OutCirc", melee:true, count:10, delay:0, frequency:300,
 			precursor_scale: 0.03, precursor_anchor_x: 0.15, precursor_anchor_y: 0.5, precursor_speed:150, precursor_ease:"OutCirc", melee:true, precursor_count:15, precursor_delay:0, frequency:250,
 		},
-
+		"Liquidation":{
+			path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgPiercing_01_Regular_Yellow_1Handed_800x600.webm", 
+			precursor:"modules/jb2a_patreon/Library/1st_Level/Thunderwave/Thunderwave_01_Bright_Blue_Center_600x600.webm", 
+			scale: 0.5, anchor_x: 0.4, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:4, delay:1500, frequency:150,
+			precursor_delay:500, precursor_speed:0.1, precursor_scale:0.8, precursor_count:1, precursor_frequency:100, precursor_anchor_x:0.5, precursor_anchor_y:0.5, 
+		},
+		"Peck":{path:"modules/jb2a_patreon/Library/Generic/Weapon_Attacks/Melee/DmgPiercing_01_Regular_Yellow_1Handed_800x600.webm", scale: 0.5, anchor_x: 0.5, anchor_y: 0.5, speed:0.1, ease:false, melee:true, count:2, delay:0, frequency:900},
+		"Slash":{path:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_Multiple01_Regular_Blue_30ft_1600x400.webm", scale: 0.35, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:1},
+		"Leaf Blade":{
+			path:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_02_Dark_Green_30ft_1600x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_03_Dark_Green_30ft_1600x400.webm", 
+			scale: 0.35, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:5, frequency: 200, delay:0,
+			precursor_count:5, precursor_scale: 0.35, precursor_delay: 50, precursor_frequency: 200, precursor_anchor_x: 0.15, precursor_anchor_y: 0.5,
+		},
+		"Surf":{
+			path:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_01_Regular_Blue_30ft_1600x400.webm", 
+			precursor:"modules/jb2a_patreon/Library/Generic/Energy/EnergyStrand_03_Regular_Blue_30ft_1600x400.webm", 
+			scale: 0.52, anchor_x: 0.15, anchor_y: 0.5, speed:0.1, ease:false, melee:false, count:5, frequency: 200, delay:0,
+			precursor_count:5, precursor_scale: 0.52, precursor_delay: 50, precursor_frequency: 200, precursor_anchor_x: 0.15, precursor_anchor_y: 0.5,
+		},
 
 	};
 

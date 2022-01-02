@@ -35,9 +35,11 @@ export class MoveMasterRestHoursOptions extends FormApplication {
 
         let hours = Number(formData["data.formRestHours"]);
         let bandage_used = Number(formData["data.bandageUsedCheckbox"]);
+        let pokecenter = Number(formData["data.pokecenterCheckbox"]);
 
         let actor = this.object["actor"];
 
-        game.PTUMoveMaster.healActorRest(actor, hours, bandage_used);
+        await game.PTUMoveMaster.healActorRest(actor, hours, bandage_used, pokecenter);
+        await game.PTUMoveMaster.cleanInjuryTokenSplash(actor);
     }
 }
