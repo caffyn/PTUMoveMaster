@@ -437,6 +437,23 @@ Hooks.on("ready", async () => {
 		$("#chat-log").removeClass('dark-theme');
 	}
 
+	for(let journal of game.journal)
+	{
+		console.log("Journal: ");
+		console.log(journal);
+		if(journal.name == "_PTUMoveMaster_CustomMoves")
+		{
+			let custom_moves_json = $(`<p>${journal.data.content}</p>`).text()
+			// let custom_moves_string = journal.data.content.replace(/<p>|<\/p>|<.*>|<br>|<\/br>|<br \/>|<\/div>|<div>/g,'');
+			// eval("custom_moves = {"+custom_moves_string+"};");
+
+			custom_moves = JSON.parse(custom_moves_json);
+			console.log("custom_moves:");
+			console.log(custom_moves);
+		}
+	}
+	
+
 	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user.data._id+' = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"})');
 	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user.data._id+'.render(true)');
 	ui.sidebar.render();
@@ -1668,6 +1685,7 @@ var move_stage_changes = {
 	},
 };
 
+var custom_moves = "";
 
 const soot_splash_params =
 [{
@@ -2798,7 +2816,7 @@ export function PTUAutoFight()
 		{
 			var item_data = item.data.data;
 			var currentid=item.id;
-			var currentlabel=item.data.name;
+			var currentlabel=item.name;
 			var currentCooldownLabel = "";
 			var currentEffectivenessLabel = "";
 			var currentFrequency=item_data.frequency;
@@ -3135,30 +3153,134 @@ export function PTUAutoFight()
 						}
 
 						for(let search_item of item_entities)
+						{
+							if (search_item.id == item.id)
 							{
-								if (search_item.id == item.id)
+								await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+
+								if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item_data.type) > -1) )
 								{
-									await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+									let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
+									let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
 
-									if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item_data.type) > -1) )
-									{
-										let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
-										let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-
-										await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item_data.type, "data.TypeStrategistDR": currentDR});
-									}
+									await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item_data.type, "data.TypeStrategistDR": currentDR});
 								}
 							}
+						}
 
-						for(let searched_move in move_stage_changes)
+						let move_found_in_custom = false;
+
+						console.log("DEBUG: custom_moves: ");
+						console.log(custom_moves);
+						for(let searched_move in custom_moves)
 						{
 							if(item.name.includes(searched_move))
 							{
-								if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
+								if(custom_moves[searched_move]["roll-trigger"] != null) // Effect Range Check
 								{
-									let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+									let effectThreshold = custom_moves[searched_move]["roll-trigger"];
 
 									if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
+									{
+										for (let searched_stat of stats)
+										{
+											if (custom_moves[searched_move][searched_stat] != null)
+											{
+												setTimeout( async () => { 
+													await adjustActorStage(actor,searched_stat, custom_moves[searched_move][searched_stat]);
+												}, 1000);
+											}
+										}
+										if(custom_moves[searched_move]["pct-healing"] != null)
+										{
+											await healActorPercent(actor,custom_moves[searched_move]["pct-healing"]);
+										}
+										if(custom_moves[searched_move]["pct-self-damage"] != null)
+										{
+											await damageActorPercent(actor,custom_moves[searched_move]["pct-self-damage"]);
+										}
+										if(custom_moves[searched_move]["weather"] != null)
+										{
+											await game.PTUMoveMaster.SetCurrentWeather(custom_moves[searched_move]["weather"]);
+										}
+										if(custom_moves[searched_move]["accuracy"] != null)
+										{
+											await adjustActorAccuracy(actor,custom_moves[searched_move]["accuracy"]);
+										}
+									}
+								}
+								else // No Effect Range
+								{
+									for (let searched_stat of stats)
+									{
+										if (custom_moves[searched_move][searched_stat] != null)
+										{
+											setTimeout( async () => { 
+												await adjustActorStage(actor,searched_stat, custom_moves[searched_move][searched_stat]);
+											}, 1000);
+										}
+									}
+									if(custom_moves[searched_move]["pct-healing"] != null)
+									{
+										await healActorPercent(actor,custom_moves[searched_move]["pct-healing"]);
+									}
+									if(custom_moves[searched_move]["pct-self-damage"] != null)
+									{
+										await damageActorPercent(actor,custom_moves[searched_move]["pct-self-damage"]);
+									}
+									if(custom_moves[searched_move]["weather"] != null)
+									{
+										await game.PTUMoveMaster.SetCurrentWeather(custom_moves[searched_move]["weather"]);
+									}
+									if(custom_moves[searched_move]["accuracy"] != null)
+									{
+										await adjustActorAccuracy(actor,custom_moves[searched_move]["accuracy"]);
+									}
+								}
+								move_found_in_custom = true;
+								break;
+							}
+						}
+						if(!move_found_in_custom)
+						{
+							for(let searched_move in move_stage_changes)
+							{
+								if(item.name.includes(searched_move))
+								{
+									if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
+									{
+										let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+	
+										if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
+										{
+											for (let searched_stat of stats)
+											{
+												if (move_stage_changes[searched_move][searched_stat] != null)
+												{
+													setTimeout( async () => { 
+														await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+													}, 1000);
+												}
+											}
+											if(move_stage_changes[searched_move]["pct-healing"] != null)
+											{
+												await healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+											}
+											if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+											{
+												await damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+											}
+											if(move_stage_changes[searched_move]["weather"] != null)
+											{
+												await game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+											}
+											if(move_stage_changes[searched_move]["accuracy"] != null)
+											{
+												await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+											}
+										}
+									}
+									else // No Effect Range
 									{
 										for (let searched_stat of stats)
 										{
@@ -3186,38 +3308,11 @@ export function PTUAutoFight()
 											await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
 										}
 									}
+									break;
 								}
-								else // No Effect Range
-								{
-									for (let searched_stat of stats)
-									{
-										if (move_stage_changes[searched_move][searched_stat] != null)
-										{
-											setTimeout( async () => { 
-												await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
-											}, 1000);
-										}
-									}
-									if(move_stage_changes[searched_move]["pct-healing"] != null)
-									{
-										await healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
-									}
-									if(move_stage_changes[searched_move]["pct-self-damage"] != null)
-									{
-										await damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
-									}
-									if(move_stage_changes[searched_move]["weather"] != null)
-									{
-										await game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
-									}
-									if(move_stage_changes[searched_move]["accuracy"] != null)
-									{
-										await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
-									}
-								}
-								
 							}
 						}
+						
 
 					}
 
@@ -4059,80 +4154,164 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 		}
 
 		for(let search_item of item_entities)
+		{
+			if (search_item.id == item_initial.id)
 			{
-				if (search_item.id == item_initial.id)
-				{
-					await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
+				await search_item.update({ "data.LastRoundUsed": currentRound, "data.LastEncounterUsed": currentEncounterID});
 
-					if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.type) > -1) )
-					{
-						let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
-						let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
-						await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.type, "data.TypeStrategistDR": currentDR});
-					}
+				if( (typeStrategist.length > 0) && (typeStrategist.indexOf(item.type) > -1) )
+				{
+					let oneThirdMaxHealth = Number(actor.data.data.health.total / 3);
+					let currentDR = (actor.data.data.health.value < oneThirdMaxHealth ? 10 : 5);
+					await actor.update({ "data.TypeStrategistLastRoundUsed": currentRound, "data.TypeStrategistLastEncounterUsed": currentEncounterID, "data.TypeStrategistLastTypeUsed": item.type, "data.TypeStrategistDR": currentDR});
 				}
 			}
+		}
 
-		for(let searched_move in move_stage_changes)
-		{
-			if(searched_move == item.name)
+			let move_found_in_custom = false;
+
+			console.log("DEBUG: custom_moves: ");
+			console.log(custom_moves);
+			for(let searched_move in custom_moves)
 			{
-				if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
+				if(moveName.includes(searched_move))
 				{
-					let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+					if(custom_moves[searched_move]["roll-trigger"] != null) // Effect Range Check
+					{
+						let effectThreshold = custom_moves[searched_move]["roll-trigger"];
 
-					if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
+						if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
+						{
+							for (let searched_stat of stats)
+							{
+								if (custom_moves[searched_move][searched_stat] != null)
+								{
+									setTimeout( async () => { 
+										await adjustActorStage(actor,searched_stat, custom_moves[searched_move][searched_stat]);
+									}, 1000);
+								}
+							}
+							if(custom_moves[searched_move]["pct-healing"] != null)
+							{
+								await healActorPercent(actor,custom_moves[searched_move]["pct-healing"]);
+							}
+							if(custom_moves[searched_move]["pct-self-damage"] != null)
+							{
+								await damageActorPercent(actor,custom_moves[searched_move]["pct-self-damage"]);
+							}
+							if(custom_moves[searched_move]["weather"] != null)
+							{
+								await game.PTUMoveMaster.SetCurrentWeather(custom_moves[searched_move]["weather"]);
+							}
+							if(custom_moves[searched_move]["accuracy"] != null)
+							{
+								await adjustActorAccuracy(actor,custom_moves[searched_move]["accuracy"]);
+							}
+						}
+					}
+					else // No Effect Range
 					{
 						for (let searched_stat of stats)
 						{
-							if (move_stage_changes[searched_move][searched_stat] != null)
+							if (custom_moves[searched_move][searched_stat] != null)
 							{
 								setTimeout( async () => { 
-									await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+									await adjustActorStage(actor,searched_stat, custom_moves[searched_move][searched_stat]);
 								}, 1000);
 							}
 						}
-						if(move_stage_changes[searched_move]["pct-healing"] != null)
+						if(custom_moves[searched_move]["pct-healing"] != null)
 						{
-							await game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+							await healActorPercent(actor,custom_moves[searched_move]["pct-healing"]);
 						}
-						if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+						if(custom_moves[searched_move]["pct-self-damage"] != null)
 						{
-							await game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+							await damageActorPercent(actor,custom_moves[searched_move]["pct-self-damage"]);
 						}
-						if(move_stage_changes[searched_move]["accuracy"] != null)
+						if(custom_moves[searched_move]["weather"] != null)
 						{
-							await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+							await game.PTUMoveMaster.SetCurrentWeather(custom_moves[searched_move]["weather"]);
+						}
+						if(custom_moves[searched_move]["accuracy"] != null)
+						{
+							await adjustActorAccuracy(actor,custom_moves[searched_move]["accuracy"]);
 						}
 					}
+					move_found_in_custom = true;
+					break;
 				}
-				else // No Effect Range
-				{
-					for (let searched_stat of stats)
-					{
-						if (move_stage_changes[searched_move][searched_stat] != null)
-						{
-							setTimeout( async () => { 
-								await game.PTUMoveMaster.adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
-							}, 1000);
-						}
-					}
-					if(move_stage_changes[searched_move]["pct-healing"] != null)
-					{
-						await game.PTUMoveMaster.healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
-					}
-					if(move_stage_changes[searched_move]["pct-self-damage"] != null)
-					{
-						await game.PTUMoveMaster.damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
-					}
-					if(move_stage_changes[searched_move]["accuracy"] != null)
-					{
-						await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
-					}
-				}
-				
 			}
-		}
+			if(!move_found_in_custom)
+			{
+				for(let searched_move in move_stage_changes)
+				{
+					if(moveName.includes(searched_move))
+					{
+						if(move_stage_changes[searched_move]["roll-trigger"] != null) // Effect Range Check
+						{
+							let effectThreshold = move_stage_changes[searched_move]["roll-trigger"];
+
+							if(diceRoll >= (effectThreshold - effect_range_bonus)) // Effect Range Hit
+							{
+								for (let searched_stat of stats)
+								{
+									if (move_stage_changes[searched_move][searched_stat] != null)
+									{
+										setTimeout( async () => { 
+											await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+										}, 1000);
+									}
+								}
+								if(move_stage_changes[searched_move]["pct-healing"] != null)
+								{
+									await healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+								}
+								if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+								{
+									await damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+								}
+								if(move_stage_changes[searched_move]["weather"] != null)
+								{
+									await game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+								}
+								if(move_stage_changes[searched_move]["accuracy"] != null)
+								{
+									await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+								}
+							}
+						}
+						else // No Effect Range
+						{
+							for (let searched_stat of stats)
+							{
+								if (move_stage_changes[searched_move][searched_stat] != null)
+								{
+									setTimeout( async () => { 
+										await adjustActorStage(actor,searched_stat, move_stage_changes[searched_move][searched_stat]);
+									}, 1000);
+								}
+							}
+							if(move_stage_changes[searched_move]["pct-healing"] != null)
+							{
+								await healActorPercent(actor,move_stage_changes[searched_move]["pct-healing"]);
+							}
+							if(move_stage_changes[searched_move]["pct-self-damage"] != null)
+							{
+								await damageActorPercent(actor,move_stage_changes[searched_move]["pct-self-damage"]);
+							}
+							if(move_stage_changes[searched_move]["weather"] != null)
+							{
+								await game.PTUMoveMaster.SetCurrentWeather(move_stage_changes[searched_move]["weather"]);
+							}
+							if(move_stage_changes[searched_move]["accuracy"] != null)
+							{
+								await adjustActorAccuracy(actor,move_stage_changes[searched_move]["accuracy"]);
+							}
+						}
+						break;
+					}
+				}
+			}
 	}
 
 
@@ -4773,7 +4952,15 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 	let diceResult2 = await game.PTUMoveMaster.GetDiceResult(acRoll2);
 
 	let move_crit_base = 20;
-	if(move_stage_changes[move.name])
+
+	if(custom_moves[move.name])
+	{
+		if(custom_moves[move.name]["crit-range"])
+		{
+			move_crit_base = custom_moves[move.name]["crit-range"];
+		}
+	}
+	else if(move_stage_changes[move.name])
 	{
 		if(move_stage_changes[move.name]["crit-range"])
 		{
