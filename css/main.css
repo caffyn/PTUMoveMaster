@@ -310,6 +310,16 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   left: 0px;
 }
 
+.pokedex-top-camera {
+  position:absolute;
+  width: 65px;
+  height: 65px;
+  z-index: 11;
+  border:none;
+  top: 51px;
+  left: 68px;
+}
+
 
 .cameraframe-targeted-pokemon-type1 {
   position:absolute;

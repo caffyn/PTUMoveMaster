@@ -3858,8 +3858,41 @@ export function PTUAutoFight()
 		let dialogueID = "ptu-sidebar";
 		let current_weather = game.settings.get("PTUMoveMaster", "currentWeather");
 		let weather_icon = "weather_icon_"+current_weather+".png";
+		let pokedex_text = "Unidentified Pokemon - Click to Scan!";
+		let pokedex_camera_icon = "Pokedex_Camera.png";
+
+		let actor_has_target_dex_entry = false;
+
+		if(target)
+		{
+			if(target.actor.data.data.species)
+			{
+				actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
+				if(game.user.isGM)
+				{
+					actor_has_target_dex_entry = true;
+				}
+			}
+		}
+		else
+		{
+			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+			pokedex_text = "Pokedex: No Pokemon Targeted"
+		}
+
+		if(target.actor.type == "character")
+		{
+			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+			pokedex_text = "Pokedex: Non-Pokemon Target"
+		}
+		else if(target && actor_has_target_dex_entry)
+		{
+			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+			pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
+		}
 		
 		let content = "<img class='pokedex-top' src='"+AlternateIconPath+"NewPokedex_Vertical_Top_200.png"+"'></img>\
+		<center><img class='pokedex-top-camera' title='Pokedex: "+pokedex_text+"' src='"+AlternateIconPath+pokedex_camera_icon+"'></img></center>\
 		<style> #"+dialogueID+" .dialog-buttons \
 			{\
 				background-color:"+ MoveButtonBackgroundColor +";\
