@@ -214,10 +214,10 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   left:0px; */
   /* background-color: rgba(88, 25, 25, 0.527); */
   width: 200px;
-  height: 198px;
+  height: 200px;
   z-index: 2;
   border:none;
-  top: 86px;
+  top: 85px;
   border-radius: 5px;
   box-shadow: 0 0 20px var(--color-shadow-dark);
 }
@@ -228,7 +228,7 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   left:0px; */
   /* background-color: rgba(0, 0, 0, 0.6); */
   width: 200px;
-  height: 284px;
+  height: 270px;
   /* z-index: 2; */
   border:none;
   top: 86px;
@@ -259,7 +259,8 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   position:absolute;
   z-index: 5;
   border:none;
-  top: 145px;
+  /* top: 145px; */
+  top: 160px;
   left: 5px;
   transform: scaleX(-1);
 }
@@ -268,7 +269,7 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   position:absolute;
   z-index: 6;
   border:none;
-  top: 120px;
+  top: 130px;
   right: 0px;
 }
 
@@ -282,9 +283,19 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   left: 0px;
 }
 
+.pokedex-bottom-weather {
+  position:absolute;
+  width: 65px;
+  height: 65px;
+  z-index: 11;
+  border:none;
+  bottom: 51px;
+  left: 68px;
+}
+
 .pokedex-bottom-filler {
   width: 200px;
-  height: 86px;
+  height: 100px;
   border:none;
   transform: scaleY(-1);
 }
@@ -314,4 +325,20 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   border:none;
   top: 258px;
   right: 5px;
+}
+
+.cameraframe-selected-pokemon-type1 {
+  position:absolute;
+  z-index: 6;
+  border:none;
+  top: 240px;
+  left: 5px;
+}
+
+.cameraframe-selected-pokemon-type2 {
+  position:absolute;
+  z-index: 6;
+  border:none;
+  top: 258px;
+  left: 5px;
 }
