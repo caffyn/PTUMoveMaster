@@ -5,7 +5,7 @@ Hooks.once("init", () => {
 });
 Hooks.on("ready", () => {
 	// Initialize 
-	console.log("hook test 1");
+	// console.log("hook test 1");
 	window.PTUAutoFight = PTUAutoFight();
 });
 Hooks.on("renderChatMessage", (message, html, data) => {

@@ -182,3 +182,136 @@ body.messages-dark-theme .chat-controls .roll-type-select {
 .MoveMaster-button {
   background:none !important;
 }
+
+.cameraframe-overlay {
+  position:absolute;
+  /* top:0px;
+  left:0px; */
+  /* background-color: rgba(0, 0, 0, 0.6); */
+  /* width: 200px; */
+  /* height: 203px; */
+  z-index: 6;
+  border:none;
+  top: 111px;
+}
+
+.cameraframe-terrain {
+  position:absolute;
+  /* top:0px;
+  left:0px; */
+  /* background-color: rgba(0, 0, 0, 0.6); */
+  width: 190px;
+  height: 70px;
+  z-index: 4;
+  border:none;
+  top: 172px;
+  left: 5px;
+}
+
+.cameraframe-underlay {
+  position:absolute;
+  /* top:0px;
+  left:0px; */
+  /* background-color: rgba(88, 25, 25, 0.527); */
+  width: 200px;
+  height: 198px;
+  z-index: 2;
+  border:none;
+  top: 86px;
+  border-radius: 5px;
+  box-shadow: 0 0 20px var(--color-shadow-dark);
+}
+
+.cameraframe-filler {
+  /* position:absolute; */
+  /* top:0px;
+  left:0px; */
+  /* background-color: rgba(0, 0, 0, 0.6); */
+  width: 200px;
+  height: 284px;
+  /* z-index: 2; */
+  border:none;
+  top: 86px;
+}
+
+.action-icon {
+  position:absolute;
+  top:86px;
+  left:0px;
+  /* width: 200px; */
+  /* height: 203px; */
+  z-index: 3;
+  border:none;
+}
+
+.action-icon-right {
+  position:absolute;
+  top:86px;
+  right:0px;
+  /* width: 200px; */
+  /* height: 203px; */
+  z-index: 3;
+  border:none;
+  transform: scaleX(-1);
+}
+
+.cameraframe-selected-pokemon {
+  position:absolute;
+  z-index: 5;
+  border:none;
+  top: 145px;
+  left: 5px;
+  transform: scaleX(-1);
+}
+
+.cameraframe-targeted-pokemon {
+  position:absolute;
+  z-index: 6;
+  border:none;
+  top: 120px;
+  right: 0px;
+}
+
+.pokedex-bottom {
+  position:absolute;
+  width: 200px;
+  height: 86px;
+  z-index: 10;
+  border:none;
+  bottom: 0px;
+  left: 0px;
+}
+
+.pokedex-bottom-filler {
+  width: 200px;
+  height: 86px;
+  border:none;
+  transform: scaleY(-1);
+}
+
+.pokedex-top {
+  position:absolute;
+  width: 200px;
+  height: 86px;
+  z-index: 10;
+  border:none;
+  top: 0px;
+  left: 0px;
+}
+
+
+.cameraframe-targeted-pokemon-type1 {
+  position:absolute;
+  z-index: 6;
+  border:none;
+  top: 240px;
+  right: 5px;
+}
+
+.cameraframe-targeted-pokemon-type2 {
+  position:absolute;
+  z-index: 6;
+  border:none;
+  top: 258px;
+  right: 5px;
+}

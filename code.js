@@ -439,20 +439,22 @@ Hooks.on("ready", async () => {
 
 	for(let journal of game.journal)
 	{
-		console.log("Journal: ");
-		console.log(journal);
+		
 		if(journal.name == "_PTUMoveMaster_CustomMoves")
 		{
+			console.log("PTUMoveMaster | Custom Moves Journal:");
+			console.log(journal);
+
 			let custom_moves_json = $(`<p>${journal.data.content}</p>`).text()
-			// let custom_moves_string = journal.data.content.replace(/<p>|<\/p>|<.*>|<br>|<\/br>|<br \/>|<\/div>|<div>/g,'');
-			// eval("custom_moves = {"+custom_moves_string+"};");
 
 			custom_moves = JSON.parse(custom_moves_json);
-			console.log("custom_moves:");
+
+			console.log("PTUMoveMaster | Parsed Custom Moves:");
 			console.log(custom_moves);
+
+			break;
 		}
 	}
-	
 
 	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user.data._id+' = new game.PTUMoveMaster.SidebarForm({ classes: "ptu-sidebar"})');
 	// eval('game.PTUMoveMaster.MoveMasterSidebar.'+game.user.data._id+'.render(true)');
@@ -3848,9 +3850,14 @@ export function PTUAutoFight()
 			game.PTUMoveMaster.healActorRestPrompt(actor);
 		}};
 
+		buttons["pokedexBottomBuffer"] = {noRefresh: true, id:"pokedexBottomBuffer", label: "<img style='height: 86px !important' class='pokedex-bottom-filler' src='"+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"'></img>",
+		callback: () => {
+
+		}};
+
 		let dialogueID = "ptu-sidebar";
 		
-		let content = "\
+		let content = "<img class='pokedex-top' src='"+AlternateIconPath+"NewPokedex_Vertical_Top_200.png"+"'></img>\
 		<style> #"+dialogueID+" .dialog-buttons \
 			{\
 				background-color:"+ MoveButtonBackgroundColor +";\
@@ -3898,14 +3905,15 @@ export function PTUAutoFight()
 			}\
 		</style>\
 		<center>\
-			<div style='"+background_field+";\
+			<h2 style='margin-bottom: 10px;'>\
+				"+ targetTypingText+"\
+			</h2>\
+			<div class='cameraframe-terrain' style='"+background_field+";\
 			font-family:Modesto Condensed;\
 			font-size:20px'>\
-				<h2 style='margin-bottom: 10px;'>\
-					"+ targetTypingText+"\
-				</h2>\
 			</div>\
-		</center>";
+		</center>\
+		<img class='pokedex-bottom' src='"+AlternateIconPath+"NewPokedex_Vertical_Bottom_200.png"+"'></img>";
 		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID, classes: "ptu-sidebar"});
 		
 		sidebar.render(true);
@@ -8419,6 +8427,14 @@ export function GetTargetTypingHeader(target, actor)
 	let effectiveness;
 	let showEffectivenessMode = game.settings.get("PTUMoveMaster", "showEffectiveness");
 	let actions_image = game.PTUMoveMaster.GetActorActionIcon(actor);
+	let actions_image_target = "";
+	if(target)
+	{
+		console.log("DEBUG: GetTargetTypingHeader: target");
+		console.log(target);
+		actions_image_target = game.PTUMoveMaster.GetActorActionIcon(target.actor, true);
+	}
+	let camera_frame_overlay = '<img class="cameraframe-overlay" src="'+AlternateIconPath+'PTU_TargetCamera_Dark.png'+'" ></img>';
 
 	let actor_has_target_dex_entry = false;
 
@@ -8478,19 +8494,21 @@ export function GetTargetTypingHeader(target, actor)
 		{
 			targetType1 = "Untyped";
 
-			targetTypingText = actions_image+"\
-			<div class='row' style='width:200px; height=auto;'>\
-				<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
+			targetTypingText = "<div class='cameraframe-underlay' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+")'></div>"+actions_image+actions_image_target+"\
+			<div class='row' style='width:200px; height=125px !important;'>\
+				"+camera_frame_overlay+"\
+				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
 					Your current target is<br>"+ target.name +"<br>\
-					<img src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto> (Trainer)\
+					<img src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto;> (Trainer)\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: left;'>\
-					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+"; vertical-align: bottom; text-align: left;'></img>\
+				<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
+					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"'></img>\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: right;'>\
-					<img src='"+ targetImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:auto; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
+				<div class='column' style='width:100px !important; height=auto; text-align: right; position:absolute; right:0px;'>\
+					<img class='cameraframe-targeted-pokemon' src='"+ targetImage +"' height='"+tokenSize+"'></img>\
 				</div>\
-			</div>";
+			</div>\
+			<div class='cameraframe-filler'></div>";
 		}
 		else
 		{
@@ -8501,21 +8519,22 @@ export function GetTargetTypingHeader(target, actor)
 				targetType2 = "";
 			}
 
-			targetTypingText = actions_image+"\
-				<div class='row' style='width:200px; height=auto;'>\
-					<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
-						Your current target is<br>\
+			targetTypingText = "<div class='cameraframe-underlay' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+")'></div>"+actions_image+actions_image_target+"\
+				<div class='row' style='width:200px; height=125px !important;'>\
+					"+camera_frame_overlay+"\
+					<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
 						"+ target.name +"<br>\
-						<img src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none'>\
-						<img src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto style='border:none'>\
+						<img class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
+						<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
 					</div>\
-					<div class='column' style='width:100px; height=auto; text-align: left;'>\
-						<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); object-fit: cover; width:"+actorTokenSize+"; height:"+actorTokenSize+"; vertical-align: bottom; text-align: left;'></img>\
+					<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
+						<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"'></img>\
 					</div>\
-					<div class='column' style='width:100px; height=auto; text-align: right;'>\
-						<img src='"+ targetImage +"' height='"+tokenSize+"' style='border:none; object-fit: cover; width:"+tokenSize+"; height:"+tokenSize+"; vertical-align: top; text-align: right;'></img>\
+					<div class='column' style='width:100px !important; height=auto; text-align: right; position:absolute; right:0px;'>\
+						<img class='cameraframe-targeted-pokemon' src='"+ targetImage +"' height='"+tokenSize+"'></img>\
 					</div>\
-				</div>";
+				</div>\
+				<div class='cameraframe-filler'></div>";
 		}
 		
 
@@ -8527,19 +8546,19 @@ export function GetTargetTypingHeader(target, actor)
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
-		targetTypingText = actions_image+"\
-			<div class='row' style='width:200px; height=auto;'>\
-				<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
-					No current target<br>\
+		targetTypingText = "<div class='cameraframe-underlay' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+")'></div>"+actions_image+actions_image_target+"\
+			<div class='row' style='width:200px; height=125px !important;'>\
+				"+camera_frame_overlay+"\
+				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: left;'>\
-					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); vertical-align: bottom; text-align: left;'></img>\
+				<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
+					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); vertical-align: bottom; text-align: left; position:absolute;'></img>\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: right;'>\
+				<div class='column' style='width:100px !important; height=auto; text-align: right; position:absolute; right:0px;'>\
 					\
 				</div>\
 			</div>\
-		";
+			<div class='cameraframe-filler'></div>";
 	}
 	else
 	{
@@ -8556,20 +8575,22 @@ export function GetTargetTypingHeader(target, actor)
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
-		targetTypingText = actions_image+"\
-			<div class='row' style='width:200px; height=auto;'>\
-				<div class='column' style='width:200px; height:100px ; color:lightgrey'>\
+		targetTypingText = "<div class='cameraframe-underlay' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+")'></div>"+actions_image+actions_image_target+"\
+			<div class='row' style='width:200px; height=125px !important;'>\
+				"+camera_frame_overlay+"\
+				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
 					Your current target is<br>\
 					"+ target.name +"<br>\
 					(???/???)\
 				</div>\
-				<div class='column' style='width:"+actorTokenSize+" height=auto'>\
-					<img src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img>\
+				<div class='column' style='width:"+actorTokenSize+" height=auto; position:absolute;'>\
+					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); position:absolute;'></img>\
 				</div>\
-				<div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px;'>\
-					<img src='"+ targetImage +"' height='"+tokenSize+"' style='border:none;'></img>\
+				<div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px; position:absolute; right:0px;'>\
+					<img class='cameraframe-targeted-pokemon' src='"+ targetImage +"' height='"+tokenSize+"' style='border:none; position:absolute;'></img>\
 				</div>\
-			</div>";
+			</div>\
+			<div class='cameraframe-filler'></div>";
 	}
 
 	return targetTypingText;
@@ -8849,13 +8870,18 @@ export async function RollSkillCheck(skill1, skill2="")	// If a second skill is 
 }
 
 
-export function GetActorActionIcon(actor)
+export function GetActorActionIcon(actor, right=false)
 {
 	let homebrew_actions = game.settings.get("PTUMoveMaster", "useExtraActionHomebrew");
 	let standard_action = 1;
 	let support_action = 1;
 	let shift_action = 1;
 	let swift_action = 1;
+	let icon_class = "action-icon";
+	if(right)
+	{
+		icon_class = "action-icon-right";
+	}
 
 	let actions;
 	if(actor.data.flags && actor.data.flags.ptu && actor.data.flags.ptu.actions_taken)
@@ -8878,7 +8904,7 @@ export function GetActorActionIcon(actor)
 		actions_available_icon = AlternateIconPath+standard_action+"Standard_"+shift_action+"Shift_"+swift_action+"Swift.png";
 	}
 	
-	let actions_image = "<img src='"+actions_available_icon+"' style='border:none; height:100px'></img>";
+	let actions_image = "<img class='"+icon_class+"' src='"+actions_available_icon+"' style='border:none; height:25px; position:absolute;'></img>";
 
 	return actions_image;
 }
