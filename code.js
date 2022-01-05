@@ -2306,27 +2306,55 @@ export function PTUAutoFight()
 			
 		} // END Ability Check Loop
 
-		let dialogEditor;
+		// let dialogEditor;
 		var buttons={};
 
-		let menuButtonWidth = "200px";
-		let bigButtonWidth = "200px";
 		// let skillsMenu_mark = 	"<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); background-size: contain; background-repeat: no-repeat; background-position: left center; background-color: #333333; color:#cccccc; border-left:5px solid red; width:100%; height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'><p title=''>Skills</p></div>";
 		
+		let menu_image_backdrop_image_height = 104;
+		let menu_image_backdrop_image_px_from_top = 20;
+		if(actor.type != "character")
+		{
+			menu_image_backdrop_image_height = 83;
+			menu_image_backdrop_image_px_from_top = 10;
+		}
 
-		buttons["skillsMenu"] = {noRefresh: true, id:"skillsMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Skills"+"</div>",
+		let bag_directory = "player_bags/default/";
+		if(game.canvas.tokens.controlled[0])
+		{
+			let current_actor = game.canvas.tokens.controlled[0].actor;
+			if (FilePicker.browse("data", "player_bags/"))
+			{
+				try
+				{
+					await FilePicker.browse("data", ("player_bags/"+current_actor.name.replace(/ /g,'')+"/") );
+					bag_directory = ("player_bags/"+current_actor.name.replace(/ /g,'')+"/");
+				}
+				catch(err)
+				{
+					bag_directory = "player_bags/default/";
+				}
+			}
+		}
+
+		let menu_image_backdrop_image = '<div style="position:absolute; top:0; left:5px; width: 105px; border:none; padding:none; margins:none;">\
+											<img src="'+AlternateIconPath+'NewPokedex_Vertical_CenterScreen_200.png" style="position:absolute; top:0px; left:90px; height: '+menu_image_backdrop_image_height+'px; width: 104px; border:none; padding:none; margins:none;"/>\
+											<img class="menu-button-hover-image" src="'+bag_directory+'closed.png" style="position:absolute; top:'+menu_image_backdrop_image_px_from_top+'px; left:108px; height: 66px; width: 66px; border:none; padding:none; margins:none;"/>\
+										</div>';
+
+		buttons["skillsMenu"] = {noRefresh: true, id:"skillsMenu", label: "<div class='skillsMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"Skills"+menu_image_backdrop_image+"</div>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowSkillsMenu(actor);
 				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
-		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Struggle"+"</div>",
+		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<div class='struggleMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"Struggle"+"</div>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowStruggleMenu(actor);
 				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
-		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Maneuvers"+"</div>",
+		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<div class='maneuverMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"Maneuvers"+"</div>",
 		callback: async () => {
 			await game.PTUMoveMaster.ShowManeuverMenu(actor);
 			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
@@ -2334,13 +2362,13 @@ export function PTUAutoFight()
 
 		if(actor.data.type == "character")
 		{
-			buttons["itemMenu"] = {noRefresh: true, id:"itemMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Items"+"</div>",
+			buttons["itemMenu"] = {noRefresh: true, id:"itemMenu", label: "<div class='itemMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"Items"+"</div>",
 			callback: () => {
 				game.PTUMoveMaster.ShowInventoryMenu(actor);
 			}};
 
 
-			buttons["pokeballMenu"] = {noRefresh: true, id:"pokeballMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Pokeballs"+"</div>",
+			buttons["pokeballMenu"] = {noRefresh: true, id:"pokeballMenu", label: "<div class='pokeballMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"Pokeballs"+"</div>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowPokeballMenu(actor);
 			}};
@@ -2374,7 +2402,7 @@ export function PTUAutoFight()
 			}
 			if(trainer_token_on_field)
 			{
-				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Select Trainer"+"</div>",
+				buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<div class='trainerMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"Select Trainer"+"</div>",
 				callback: async () => {
 			
 					trainer_token_on_field.control(true);
@@ -2384,13 +2412,22 @@ export function PTUAutoFight()
 			}
 			else
 			{
-				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Trainer Unavailable"+"</div>",
+				buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<div class='trainerMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); filter: brightness(50%); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"Select Trainer"+"</div>",
 				callback: async () => {
 			
 					ui.notifications.warn("Trainer is not on the field.")
 					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, false);
 				}};
 			}
+		}
+		else
+		{
+			buttons["trainerMenu"] = {noRefresh: true, id:"trainerMenu", label: "<div class='trainerMenu' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); filter: brightness(50%); height:20px; font-size:16px;font-family:Modesto Condensed;line-height:1.2'>"+"No Trainer"+"</div>",
+				callback: async () => {
+			
+					ui.notifications.warn("This pokemon has no trainer to select.")
+					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, false);
+				}};
 		}
 
 
@@ -2404,7 +2441,7 @@ export function PTUAutoFight()
 				"Critical Moment",
 			];
 
-			buttons["ordersDivider"] = {noRefresh: true, id:"ordersDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Orders.png' style='border:none; width:200px;'>",
+			buttons["ordersDivider"] = {noRefresh: true, id:"ordersDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_Orders.png' style='border:none; width:200px; margin-bottom:3px;'>",
 			callback: () => {
 
 			}};
@@ -2556,7 +2593,7 @@ export function PTUAutoFight()
 			}
 
 
-			buttons["recalledPokemonDivider"] = {noRefresh: true, id:"recalledPokemonDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_PokeballBelt.png' style='border:none; width:200px;'>",
+			buttons["recalledPokemonDivider"] = {noRefresh: true, id:"recalledPokemonDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_PokeballBelt.png' style='border:none; width:200px; margin-bottom:3px;'>",
 			callback: () => {
 
 			}};
@@ -3879,7 +3916,7 @@ export function PTUAutoFight()
 			game.PTUMoveMaster.healActorRestPrompt(actor);
 		}};
 
-		buttons["pokedexBottomBuffer"] = {noRefresh: true, id:"pokedexBottomBuffer", label: "<img class='pokedex-bottom-filler' src='"+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"'></img>",
+		buttons["pokedexBottomBuffer"] = {noRefresh: true, id:"pokedexBottomBuffer", label: "<div class='pokedex-bottom-filler' style='border:none'></div>",
 		callback: () => {
 
 		}};
@@ -3921,7 +3958,6 @@ export function PTUAutoFight()
 			pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
 		}
 
-		// let pokedex_camera_button = "<img class='pokedex-top-camera' title='Pokedex: "+pokedex_text+"' src='"+AlternateIconPath+pokedex_camera_icon+"'>";
 		let pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera' id='saveForm' />";
 
 		if(!hasPokedex)
@@ -7944,14 +7980,134 @@ export async function ShowManeuverMenu(actor)
 		};
 	}
 
+	maneuver_buttons["pokedexBottomBuffer"] = {noRefresh: true, id:"pokedexBottomBuffer", label: "<div class='pokedex-bottom-filler' style='border:none'></div>",
+		callback: () => {
+	}};
+
 	// console.log("______________ MANEUVER BUTTONS ______________");
 	// console.log(maneuver_buttons);
+
+	var hasPokedex = false;
+	if(actor.type == "character")
+	{
+		hasPokedex = game.PTUMoveMaster.ActorHasItemWithName(actor, "Pokedex", "item");
+	}
+	else
+	{
+		if(actor.data.data.owner!= "0")
+		{
+			hasPokedex = game.PTUMoveMaster.ActorHasItemWithName( (game.actors.get(actor.data.data.owner)), "Pokedex", "item");
+		}
+	}
 
 	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
 
+	let current_weather = game.settings.get("PTUMoveMaster", "currentWeather");
+	let weather_icon = "weather_icon_"+current_weather+".png";
+
+	let pokedex_text = "Unidentified Pokemon - Click to Scan!";
+		let pokedex_camera_icon = "Pokedex_Camera.png";
+		
+
+	let actor_has_target_dex_entry = false;
+
+	if(target)
+	{
+		if(target.actor.data.data.species)
+		{
+			actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
+			if(game.user.isGM)
+			{
+				actor_has_target_dex_entry = true;
+			}
+		}
+	}
+	else
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: No Pokemon Targeted"
+	}
+
+	if(target.actor.type == "character")
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: No Pokemon Targeted"
+	}
+	else if(target && actor_has_target_dex_entry)
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
+	}
+
+	let pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera' id='saveForm' />";
+
+	if(!hasPokedex)
+	{
+		pokedex_text = "Pokedex: No Pokedex in Trainer`s Inventory!"
+		pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera-disabled' id='saveForm' />";
+	}
+
 	let dialogueID = "ptu-sidebar";
-	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
+	let content = "<img class='pokedex-top' src='"+AlternateIconPath+"NewPokedex_Vertical_Top_200.png"+"'></img>\
+		<center>"+pokedex_camera_button+"</img></center>\
+		<style> #"+dialogueID+" .dialog-buttons \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				border: none !important;\
+			} #"+dialogueID+" .dialog-button \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin-top: 3px !important; \
+				margin-bottom: 3px !important; \
+				margin-left: 0px !important; \
+				margin-right: 0px !important; \
+				border: none !important; \
+				width: 200px\
+			} #"+dialogueID+" .dialog-content \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important; \
+				height: auto !important;\
+			} #"+dialogueID+" .window-content \
+			{\
+				;flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			}\
+		</style>\
+		<center>\
+			<h2 style='margin-bottom: 10px;'>\
+				"+ targetTypingText+"\
+			</h2>\
+			<div class='cameraframe-terrain' style='"+background_field+";\
+			font-family:Modesto Condensed;\
+			font-size:20px'>\
+			</div>\
+		</center>\
+		<img class='pokedex-bottom' src='"+AlternateIconPath+"NewPokedex_Vertical_Bottom_200.png"+"'></img>\
+		<center><img class='pokedex-bottom-weather' title='Current Weather: "+current_weather+"' src='"+AlternateIconPath+weather_icon+"'></img></center>";
 	game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({content, buttons: maneuver_buttons, dialogueID, classes: "ptu-sidebar"});
 	game.PTUMoveMaster.MoveMasterSidebar.render(true);
 
@@ -8049,14 +8205,134 @@ export async function ShowSkillsMenu(actor)
 		};
 	}
 
+	skill_buttons["pokedexBottomBuffer"] = {noRefresh: true, id:"pokedexBottomBuffer", label: "<div class='pokedex-bottom-filler' style='border:none'></div>",
+		callback: () => {
+	}};
+
 	// console.log("______________ SKILL BUTTONS ______________");
 	// console.log(skill_buttons);
+
+	var hasPokedex = false;
+	if(actor.type == "character")
+	{
+		hasPokedex = game.PTUMoveMaster.ActorHasItemWithName(actor, "Pokedex", "item");
+	}
+	else
+	{
+		if(actor.data.data.owner!= "0")
+		{
+			hasPokedex = game.PTUMoveMaster.ActorHasItemWithName( (game.actors.get(actor.data.data.owner)), "Pokedex", "item");
+		}
+	}
 
 	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
 
+	let current_weather = game.settings.get("PTUMoveMaster", "currentWeather");
+	let weather_icon = "weather_icon_"+current_weather+".png";
+
+	let pokedex_text = "Unidentified Pokemon - Click to Scan!";
+		let pokedex_camera_icon = "Pokedex_Camera.png";
+		
+
+	let actor_has_target_dex_entry = false;
+
+	if(target)
+	{
+		if(target.actor.data.data.species)
+		{
+			actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
+			if(game.user.isGM)
+			{
+				actor_has_target_dex_entry = true;
+			}
+		}
+	}
+	else
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: No Pokemon Targeted"
+	}
+
+	if(target.actor.type == "character")
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: No Pokemon Targeted"
+	}
+	else if(target && actor_has_target_dex_entry)
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
+	}
+
+	let pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera' id='saveForm' />";
+
+	if(!hasPokedex)
+	{
+		pokedex_text = "Pokedex: No Pokedex in Trainer`s Inventory!"
+		pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera-disabled' id='saveForm' />";
+	}
+
 	let dialogueID = "ptu-sidebar";
-	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
+	let content = "<img class='pokedex-top' src='"+AlternateIconPath+"NewPokedex_Vertical_Top_200.png"+"'></img>\
+		<center>"+pokedex_camera_button+"</img></center>\
+		<style> #"+dialogueID+" .dialog-buttons \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				border: none !important;\
+			} #"+dialogueID+" .dialog-button \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin-top: 3px !important; \
+				margin-bottom: 3px !important; \
+				margin-left: 0px !important; \
+				margin-right: 0px !important; \
+				border: none !important; \
+				width: 200px\
+			} #"+dialogueID+" .dialog-content \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important; \
+				height: auto !important;\
+			} #"+dialogueID+" .window-content \
+			{\
+				;flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			}\
+		</style>\
+		<center>\
+			<h2 style='margin-bottom: 10px;'>\
+				"+ targetTypingText+"\
+			</h2>\
+			<div class='cameraframe-terrain' style='"+background_field+";\
+			font-family:Modesto Condensed;\
+			font-size:20px'>\
+			</div>\
+		</center>\
+		<img class='pokedex-bottom' src='"+AlternateIconPath+"NewPokedex_Vertical_Bottom_200.png"+"'></img>\
+		<center><img class='pokedex-bottom-weather' title='Current Weather: "+current_weather+"' src='"+AlternateIconPath+weather_icon+"'></img></center>";
 	game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({content, buttons: skill_buttons, dialogueID, classes: "ptu-sidebar"});
 	game.PTUMoveMaster.MoveMasterSidebar.render(true);
 }
@@ -8375,11 +8651,132 @@ export async function ShowStruggleMenu(actor)
 		};
 	}
 
+	struggle_buttons["pokedexBottomBuffer"] = {noRefresh: true, id:"pokedexBottomBuffer", label: "<div class='pokedex-bottom-filler' style='border:none'></div>",
+		callback: () => {
+	}};
+
+	var hasPokedex = false;
+	if(actor.type == "character")
+	{
+		hasPokedex = game.PTUMoveMaster.ActorHasItemWithName(actor, "Pokedex", "item");
+	}
+	else
+	{
+		if(actor.data.data.owner!= "0")
+		{
+			hasPokedex = game.PTUMoveMaster.ActorHasItemWithName( (game.actors.get(actor.data.data.owner)), "Pokedex", "item");
+		}
+	}
+
 	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
 
+	let current_weather = game.settings.get("PTUMoveMaster", "currentWeather");
+	let weather_icon = "weather_icon_"+current_weather+".png";
+
+	let pokedex_text = "Unidentified Pokemon - Click to Scan!";
+		let pokedex_camera_icon = "Pokedex_Camera.png";
+		
+
+	let actor_has_target_dex_entry = false;
+
+	if(target)
+	{
+		if(target.actor.data.data.species)
+		{
+			actor_has_target_dex_entry = game.PTUMoveMaster.ThisActorOrTheirTrainerHasDexEntry(actor, target.actor.data.data.species);
+			if(game.user.isGM)
+			{
+				actor_has_target_dex_entry = true;
+			}
+		}
+	}
+	else
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: No Pokemon Targeted"
+	}
+
+	if(target.actor.type == "character")
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: No Pokemon Targeted"
+	}
+	else if(target && actor_has_target_dex_entry)
+	{
+		pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+		pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
+	}
+
+	let pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera' id='saveForm' />";
+
+	if(!hasPokedex)
+	{
+		pokedex_text = "Pokedex: No Pokedex in Trainer`s Inventory!"
+		pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera-disabled' id='saveForm' />";
+	}
+
 	let dialogueID = "ptu-sidebar";
-	let content = "<style> #"+dialogueID+" .dialog-buttons {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; border: none !important;} #"+dialogueID+" .dialog-button {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin-top: 3px !important; margin-bottom: 3px !important; margin-left: 0px !important; margin-right: 0px !important; border: none !important; width: 200px} #"+dialogueID+" .dialog-content {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important; height: auto !important;} #"+dialogueID+" .window-content {;flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog {background-color:"+ MoveButtonBackgroundColor +";flex-direction: column; padding: 0px !important; border-width: 0px !important; margin: 0px !important; width: 200px !important;}</style><center><div style='"+background_field+";font-family:Modesto Condensed;font-size:20px'><h2 style='margin-bottom: 10px;'>"+ targetTypingText+"</h2></div></center>";
+	let content = "<img class='pokedex-top' src='"+AlternateIconPath+"NewPokedex_Vertical_Top_200.png"+"'></img>\
+		<center>"+pokedex_camera_button+"</img></center>\
+		<style> #"+dialogueID+" .dialog-buttons \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				border: none !important;\
+			} #"+dialogueID+" .dialog-button \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin-top: 3px !important; \
+				margin-bottom: 3px !important; \
+				margin-left: 0px !important; \
+				margin-right: 0px !important; \
+				border: none !important; \
+				width: 200px\
+			} #"+dialogueID+" .dialog-content \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important; \
+				height: auto !important;\
+			} #"+dialogueID+" .window-content \
+			{\
+				;flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			} #"+dialogueID+".app.window-app.MoveMasterSidebarDialog \
+			{\
+				background-color:"+ MoveButtonBackgroundColor +";\
+				flex-direction: column; \
+				padding: 0px !important; \
+				border-width: 0px !important; \
+				margin: 0px !important; \
+				width: 200px !important;\
+			}\
+		</style>\
+		<center>\
+			<h2 style='margin-bottom: 10px;'>\
+				"+ targetTypingText+"\
+			</h2>\
+			<div class='cameraframe-terrain' style='"+background_field+";\
+			font-family:Modesto Condensed;\
+			font-size:20px'>\
+			</div>\
+		</center>\
+		<img class='pokedex-bottom' src='"+AlternateIconPath+"NewPokedex_Vertical_Bottom_200.png"+"'></img>\
+		<center><img class='pokedex-bottom-weather' title='Current Weather: "+current_weather+"' src='"+AlternateIconPath+weather_icon+"'></img></center>";
+
 	game.PTUMoveMaster.MoveMasterSidebar = new game.PTUMoveMaster.SidebarForm({content, buttons: struggle_buttons, dialogueID, classes: "ptu-sidebar"});
 	game.PTUMoveMaster.MoveMasterSidebar.render(true);
 }

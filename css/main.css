@@ -295,9 +295,10 @@ body.messages-dark-theme .chat-controls .roll-type-select {
 
 .pokedex-bottom-filler {
   width: 200px;
-  height: 100px;
+  height: 600px;
   border:none;
   transform: scaleY(-1);
+  background: -webkit-linear-gradient(rgb(198, 255, 250), rgba(198, 255, 250, 0));
 }
 
 .pokedex-top {
