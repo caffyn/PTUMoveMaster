@@ -228,7 +228,7 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   left:0px; */
   /* background-color: rgba(0, 0, 0, 0.6); */
   width: 200px;
-  height: 270px;
+  height: 263px;
   /* z-index: 2; */
   border:none;
   top: 86px;
@@ -318,6 +318,17 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   border:none;
   top: 51px;
   left: 68px;
+}
+
+.pokedex-top-camera-disabled {
+  position:absolute;
+  width: 64px;
+  height: 64px;
+  z-index: 11;
+  border:none;
+  top: 52px;
+  left: 68px;
+  filter: saturate(0%) brightness(0.4);
 }
 
 

@@ -908,6 +908,7 @@ Hooks.on("controlToken", async (token, selected) => {
 	
 			await PTUAutoFight().ChatWindow(current_actor);
 			await $("#ptu-sidebar").slideDown(200);
+			// await $(".ptu-sidebar.window-content").scrollTop(300);
 		}
 		else
 		{
@@ -1830,6 +1831,19 @@ const Orders_Inspired_Training_Mark_on = 	"<div title='Inspired Orders: +1 bonus
 const Orders_Critical_Moment_Mark_on = 	"<div title='Critical Moment: The bonuses from your Pokemon’s [Training] are tripled until the end of your next turn.' 		style='background-color: #333333; color:#cccccc; border-left:5px solid green; 		width:100%; 					height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'>Critical Moment!</div>";
 
 
+const EffectivenessColors = {
+	0: "black",
+	0.25: "darkred",
+	0.5: "#cc6666",
+	1: "white",
+	1.25: "#89b3b5",
+	1.5: "#6699cc",
+	2: "blue",
+	3: "blue",
+	4: "blue",
+};
+
+
 const nature_flavor_table = 
 {
 	"Cuddly":	["salty", "spicy"],
@@ -2266,7 +2280,18 @@ export function PTUAutoFight()
 
 		var typeStrategist = [];
 		var technician = game.PTUMoveMaster.ActorHasItemWithName(actor, "Technician", "ability");
-		var hasPokedex = game.PTUMoveMaster.ActorHasItemWithName(actor, "Pokedex", "item");
+		var hasPokedex = false;
+		if(actor.type == "character")
+		{
+			hasPokedex = game.PTUMoveMaster.ActorHasItemWithName(actor, "Pokedex", "item");
+		}
+		else
+		{
+			if(actor.data.data.owner!= "0")
+			{
+				hasPokedex = game.PTUMoveMaster.ActorHasItemWithName( (game.actors.get(actor.data.data.owner)), "Pokedex", "item");
+			}
+		}
 
 		for(let item of actor.itemTypes.ability) // START Ability Check Loop
 		{
@@ -2284,22 +2309,24 @@ export function PTUAutoFight()
 		let dialogEditor;
 		var buttons={};
 
-		let menuButtonWidth = "90px";
-		let bigButtonWidth = "191px";
+		let menuButtonWidth = "200px";
+		let bigButtonWidth = "200px";
+		// let skillsMenu_mark = 	"<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); background-size: contain; background-repeat: no-repeat; background-position: left center; background-color: #333333; color:#cccccc; border-left:5px solid red; width:100%; height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'><p title=''>Skills</p></div>";
+		
 
-		buttons["skillsMenu"] = {noRefresh: true, id:"skillsMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Skills 💬"+"</div></center>",
+		buttons["skillsMenu"] = {noRefresh: true, id:"skillsMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Skills"+"</div>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowSkillsMenu(actor);
 				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
-		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Struggle 💬"+"</div></center>",
+		buttons["struggleMenu"] = {noRefresh: true, id:"struggleMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Struggle"+"</div>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowStruggleMenu(actor);
 				await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
 			}};
 
-		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Maneuvers 💬"+"</div></center>",
+		buttons["maneuverMenu"] = {noRefresh: true, id:"maneuverMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Maneuvers"+"</div>",
 		callback: async () => {
 			await game.PTUMoveMaster.ShowManeuverMenu(actor);
 			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
@@ -2307,34 +2334,34 @@ export function PTUAutoFight()
 
 		if(actor.data.type == "character")
 		{
-			buttons["itemMenu"] = {noRefresh: true, id:"itemMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Items 💬"+"</div></center>",
+			buttons["itemMenu"] = {noRefresh: true, id:"itemMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Items"+"</div>",
 			callback: () => {
 				game.PTUMoveMaster.ShowInventoryMenu(actor);
 			}};
 
 
-			buttons["pokeballMenu"] = {noRefresh: true, id:"pokeballMenu", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+menuButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"Pokeballs 💬"+"</div></center>",
+			buttons["pokeballMenu"] = {noRefresh: true, id:"pokeballMenu", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+");font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Pokeballs"+"</div>",
 			callback: async () => {
 				await game.PTUMoveMaster.ShowPokeballMenu(actor);
 			}};
 
-			if(hasPokedex)
-			{
-				buttons["pokedexScanBigButton"] = {id:"pokedexScanBigButton", label: "<center><div style='background-color:none;color:black;border-bottom:2px solid black;width:"+bigButtonWidth+";height:35px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"<img title='Pokedex Scan!' src='"+AlternateIconPath+"Gen_I_dex.png' style='height:33px; border:none'></div></center>",
-				callback: async () => {
-					let trainer_tokens = actor.getActiveTokens();
-					let actor_token = trainer_tokens[0];
-					await game.PTUMoveMaster.PokedexScan(actor_token, target);
-				}};
-			}
-			else
-			{
-				buttons["pokedexScanBigButton"] = {noRefresh:true, id:"pokedexScanBigButton", label: "<center><div style='background-color:none;color:black;border-bottom:2px solid black;width:"+bigButtonWidth+";height:35px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"<img title='No Pokedex to Use' src='"+AlternateIconPath+"Gen_I_dex_No.png' style='height:33px; border:none'></div></center>",
-				callback: async () => {
-					ui.notifications.warn("You have no Pokedex in your inventory!");
-					await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
-			}};
-			}
+			// if(hasPokedex)
+			// {
+			// 	buttons["pokedexScanBigButton"] = {id:"pokedexScanBigButton", label: "<center><div style='background-color:none;color:black;border-bottom:2px solid black;width:"+bigButtonWidth+";height:35px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"<img title='Pokedex Scan!' src='"+AlternateIconPath+"Gen_I_dex.png' style='height:33px; border:none'></div></center>",
+			// 	callback: async () => {
+			// 		let trainer_tokens = actor.getActiveTokens();
+			// 		let actor_token = trainer_tokens[0];
+			// 		await game.PTUMoveMaster.PokedexScan(actor_token, target);
+			// 	}};
+			// }
+			// else
+			// {
+			// 	buttons["pokedexScanBigButton"] = {noRefresh:true, id:"pokedexScanBigButton", label: "<center><div style='background-color:none;color:black;border-bottom:2px solid black;width:"+bigButtonWidth+";height:35px;font-size:16px;font-family:Modesto Condensed;color:grey;line-height:1.4'>"+"<img title='No Pokedex to Use' src='"+AlternateIconPath+"Gen_I_dex_No.png' style='height:33px; border:none'></div></center>",
+			// 	callback: async () => {
+			// 		ui.notifications.warn("You have no Pokedex in your inventory!");
+			// 		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"warning.wav", volume: 0.5, autoplay: true, loop: false}, true);
+			// }};
+			// }
 			
 		}
 		else if(actor.data.data.owner!= "0")
@@ -2347,7 +2374,7 @@ export function PTUAutoFight()
 			}
 			if(trainer_token_on_field)
 			{
-				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<center><div style='background-color:lightgray;color:black;border:2px solid black;width:"+bigButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"🔎 Select Trainer 🔍"+"</div></center>",
+				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Select Trainer"+"</div>",
 				callback: async () => {
 			
 					trainer_token_on_field.control(true);
@@ -2357,7 +2384,7 @@ export function PTUAutoFight()
 			}
 			else
 			{
-				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<center><div style='background-color:lightred;color:black;border:2px solid black;width:"+bigButtonWidth+";height:25px;font-size:16px;font-family:Modesto Condensed;line-height:1.4'>"+"❌ Trainer Unavailable ❌"+"</div></center>",
+				buttons["trainerBigButton"] = {noRefresh: true, id:"trainerBigButton", label: "<div style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+"); font-size:16px;font-family:Modesto Condensed;line-height:1.6'>"+"Trainer Unavailable"+"</div>",
 				callback: async () => {
 			
 					ui.notifications.warn("Trainer is not on the field.")
@@ -3031,45 +3058,46 @@ export function PTUAutoFight()
 					)
 					{
 						currentEffectivenessLabel = " (x"+effectiveness[item_data.type]+")";
-						if (effectiveness[item_data.type] == 0.5)
-						{
-							effectivenessBackgroundColor = "#cc6666";
-						}
-						else if (effectiveness[item_data.type] == 1)
-						{
-							effectivenessBackgroundColor = "white";
-							effectivenessTextColor = "black";
-						}
-						else if (effectiveness[item_data.type] == 0.25)
-						{
-							effectivenessBackgroundColor = "red";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] == 0)
-						{
-							effectivenessBackgroundColor = "black";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] < 0.25)
-						{
-							effectivenessBackgroundColor = "darkred";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] == 1.25)
-						{
-							effectivenessBackgroundColor = "#89b3b5";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] == 1.5)
-						{
-							effectivenessBackgroundColor = "#6699cc";//"#3399ff";
-							effectivenessTextColor = "black";
-						}
-						else if (effectiveness[item_data.type] > 1.5)
-						{
-							effectivenessBackgroundColor = "blue";
-							effectivenessTextColor = "white";
-						}
+						effectivenessBackgroundColor = EffectivenessColors[effectiveness[item_data.type]];
+						// if (effectiveness[item_data.type] == 0.5)
+						// {
+						// 	effectivenessBackgroundColor = "#cc6666";
+						// }
+						// else if (effectiveness[item_data.type] == 1)
+						// {
+						// 	effectivenessBackgroundColor = "white";
+						// 	effectivenessTextColor = "black";
+						// }
+						// else if (effectiveness[item_data.type] == 0.25)
+						// {
+						// 	effectivenessBackgroundColor = "red";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] == 0)
+						// {
+						// 	effectivenessBackgroundColor = "black";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] < 0.25)
+						// {
+						// 	effectivenessBackgroundColor = "darkred";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] == 1.25)
+						// {
+						// 	effectivenessBackgroundColor = "#89b3b5";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] == 1.5)
+						// {
+						// 	effectivenessBackgroundColor = "#6699cc";//"#3399ff";
+						// 	effectivenessTextColor = "black";
+						// }
+						// else if (effectiveness[item_data.type] > 1.5)
+						// {
+						// 	effectivenessBackgroundColor = "blue";
+						// 	effectivenessTextColor = "white";
+						// }
 						if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 						{
 							effectivenessText = "<span style='font-size:30px'> / x "+(effectiveness[item_data.type].toString())+"</span>";
@@ -3538,45 +3566,46 @@ export function PTUAutoFight()
 					)
 					{
 						currentEffectivenessLabel = " (x"+effectiveness[item_data.type]+")";
-						if (effectiveness[item_data.type] == 0.5)
-						{
-							effectivenessBackgroundColor = "#cc6666";
-						}
-						else if (effectiveness[item_data.type] == 1)
-						{
-							effectivenessBackgroundColor = "white";
-							effectivenessTextColor = "black";
-						}
-						else if (effectiveness[item_data.type] == 0.25)
-						{
-							effectivenessBackgroundColor = "red";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] == 0)
-						{
-							effectivenessBackgroundColor = "black";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] < 0.25)
-						{
-							effectivenessBackgroundColor = "darkred";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] == 1.25)
-						{
-							effectivenessBackgroundColor = "#89b3b5";
-							effectivenessTextColor = "white";
-						}
-						else if (effectiveness[item_data.type] == 1.5)
-						{
-							effectivenessBackgroundColor = "#6699cc";//"#3399ff";
-							effectivenessTextColor = "black";
-						}
-						else if (effectiveness[item_data.type] > 1.5)
-						{
-							effectivenessBackgroundColor = "blue";
-							effectivenessTextColor = "white";
-						}
+						effectivenessBackgroundColor = EffectivenessColors[effectiveness[item_data.type]];
+						// if (effectiveness[item_data.type] == 0.5)
+						// {
+						// 	effectivenessBackgroundColor = "#cc6666";
+						// }
+						// else if (effectiveness[item_data.type] == 1)
+						// {
+						// 	effectivenessBackgroundColor = "white";
+						// 	effectivenessTextColor = "black";
+						// }
+						// else if (effectiveness[item_data.type] == 0.25)
+						// {
+						// 	effectivenessBackgroundColor = "red";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] == 0)
+						// {
+						// 	effectivenessBackgroundColor = "black";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] < 0.25)
+						// {
+						// 	effectivenessBackgroundColor = "darkred";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] == 1.25)
+						// {
+						// 	effectivenessBackgroundColor = "#89b3b5";
+						// 	effectivenessTextColor = "white";
+						// }
+						// else if (effectiveness[item_data.type] == 1.5)
+						// {
+						// 	effectivenessBackgroundColor = "#6699cc";//"#3399ff";
+						// 	effectivenessTextColor = "black";
+						// }
+						// else if (effectiveness[item_data.type] > 1.5)
+						// {
+						// 	effectivenessBackgroundColor = "blue";
+						// 	effectivenessTextColor = "white";
+						// }
 						if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 						{
 							if(effectiveness[item_data.type])
@@ -3860,6 +3889,7 @@ export function PTUAutoFight()
 		let weather_icon = "weather_icon_"+current_weather+".png";
 		let pokedex_text = "Unidentified Pokemon - Click to Scan!";
 		let pokedex_camera_icon = "Pokedex_Camera.png";
+		
 
 		let actor_has_target_dex_entry = false;
 
@@ -3883,16 +3913,25 @@ export function PTUAutoFight()
 		if(target.actor.type == "character")
 		{
 			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
-			pokedex_text = "Pokedex: Non-Pokemon Target"
+			pokedex_text = "Pokedex: No Pokemon Targeted"
 		}
 		else if(target && actor_has_target_dex_entry)
 		{
 			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
 			pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
 		}
+
+		// let pokedex_camera_button = "<img class='pokedex-top-camera' title='Pokedex: "+pokedex_text+"' src='"+AlternateIconPath+pokedex_camera_icon+"'>";
+		let pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera' id='saveForm' />";
+
+		if(!hasPokedex)
+		{
+			pokedex_text = "Pokedex: No Pokedex in Trainer`s Inventory!"
+			pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera-disabled' id='saveForm' />";
+		}
 		
 		let content = "<img class='pokedex-top' src='"+AlternateIconPath+"NewPokedex_Vertical_Top_200.png"+"'></img>\
-		<center><img class='pokedex-top-camera' title='Pokedex: "+pokedex_text+"' src='"+AlternateIconPath+pokedex_camera_icon+"'></img></center>\
+		<center>"+pokedex_camera_button+"</img></center>\
 		<style> #"+dialogueID+" .dialog-buttons \
 			{\
 				background-color:"+ MoveButtonBackgroundColor +";\
@@ -3953,6 +3992,7 @@ export function PTUAutoFight()
 		let sidebar = new game.PTUMoveMaster.SidebarForm({content, buttons, dialogueID, classes: "ptu-sidebar"});
 		
 		sidebar.render(true);
+		// $(".ptu-sidebar .window-content").scrollTop(300);
 	};
 
 
@@ -3962,10 +4002,19 @@ export function PTUAutoFight()
 		form.render(true);
 	}
 
+	async function PokedexScanButton(event)
+	{
+		// console.log("PokedexScanButton: event");
+		// console.log(event);
+		// game.PTUMoveMaster.PokedexScan(event.currentTarget.dataset.trainer_token, event.currentTarget.dataset.tarket_pokemon_token);
+		game.PTUMoveMaster.PokedexScan(event.currentTarget.dataset.trainer_token, event.currentTarget.dataset.tarket_pokemon_token);
+	}
+
 
 	return {
 	ChatWindow:ChatWindow,
-	ApplyDamage:ApplyDamage
+	ApplyDamage:ApplyDamage,
+	PokedexScanButton:PokedexScanButton
 	}
 
 };
@@ -4741,13 +4790,13 @@ export async function CalculateAcRoll (moveData, actorData)   {
 	{
 		if(actorData.flags.ptu.is_totally_blind)
 		{
-			blindness_mod = -10;
-			// blindness_mod = 0;
+			// blindness_mod = -10;
+			blindness_mod = 0;
 		}
 		else if(actorData.flags.ptu.is_blind)
 		{
-			blindness_mod = -6;
-			// blindness_mod = 0;
+			// blindness_mod = -6;
+			blindness_mod = 0;
 		}
 	}
 
@@ -6179,8 +6228,34 @@ export async function SpeakPokemonName(pokemon_actor)
 };
 
 
-export async function PokedexScan(trainer_token, target_pokemon_token)
+export async function PokedexScan(trainer_token = false, target_pokemon_token = false)
 {
+	let currently_selected_token = game.canvas.tokens.controlled[0];
+	let currently_selected_actor = currently_selected_token.actor;
+	if(!trainer_token)
+	{
+		
+		if(currently_selected_token.actor.type == "character")
+		{
+			trainer_token = currently_selected_token;
+		}
+		else if(currently_selected_token.actor.data.data.owner != "0")
+		{
+			trainer_token = game.PTUMoveMaster.GetTokenFromActor(game.actors.get(currently_selected_token.actor.data.data.owner));
+		}
+	}
+	if(!target_pokemon_token)
+	{
+		let currently_targeted_token = Array.from(game.user.targets)[0];
+		if(currently_targeted_token)
+		{
+			target_pokemon_token = currently_targeted_token;
+		}
+		else
+		{
+			return;
+		}
+	}
 	let trainer_actor = trainer_token.actor;
 	let target_pokemon_actor = target_pokemon_token.actor;
 	let distance = GetDistanceBetweenTokens(trainer_token, target_pokemon_token)
@@ -6246,15 +6321,18 @@ export async function PokedexScan(trainer_token, target_pokemon_token)
 		owned: false
 	}}]);
 
-	if(target_pokemon_token.data.disposition == -1)
-	{
-		await target_pokemon_token.document.update({"disposition": 0});
-	}
+	// if(target_pokemon_token.data.disposition == -1)
+	// {
+	// 	// await target_pokemon_token.document.update({"disposition": 0});
+	// 	// API call
+	// 	game.ptu.api.tokensUpdate({"data.disposition": Number(-1)});
+	// }
 	
 	await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+"pokedex_ding.wav", volume: 0.5, autoplay: true, loop: false}, true);
 	setTimeout( async () => {  SpeakPokemonName(target_pokemon_actor); }, 800);
 	// target_pokemon_token.update
 	await game.PTUMoveMaster.TakeAction(trainer_actor, "Standard");
+	setTimeout( async () => { await PTUAutoFight().ChatWindow(currently_selected_actor); }, 800);
 	return;
 };
 
@@ -8184,45 +8262,46 @@ export async function ShowStruggleMenu(actor)
 				)
 				{
 					currentEffectivenessLabel = " (x"+effectiveness[currentType]+")";
-					if (effectiveness[currentType] == 0.5)
-					{
-						effectivenessBackgroundColor = "#cc6666";
-					}
-					else if (effectiveness[currentType] == 1)
-					{
-						effectivenessBackgroundColor = "white";
-						effectivenessTextColor = "black";
-					}
-					else if (effectiveness[currentType] == 0.25)
-					{
-						effectivenessBackgroundColor = "red";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[currentType] == 0)
-					{
-						effectivenessBackgroundColor = "black";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[currentType] < 0.25)
-					{
-						effectivenessBackgroundColor = "darkred";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[currentType] == 1.25)
-					{
-						effectivenessBackgroundColor = "#89b3b5";
-						effectivenessTextColor = "white";
-					}
-					else if (effectiveness[currentType] == 1.5)
-					{
-						effectivenessBackgroundColor = "#6699cc";//"#3399ff";
-						effectivenessTextColor = "black";
-					}
-					else if (effectiveness[currentType] > 1.5)
-					{
-						effectivenessBackgroundColor = "blue";
-						effectivenessTextColor = "white";
-					}
+					effectivenessBackgroundColor = EffectivenessColors[effectiveness[currentType]];
+					// if (effectiveness[currentType] == 0.5)
+					// {
+					// 	effectivenessBackgroundColor = "#cc6666";
+					// }
+					// else if (effectiveness[currentType] == 1)
+					// {
+					// 	effectivenessBackgroundColor = "white";
+					// 	effectivenessTextColor = "black";
+					// }
+					// else if (effectiveness[currentType] == 0.25)
+					// {
+					// 	effectivenessBackgroundColor = "red";
+					// 	effectivenessTextColor = "white";
+					// }
+					// else if (effectiveness[currentType] == 0)
+					// {
+					// 	effectivenessBackgroundColor = "black";
+					// 	effectivenessTextColor = "white";
+					// }
+					// else if (effectiveness[currentType] < 0.25)
+					// {
+					// 	effectivenessBackgroundColor = "darkred";
+					// 	effectivenessTextColor = "white";
+					// }
+					// else if (effectiveness[currentType] == 1.25)
+					// {
+					// 	effectivenessBackgroundColor = "#89b3b5";
+					// 	effectivenessTextColor = "white";
+					// }
+					// else if (effectiveness[currentType] == 1.5)
+					// {
+					// 	effectivenessBackgroundColor = "#6699cc";//"#3399ff";
+					// 	effectivenessTextColor = "black";
+					// }
+					// else if (effectiveness[currentType] > 1.5)
+					// {
+					// 	effectivenessBackgroundColor = "blue";
+					// 	effectivenessTextColor = "white";
+					// }
 					
 					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 					{
@@ -8458,11 +8537,12 @@ export async function GetItemArt(item_name)
 export function GetTargetTypingHeader(target, actor)
 {
 	let targetTypingText = "";
-	let targetType1 = "Blank";
-	let targetType2 = "Blank";
+	let targetType1 = "";
+	let targetType2 = "";
 	let actorType1 = "";
 	let actorType2 = "";
-	let effectiveness;
+	let target_effectiveness;
+	let actor_effectiveness;
 	let showEffectivenessMode = game.settings.get("PTUMoveMaster", "showEffectiveness");
 	let actions_image = game.PTUMoveMaster.GetActorActionIcon(actor);
 	let actions_image_target = "";
@@ -8525,16 +8605,58 @@ export function GetTargetTypingHeader(target, actor)
 		let tokenSize = 60;
 		let actorTokenSize = 90;
 
+		let target_name_text = "Unidentified Pokemon"
+
 		if (target.actor.token)
+		{
+			targetImage = target.actor.data.img;
+		}
+		else
+		{
+			targetImage = target.actor.data.img;
+		}
+
+		if(target.actor.type == "character")
+		{
+			target_effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+		}
+		else
+		{
+			if(
+				(
+					(target.data.disposition > DISPOSITION_HOSTILE)
+					&& (showEffectivenessMode == "neutralOrBetter")
+				) 
+				|| 
+				(
+					actor_has_target_dex_entry
+					&& (showEffectivenessMode == "dex")
+				)
+				||
+				(showEffectivenessMode == "always")
+				||
+				(game.user.isGM)
+			)
 			{
-				targetImage = target.actor.data.img;
+				target_effectiveness = target.actor.data.data.effectiveness.All;
+				target_name_text = target.actor.name;
 			}
 			else
 			{
-				targetImage = target.actor.data.img;
+				target_effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
 			}
+		}
 		
-		if(!target.actor.data.data.effectiveness)
+		if(actor.type == "character")
+		{
+			actor_effectiveness = {"Normal":1, "Fire":1, "Water":1, "Electric":1, "Grass":1, "Ice":1, "Fighting":1, "Poison":1, "Ground":1, "Flying":1, "Psychic":1, "Bug":1, "Rock":1, "Ghost":1, "Dragon":1, "Dark":1, "Steel":1, "Fairy":1 };
+		}
+		else
+		{
+			actor_effectiveness = actor.data.data.effectiveness.All;
+		}
+		
+		if(!target.actor.data.data.effectiveness) // Trainer Target, no type, show blank
 		{
 			targetType1 = "";
 			targetType2 = "";
@@ -8543,12 +8665,12 @@ export function GetTargetTypingHeader(target, actor)
 			<div class='row' style='width:200px; height=125px !important;'>\
 				"+camera_frame_overlay+"\
 				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
-					<img class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
+					<img class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
 					<img class='cameraframe-selected-pokemon-type2' src='" + AlternateIconPath+actorType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
 				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
 					<img class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
-					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
+					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
 				<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
 					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"'></img>\
@@ -8559,25 +8681,53 @@ export function GetTargetTypingHeader(target, actor)
 			</div>\
 			<div class='cameraframe-filler'></div>";
 		}
-		else
+		else // Pokemon, type known, show types + effectiveness
 		{
-			effectiveness = target.actor.data.data.effectiveness.All;
-	
-			if(targetType2 == "null" || targetType2 == null)
+			let target_type_1_attacks_actor = actor_effectiveness[targetType1];
+			let target_type_2_attacks_actor = target_type_1_attacks_actor;
+			let targetType1_text = targetType1;
+			let targetType2_text = targetType1;
+
+			if(targetType2 == "" || targetType2 == null)
 			{
 				targetType2 = "";
 			}
+			else
+			{
+				target_type_2_attacks_actor = actor_effectiveness[targetType2];
+				targetType2_text = targetType2;
+			}
+
+			let actor_type_1_attacks_target = target_effectiveness[actorType1];
+			let actor_type_2_attacks_target = actor_type_1_attacks_target;
+			let actorType1_text = actorType1;
+			let actorType2_text = actorType1;
+
+			if(actorType2 == "" || actorType2 == null)
+			{
+				actorType2 = "";
+			}
+			else
+			{
+				actor_type_2_attacks_target = target_effectiveness[actorType2];
+				actorType2_text = actorType2;
+			}
+
+			let target_type_1_attacks_actor_color = EffectivenessColors[target_type_1_attacks_actor];
+			let target_type_2_attacks_actor_color = EffectivenessColors[target_type_2_attacks_actor];
+			let actor_type_1_attacks_target_color = EffectivenessColors[actor_type_1_attacks_target];
+			let actor_type_2_attacks_target_color = EffectivenessColors[actor_type_2_attacks_target];
 
 			targetTypingText = "<div class='cameraframe-underlay' style='background-image:url("+AlternateIconPath+"NewPokedex_Vertical_CenterScreen_200.png"+")'></div>"+actions_image+actions_image_target+"\
 				<div class='row' style='width:200px; height=125px !important;'>\
 					"+camera_frame_overlay+"\
 					<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
-						<img class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
-						<img class='cameraframe-selected-pokemon-type2' src='" + AlternateIconPath+actorType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
+						<img title='Your "+actorType1_text+" moves are x"+actor_type_1_attacks_target+" effective vs "+target_name_text+".' class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffix+ "' width=80px height=auto style='border-left:none; border-top:none; border-bottom:none; position:absolute; border-right:3px solid; border-color:"+actor_type_1_attacks_target_color+";'>\
+						<img title='Your "+actorType2_text+" moves are x"+actor_type_2_attacks_target+" effective vs "+target_name_text+".' class='cameraframe-selected-pokemon-type2' src='" + AlternateIconPath+actorType2+TypeIconSuffix+ "' width=80px height=auto style='border-left:none; border-top:none; border-bottom:none; position:absolute; border-right:3px solid; border-color:"+actor_type_2_attacks_target_color+";'>\
 					</div>\
 					<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
-						<img class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
-						<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
+						<img title='"+target_name_text+"`s "+targetType1_text+" moves are x"+target_type_1_attacks_actor+" effective vs you.' class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border-right:none; border-top:none; border-bottom:none; position:absolute; border-left:3px solid; border-color:"+target_type_1_attacks_actor_color+";'>\
+						<img title='"+target_name_text+"`s "+targetType2_text+" moves are x"+target_type_2_attacks_actor+" effective vs you.' class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border-right:none; border-top:none; border-bottom:none; position:absolute; border-left:3px solid; border-color:"+target_type_2_attacks_actor_color+";'>\
 					</div>\
 					<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
 						<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"'></img>\
@@ -8592,7 +8742,7 @@ export function GetTargetTypingHeader(target, actor)
 
 		
 	}
-	else if (!target)
+	else if (!target) // No target, show blank
 	{
 		let actorImage = actor.data.img;
 		let tokenSize = 60;
@@ -8602,12 +8752,12 @@ export function GetTargetTypingHeader(target, actor)
 			<div class='row' style='width:200px; height=125px !important;'>\
 				"+camera_frame_overlay+"\
 				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
-					<img class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
+					<img class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
 					<img class='cameraframe-selected-pokemon-type2' src='" + AlternateIconPath+actorType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
 				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
 					<img class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
-					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
+					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
 				<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
 					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); vertical-align: bottom; text-align: left; position:absolute;'></img>\
@@ -8618,7 +8768,7 @@ export function GetTargetTypingHeader(target, actor)
 			</div>\
 			<div class='cameraframe-filler'></div>";
 	}
-	else
+	else // Don't know typing in-character, show ???
 	{
 		let targetImage;
 		if (target.actor.token)
@@ -8640,12 +8790,12 @@ export function GetTargetTypingHeader(target, actor)
 			<div class='row' style='width:200px; height=125px !important;'>\
 				"+camera_frame_overlay+"\
 				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
-					<img class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
+					<img class='cameraframe-selected-pokemon-type1' src='" + AlternateIconPath+actorType1+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
 					<img class='cameraframe-selected-pokemon-type2' src='" + AlternateIconPath+actorType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
 				<div class='column' style='width:200px; height:100px ; color:lightgrey; position:absolute;'>\
 					<img class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
-					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffix+ "' width=80px height=auto style='border:none; position:absolute;'>\
+					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
 				<div class='column' style='width:"+actorTokenSize+" height=auto; position:absolute;'>\
 					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); position:absolute;'></img>\
