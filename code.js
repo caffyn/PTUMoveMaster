@@ -939,13 +939,13 @@ Hooks.on("updateToken", async (token, change, diff, userid) => {
 	{
 		let current_actor = game.actors.get(token.data.actorId);
 
-		if(diff.diff)
+		if((diff.diff) && (!current_actor.data.flags.ptu.actions_taken.shift))
 		{
 			if(change.x > 0 || change.y > 0)
 			{
 				game.PTUMoveMaster.TakeAction(current_actor, "Shift");
 				setTimeout( async () => { 
-					PTUAutoFight().ChatWindow(current_actor);
+					PTUAutoFight().ChatWindow(current_actor, true);
 				}, 1000);
 			}
 		}
@@ -2249,10 +2249,12 @@ export function PTUAutoFight()
 	}
 
 
-	async function ChatWindow(actor)
+	async function ChatWindow(actor, silent=false)
 	{
-
-		await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.8, autoplay: true, loop: false}, false);
+		if(!silent)
+		{
+			await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIPopupSound, volume: 0.5, autoplay: true, loop: false}, false);
+		}
 
 		let target = Array.from(game.user.targets)[0];
 		let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
@@ -3940,22 +3942,22 @@ export function PTUAutoFight()
 					actor_has_target_dex_entry = true;
 				}
 			}
+
+			if(target.actor.type == "character")
+			{
+				pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+				pokedex_text = "Pokedex: No Pokemon Targeted"
+			}
+			else if(target && actor_has_target_dex_entry)
+			{
+				pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
+				pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
+			}
 		}
 		else
 		{
 			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
 			pokedex_text = "Pokedex: No Pokemon Targeted"
-		}
-
-		if(target.actor.type == "character")
-		{
-			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
-			pokedex_text = "Pokedex: No Pokemon Targeted"
-		}
-		else if(target && actor_has_target_dex_entry)
-		{
-			pokedex_camera_icon = "Pokedex_Camera_Scanned.png";
-			pokedex_text = "Pokedex: Known Pokemon Species: "+target.actor.data.data.species;
 		}
 
 		let pokedex_camera_button = "<input title='"+pokedex_text+"' type='image' src='"+AlternateIconPath+pokedex_camera_icon+"' name='saveForm' class='pokedex-top-camera' id='saveForm' />";
