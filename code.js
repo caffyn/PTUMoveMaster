@@ -939,7 +939,7 @@ Hooks.on("updateToken", async (token, change, diff, userid) => {
 	{
 		let current_actor = game.actors.get(token.data.actorId);
 
-		if((diff.diff) && (!current_actor.data.flags.ptu.actions_taken.shift))
+		if((diff.diff) && (current_actor.data.flags.ptu) && (!current_actor.data.flags.ptu.actions_taken.shift))
 		{
 			if(change.x > 0 || change.y > 0)
 			{
@@ -955,7 +955,7 @@ Hooks.on("updateToken", async (token, change, diff, userid) => {
 
 Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon is dropped onto the field, play pokeball release sound, and create lightshow
 
-	if(game.userId == id)
+	if((game.userId == id) && (token.data.flags["item-piles"] == undefined))
 	{
 		setTimeout( async () => {
 			
@@ -1239,6 +1239,111 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 		}, 100);
 	}
 });
+
+Hooks.on("item-piles-createItemPile", async (token, options) => {
+
+	console.log("item-piles-createItemPile: token:");
+	console.log(token);
+	console.log("item-piles-createItemPile: options:");
+	console.log(options);
+
+	let dropped_item = token.data.actorData.items[0];
+	let item_art = await game.PTUMoveMaster.GetItemArt(dropped_item.name);
+	await token.update({ "data.img": item_art, "name": dropped_item.name});
+});
+
+Hooks.on("item-piles-preDropItemDetermined", async (source, target, position, itemData, force) => {
+
+	// console.log("item-piles-preDropItemDetermined: source:");
+	// console.log(source);
+	// console.log("item-piles-preDropItemDetermined: target:");
+	// console.log(target);
+	// console.log("item-piles-preDropItemDetermined: position:");
+	// console.log(position);
+	// console.log("item-piles-preDropItemDetermined: itemData:");
+	// console.log(itemData);
+	// console.log("item-piles-preDropItemDetermined: force:");
+	// console.log(force);
+
+	// if(itemData.type == "dexentry")
+	// {
+	// 	console.log("item-piles-preDropItemDetermined: dexentry: RETURNING FALSE");
+	// 	return false;
+	// }
+
+	let dropped_item = itemData;
+	let item_art = await game.PTUMoveMaster.GetItemArt(dropped_item.name);
+	itemData.img = item_art;
+});
+
+
+Hooks.on("preCreateItem", (new_document, source_data, options, userId) => {
+
+	if(source_data.type == "item" && new_document.data.img == "icons/svg/mystery-man.svg")
+	{
+		let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
+		let item_art = (item_icon_path+source_data.name+".webp");
+		// let item_art = //await game.PTUMoveMaster.GetItemArt(source_data.name);
+
+		console.log("DEBUG: preCreateItem item_art: ");
+		console.log(item_art);
+
+		new_document.data.update({"img": item_art});
+
+		return true;
+	}
+});
+
+
+// Hooks.on("preUpdateItem", async (document, changes, options, userId) => {
+
+// 	console.log("preUpdateItem: document:");
+// 	console.log(document);
+// 	console.log("preUpdateItem: changes:");
+// 	console.log(changes);
+// 	console.log("preUpdateItem: options:");
+// 	console.log(options);
+// 	console.log("preUpdateItem: userId:");
+// 	console.log(userId);
+
+// 	if( (document.type == "item") && (document.data.img == "icons/svg/mystery-man.svg") && (changes.data) && (!changes.data.img) )
+// 	{
+// 		let item_art = await game.PTUMoveMaster.GetItemArt(document.data.name);
+// 		changes.data.img = item_art;
+
+// 		// await document.data.update({ img: item_art});
+
+// 		console.log("preUpdateItem: Post-update: document");
+// 		console.log(document);
+// 		console.log("preUpdateItem: Post-update: changes");
+// 		console.log(changes);
+// 		return true;
+// 	}
+// });
+
+
+// Hooks.on("createItem", async (new_item, options, userId) => {
+
+// 	console.log("createItem: new_item:");
+// 	console.log(new_item);
+// 	console.log("createItem: options:");
+// 	console.log(options);
+// 	console.log("createItem: userId:");
+// 	console.log(userId);
+
+// 	if(new_item.type == "item")
+// 	{
+// 		let item_art = await game.PTUMoveMaster.GetItemArt(new_item.data.name);
+// 		// new_item.data.img = item_art;
+// 		// new_item.data.img = item_art;
+// 		// item.data.img = item_art;
+// 		await new_item.update({ "data.img": item_art});
+
+// 		console.log("createItem: Post-update: new_item");
+// 		console.log(new_item);
+// 		return true;
+// 	}
+// });
 
 
 Hooks.once("dragRuler.ready", (SpeedProvider) => {
@@ -2682,7 +2787,7 @@ export function PTUAutoFight()
 
 		}};
 
-		if( (actor.data.data.heldItem.toLowerCase() != "none") && (actor.data.data.heldItem.toLowerCase() != "") )
+		if((actor.data.data.heldItem) && (actor.data.data.heldItem.toLowerCase() != "none") && (actor.data.data.heldItem.toLowerCase() != "") )
 		{
 			let heldItem = actor.data.data.heldItem.toLowerCase();
 
@@ -9071,10 +9176,10 @@ export function GetTargetTypingHeader(target, actor)
 					<img class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
+				<div class='column' style='width:100px !important; height=auto; text-align: left;'>\
 					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"'></img>\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: right; position:absolute; right:0px;'>\
+				<div class='column' style='width:100px !important; height=auto; text-align: right; right:0px;'>\
 					<img class='cameraframe-targeted-pokemon' src='"+ targetImage +"' height='"+tokenSize+"'></img>\
 				</div>\
 			</div>\
@@ -9128,10 +9233,10 @@ export function GetTargetTypingHeader(target, actor)
 						<img title='"+target_name_text+"`s "+targetType1_text+" moves are x"+target_type_1_attacks_actor+" effective vs you.' class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border-right:none; border-top:none; border-bottom:none; position:absolute; border-left:3px solid; border-color:"+target_type_1_attacks_actor_color+";'>\
 						<img title='"+target_name_text+"`s "+targetType2_text+" moves are x"+target_type_2_attacks_actor+" effective vs you.' class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border-right:none; border-top:none; border-bottom:none; position:absolute; border-left:3px solid; border-color:"+target_type_2_attacks_actor_color+";'>\
 					</div>\
-					<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
+					<div class='column' style='width:100px !important; height=auto; text-align: left;'>\
 						<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"'></img>\
 					</div>\
-					<div class='column' style='width:100px !important; height=auto; text-align: right; position:absolute; right:0px;'>\
+					<div class='column' style='width:100px !important; height=auto; text-align: right; right:0px;'>\
 						<img class='cameraframe-targeted-pokemon' src='"+ targetImage +"' height='"+tokenSize+"'></img>\
 					</div>\
 				</div>\
@@ -9158,10 +9263,10 @@ export function GetTargetTypingHeader(target, actor)
 					<img class='cameraframe-targeted-pokemon-type1' src='" + AlternateIconPath+targetType1+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: left; position:absolute;'>\
+				<div class='column' style='width:100px !important; height=auto; text-align: left;'>\
 					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); vertical-align: bottom; text-align: left; position:absolute;'></img>\
 				</div>\
-				<div class='column' style='width:100px !important; height=auto; text-align: right; position:absolute; right:0px;'>\
+				<div class='column' style='width:100px !important; height=auto; text-align: right; right:0px;'>\
 					\
 				</div>\
 			</div>\
@@ -9197,10 +9302,10 @@ export function GetTargetTypingHeader(target, actor)
 					<img class='cameraframe-targeted-pokemon-type2' src='" + AlternateIconPath+targetType2+TypeIconSuffixFlipped+ "' width=80px height=auto style='border:none; position:absolute;'>\
 				</div>\
 				<div class='column' style='width:"+actorTokenSize+" height=auto; position:absolute;'>\
-					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1); position:absolute;'></img>\
+					<img class='cameraframe-selected-pokemon' src='"+ actorImage +"' height='"+actorTokenSize+"' style='border:none; transform: scaleX(-1);'></img>\
 				</div>\
-				<div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px; position:absolute; right:0px;'>\
-					<img class='cameraframe-targeted-pokemon' src='"+ targetImage +"' height='"+tokenSize+"' style='border:none; position:absolute;'></img>\
+				<div class='column' style='width:"+tokenSize+"; height=auto; margin-left:50px ; margin-top: 25px; right:0px;'>\
+					<img class='cameraframe-targeted-pokemon' src='"+ targetImage +"' height='"+tokenSize+"' style='border:none;'></img>\
 				</div>\
 			</div>\
 			<div class='cameraframe-filler'></div>";
