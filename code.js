@@ -268,6 +268,18 @@ function _loadModuleSettings() {
         category: "other"
     });
 
+	game.settings.register("PTUMoveMaster", "playerBagDirectory", {
+        name: "Player Bag Directory",
+        hint: "The directory where the user can upload subdirectories, each with image files with appropriate names (items.png, pokeballs.png, etc.) to be used by Move Master in certain UI elements. The subdirectory 'default' will be used for any actor that does not have a subdirectory of that actor's name (not including spaces). Must end with a /",
+        scope: "world",
+        config: true,
+        type: String,
+        default: "player_bags/",
+        filePicker: true,
+        // onChange: (value) => CustomSpeciesFolder.updateFolderDisplay(value),
+        category: "other"
+    });
+
 	game.settings.register("PTUMoveMaster", "UnavailablePokemonFolderName", {
 		name: "GM Setting: Unavailable Pokemon Folder Name",
 		hint: "Pokemon that are in any folder whose name contains this string (case insensitive) will be considered to be unavailable, and will not show up on the sidebar 'belt' of their trainers.",
@@ -2515,20 +2527,21 @@ export function PTUAutoFight()
 			menu_image_backdrop_image_px_from_top = 10;
 		}
 
-		let bag_directory = "player_bags/default/";
+		let base_bag_dir = game.settings.get("PTUMoveMaster", "playerBagDirectory");
+		let bag_directory = base_bag_dir+"default/";
 		if(game.canvas.tokens.controlled[0])
 		{
 			let current_actor = game.canvas.tokens.controlled[0].actor;
-			if (FilePicker.browse("data", "player_bags/"))
+			if (FilePicker.browse("data", base_bag_dir))
 			{
 				try
 				{
-					await FilePicker.browse("data", ("player_bags/"+current_actor.name.replace(/ /g,'')+"/") );
-					bag_directory = ("player_bags/"+current_actor.name.replace(/ /g,'')+"/");
+					await FilePicker.browse("data", (base_bag_dir+current_actor.name.replace(/ /g,'')+"/") );
+					bag_directory = (base_bag_dir+current_actor.name.replace(/ /g,'')+"/");
 				}
 				catch(err)
 				{
-					bag_directory = "player_bags/default/";
+					bag_directory = base_bag_dir+"default/";
 				}
 			}
 		}
