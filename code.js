@@ -1242,47 +1242,53 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 
 Hooks.on("item-piles-createItemPile", async (token, options) => {
 
-	console.log("item-piles-createItemPile: token:");
-	console.log(token);
-	console.log("item-piles-createItemPile: options:");
-	console.log(options);
+	if(game.user.isGM && token.data.actorData.items)
+	{
+		let dropped_item = token.data.actorData.items[0];
+		let item_art = await game.PTUMoveMaster.GetItemArt(dropped_item.name);
+		await token.update({ "data.img": item_art, "name": dropped_item.name});
+	}
 
-	let dropped_item = token.data.actorData.items[0];
-	let item_art = await game.PTUMoveMaster.GetItemArt(dropped_item.name);
-	await token.update({ "data.img": item_art, "name": dropped_item.name});
+});
+
+Hooks.on("item-piles-preDropItemDetermined", (source, target, position, itemData, force) => {
+
+	if(itemData.type == "dexentry")
+	{
+		return false;
+	}
 });
 
 Hooks.on("item-piles-preDropItemDetermined", async (source, target, position, itemData, force) => {
 
-	// console.log("item-piles-preDropItemDetermined: source:");
-	// console.log(source);
-	// console.log("item-piles-preDropItemDetermined: target:");
-	// console.log(target);
-	// console.log("item-piles-preDropItemDetermined: position:");
-	// console.log(position);
-	// console.log("item-piles-preDropItemDetermined: itemData:");
-	// console.log(itemData);
-	// console.log("item-piles-preDropItemDetermined: force:");
-	// console.log(force);
-
-	// if(itemData.type == "dexentry")
-	// {
-	// 	console.log("item-piles-preDropItemDetermined: dexentry: RETURNING FALSE");
-	// 	return false;
-	// }
-
 	let dropped_item = itemData;
-	let item_art = await game.PTUMoveMaster.GetItemArt(dropped_item.name);
-	itemData.img = item_art;
+	if(dropped_item.img == "icons/svg/mystery-man.svg")
+	{
+		let item_art = await game.PTUMoveMaster.GetItemArt(dropped_item.name);
+		itemData.img = item_art;
+	}
 });
 
 
 Hooks.on("preCreateItem", (new_document, source_data, options, userId) => {
 
-	if(source_data.type == "item" && new_document.data.img == "icons/svg/mystery-man.svg")
+	console.log("preCreateItem: source_data.type");
+	console.log(source_data.type);
+	console.log("preCreateItem: new_document.data.img");
+	console.log(new_document.data.img);
+	console.log("preCreateItem: game.userId");
+	console.log(game.userId);
+	console.log("preCreateItem: userId");
+	console.log(userId);
+
+	if(source_data.type == "item" && new_document.data.img == "icons/svg/mystery-man.svg" && game.userId == userId)
 	{
 		let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
 		let item_art = (item_icon_path+source_data.name+".webp");
+		// if(!fetch(item_icon_path+source_data.name+".webp") , { method: 'HEAD' })
+		// {
+		// 	item_art = (item_icon_path+source_data.name+".png");
+		// }
 		// let item_art = //await game.PTUMoveMaster.GetItemArt(source_data.name);
 
 		console.log("DEBUG: preCreateItem item_art: ");
@@ -1293,6 +1299,89 @@ Hooks.on("preCreateItem", (new_document, source_data, options, userId) => {
 		return true;
 	}
 });
+
+Hooks.on("createItem", async (new_item, options, userId) => {
+
+	console.log("createItem: new_item");
+	console.log(new_item);
+
+	console.log("CreateItem: new_item.type");
+	console.log(new_item.type);
+	console.log("CreateItem: new_item.data.img");
+	console.log(new_item.data.img);
+	console.log("CreateItem: game.userId");
+	console.log(game.userId);
+	console.log("CreateItem: userId");
+	console.log(userId);
+
+	if(game.userId == userId)
+	{
+		let item_art = await game.PTUMoveMaster.GetItemArt(new_item.name);
+		console.log("DEBUG: createItem item_art: ");
+		console.log(item_art);
+
+		if(new_item.type == "item" && new_item.data.img.replace(/\.[^/.]+$/, "") == item_art.replace(/\.[^/.]+$/, ""))
+		{
+			await new_item.data.update({"img": item_art});
+			return true;
+		}
+	}
+
+	
+});
+
+// Hooks.on("item-piles-transferItems", (sourceUuid, targetUuid, items) => {
+
+// 	console.log("item-piles-transferItems: sourceUuid");
+// 	console.log(sourceUuid);
+// 	console.log("item-piles-transferItems: targetUuid");
+// 	console.log(targetUuid);
+// 	console.log("item-piles-transferItems: items");
+// 	console.log(items);
+
+	
+// });
+
+// Hooks.on("item-piles-addItems", async (tokenRecievingItems, itemArray) => {
+
+// 	console.log("item-piles-addItems: tokenRecievingItems");
+// 	console.log(tokenRecievingItems);
+// 	console.log("item-piles-addItems: itemArray");
+// 	console.log(itemArray);
+
+// 	let token_actor = tokenRecievingItems._actor;
+// 	console.log("item-piles-addItems: token_actor");
+// 	console.log(token_actor);
+
+// 	for(let item of itemArray)
+// 	{
+// 		console.log("item");
+// 		console.log(item);
+
+// 		console.log("item.data.quantity");
+// 		console.log(item.data.quantity);
+
+// 		let found_item = game.PTUMoveMaster.ActorHasItemWithName(token_actor, item.name, "item");
+// 		if(found_item)
+// 		{
+// 			console.log("found_item");
+// 			console.log(found_item);
+
+// 			console.log("found_item.data.data.quantity");
+// 			console.log(found_item.data.data.quantity);
+
+// 			let new_quantity = Number(item.data.quantity + found_item.data.data.quantity);
+// 			console.log("new_quantity");
+// 			console.log(new_quantity);
+
+// 			await found_item.update({"data.quantity": new_quantity});
+
+// 			break;
+// 		}
+
+// 	}
+	
+// });
 
 
 // Hooks.on("preUpdateItem", async (document, changes, options, userId) => {
@@ -5828,7 +5917,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
@@ -5841,7 +5930,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
@@ -5854,7 +5943,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
@@ -5867,7 +5956,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
@@ -5880,7 +5969,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
@@ -5893,7 +5982,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
@@ -5906,7 +5995,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
@@ -5919,7 +6008,7 @@ export function ActorHasItemWithName(actor, initial_item_name, item_category="An
 			{
 				if( (item.data.name.replace("é", "e") == item_name) || (!precise_naming && (item.data.name.replace("é", "e").toLowerCase().includes(item_name)) ) )
 				{
-					return true;
+					return item;
 				}
 			}
 		}
