@@ -1015,7 +1015,7 @@ Hooks.on("createToken", async (token, options, id) => { // If an owned Pokemon i
 					current_token_nature = capitalizeFirstLetter((actor.data.data.nature.value).toLowerCase())+" ";
 				}
 	
-				if(actor.data.type == "pokemon" && (actor.data.data.owner != "0" && actor.data.data.owner != ""))
+				if(actor.data.type == "pokemon" && (actor.data.data.owner != "0" && actor.data.data.owner != "")) // Owned Pokemon
 				{
 					let trainer_actor = game.actors.get(actor.data.data.owner);
 					let trainer_tokens = trainer_actor.getActiveTokens();

@@ -364,3 +364,7 @@ body.messages-dark-theme .chat-controls .roll-type-select {
   top: 258px;
   left: 5px;
 }
+
+.bossBar {
+  width: -webkit-calc(100% - 200px);
+}
