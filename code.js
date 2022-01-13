@@ -542,11 +542,6 @@ Hooks.on("prePlayerDeleteToken", async (uuids) => {
 			at_least_one_owned_pokemon = true;
 		}
 	}
-
-	// for(let actor of actors_to_be_deleted)
-	// {
-	// 	// console.log(actor);
-	// }
 	
 	if(at_least_one_owned_pokemon)
 	{
@@ -556,7 +551,6 @@ Hooks.on("prePlayerDeleteToken", async (uuids) => {
 			yes: async () => {
 				for(let actor of actors_to_be_deleted)
 				{
-					// console.log("await game.PTUMoveMaster.recallPokemon(actor);");
 					await game.PTUMoveMaster.recallPokemon(actor);
 				}
 			},
@@ -656,7 +650,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 	
 	if( (this_turn == 0) && (this_round == (previous_round+1)) )
 	{
-		// console.log("-------- NEW ROUND TRIGGER ---------");
+		// -------- NEW ROUND TRIGGER ---------
 		for(let combatant of game.combat.combatants)
 		{
 			let this_actor = combatant.actor;
@@ -668,7 +662,7 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 		}
 	}
 	
-	// console.log("-------- NEW TURN TRIGGER ---------");
+	// -------- NEW TURN TRIGGER ---------
 
 	if( (current_actor.data.flags.ptu) && (game.settings.get("PTUMoveMaster", "autoSkipTurns")) )
 	{
@@ -726,8 +720,6 @@ Hooks.on("startTurn", async (combat, combatant, lastTurn, options, sender) => {
 
 Hooks.on("endTurn", async (combat, combatant, lastTurn, options, sender) => {
 
-	console.log("DEBUG: Hooks.on(endTurn): combatant");
-	console.log(combatant);
 	let current_actor = combatant.actor;
 	// let current_token_species = current_actor.data.data.species;
 	let currentWeather = await game.PTUMoveMaster.GetCurrentWeather();
@@ -1284,27 +1276,10 @@ Hooks.on("item-piles-preDropItemDetermined", async (source, target, position, it
 
 Hooks.on("preCreateItem", (new_document, source_data, options, userId) => {
 
-	console.log("preCreateItem: source_data.type");
-	console.log(source_data.type);
-	console.log("preCreateItem: new_document.data.img");
-	console.log(new_document.data.img);
-	console.log("preCreateItem: game.userId");
-	console.log(game.userId);
-	console.log("preCreateItem: userId");
-	console.log(userId);
-
 	if(source_data.type == "item" && new_document.data.img == "icons/svg/mystery-man.svg" && game.userId == userId)
 	{
 		let item_icon_path = game.settings.get("PTUMoveMaster", "itemIconDirectory");
 		let item_art = (item_icon_path+source_data.name+".webp");
-		// if(!fetch(item_icon_path+source_data.name+".webp") , { method: 'HEAD' })
-		// {
-		// 	item_art = (item_icon_path+source_data.name+".png");
-		// }
-		// let item_art = //await game.PTUMoveMaster.GetItemArt(source_data.name);
-
-		console.log("DEBUG: preCreateItem item_art: ");
-		console.log(item_art);
 
 		new_document.data.update({"img": item_art});
 
@@ -1314,23 +1289,9 @@ Hooks.on("preCreateItem", (new_document, source_data, options, userId) => {
 
 Hooks.on("createItem", async (new_item, options, userId) => {
 
-	console.log("createItem: new_item");
-	console.log(new_item);
-
-	console.log("CreateItem: new_item.type");
-	console.log(new_item.type);
-	console.log("CreateItem: new_item.data.img");
-	console.log(new_item.data.img);
-	console.log("CreateItem: game.userId");
-	console.log(game.userId);
-	console.log("CreateItem: userId");
-	console.log(userId);
-
-	if(game.userId == userId)
+	if(game.userId == userId && new_item.type == "item")
 	{
 		let item_art = await game.PTUMoveMaster.GetItemArt(new_item.name);
-		console.log("DEBUG: createItem item_art: ");
-		console.log(item_art);
 
 		if(new_item.type == "item" && new_item.data.img.replace(/\.[^/.]+$/, "") == item_art.replace(/\.[^/.]+$/, ""))
 		{
@@ -1338,113 +1299,7 @@ Hooks.on("createItem", async (new_item, options, userId) => {
 			return true;
 		}
 	}
-
-	
 });
-
-// Hooks.on("item-piles-transferItems", (sourceUuid, targetUuid, items) => {
-
-// 	console.log("item-piles-transferItems: sourceUuid");
-// 	console.log(sourceUuid);
-// 	console.log("item-piles-transferItems: targetUuid");
-// 	console.log(targetUuid);
-// 	console.log("item-piles-transferItems: items");
-// 	console.log(items);
-
-	
-// });
-
-// Hooks.on("item-piles-addItems", async (tokenRecievingItems, itemArray) => {
-
-// 	console.log("item-piles-addItems: tokenRecievingItems");
-// 	console.log(tokenRecievingItems);
-// 	console.log("item-piles-addItems: itemArray");
-// 	console.log(itemArray);
-
-// 	let token_actor = tokenRecievingItems._actor;
-// 	console.log("item-piles-addItems: token_actor");
-// 	console.log(token_actor);
-
-// 	for(let item of itemArray)
-// 	{
-// 		console.log("item");
-// 		console.log(item);
-
-// 		console.log("item.data.quantity");
-// 		console.log(item.data.quantity);
-
-// 		let found_item = game.PTUMoveMaster.ActorHasItemWithName(token_actor, item.name, "item");
-// 		if(found_item)
-// 		{
-// 			console.log("found_item");
-// 			console.log(found_item);
-
-// 			console.log("found_item.data.data.quantity");
-// 			console.log(found_item.data.data.quantity);
-
-// 			let new_quantity = Number(item.data.quantity + found_item.data.data.quantity);
-// 			console.log("new_quantity");
-// 			console.log(new_quantity);
-
-// 			await found_item.update({"data.quantity": new_quantity});
-
-// 			break;
-// 		}
-
-// 	}
-	
-// });
-
-
-// Hooks.on("preUpdateItem", async (document, changes, options, userId) => {
-
-// 	console.log("preUpdateItem: document:");
-// 	console.log(document);
-// 	console.log("preUpdateItem: changes:");
-// 	console.log(changes);
-// 	console.log("preUpdateItem: options:");
-// 	console.log(options);
-// 	console.log("preUpdateItem: userId:");
-// 	console.log(userId);
-
-// 	if( (document.type == "item") && (document.data.img == "icons/svg/mystery-man.svg") && (changes.data) && (!changes.data.img) )
-// 	{
-// 		let item_art = await game.PTUMoveMaster.GetItemArt(document.data.name);
-// 		changes.data.img = item_art;
-
-// 		// await document.data.update({ img: item_art});
-
-// 		console.log("preUpdateItem: Post-update: document");
-// 		console.log(document);
-// 		console.log("preUpdateItem: Post-update: changes");
-// 		console.log(changes);
-// 		return true;
-// 	}
-// });
-
-
-// Hooks.on("createItem", async (new_item, options, userId) => {
-
-// 	console.log("createItem: new_item:");
-// 	console.log(new_item);
-// 	console.log("createItem: options:");
-// 	console.log(options);
-// 	console.log("createItem: userId:");
-// 	console.log(userId);
-
-// 	if(new_item.type == "item")
-// 	{
-// 		let item_art = await game.PTUMoveMaster.GetItemArt(new_item.data.name);
-// 		// new_item.data.img = item_art;
-// 		// new_item.data.img = item_art;
-// 		// item.data.img = item_art;
-// 		await new_item.update({ "data.img": item_art});
-
-// 		console.log("createItem: Post-update: new_item");
-// 		console.log(new_item);
-// 		return true;
-// 	}
-// });
 
 
 Hooks.once("dragRuler.ready", (SpeedProvider) => {
@@ -2661,15 +2516,11 @@ export function PTUAutoFight()
 			let active_pokemon_list = [];
 			let order_flag_string = "";
 
-			// console.log("DEBUG ++++++++++++++++ ownerId");
-			// console.log(ownerId);
-
 			for(let token of game.scenes.current.tokens)
 			{
 				if(token._actor.data.data.owner == ownerId)
 				{
 					active_pokemon_list[token._actor.id] = token._actor;
-					// console.log("DEBUG ++++++++++++++++ ACTIVE POKEMON LIST "+token._actor.name+" token._actor.id = " + token._actor.id);
 				}
 			}
 
@@ -2682,21 +2533,14 @@ export function PTUAutoFight()
 				{
 					order_flag_string = "owned_pokemon.data.data.training.critical";
 				}
-				// console.log("DEBUG ++++++++++++++++ order_flag_string");
-				// console.log(order_flag_string);
 
 				for(let owned_pokemon_id in active_pokemon_list)
 				{
 					let owned_pokemon = game.actors.get(owned_pokemon_id);
 					if(owned_pokemon)
 					{
-						// console.log("DEBUG ++++++++++++++++ owned_pokemon from list");
-						// console.log(owned_pokemon);
-						// console.log("eval(order_flag_string)");
-						// console.log(eval(order_flag_string));
 						if(eval(order_flag_string))
 						{
-							// console.log("DEBUG ++++++++++++++++ eval(order_flag_string) == true");
 							pokemon_order_state = "on";
 						}
 					}
@@ -2905,9 +2749,6 @@ export function PTUAutoFight()
 			let heldItem_item_icon = await game.PTUMoveMaster.GetItemArt(heldItem);
 
 			let heldItem_mark = 	"<div style='background-image: url(\""+heldItem_item_icon+"\"); background-size: contain; background-repeat: no-repeat; background-position: left center; background-color: #333333; color:#cccccc; border-left:5px solid "+heldItem_color+"; width:100%; height:25px;font-size:20px;	font-family: Modesto Condensed;	display: flex;	justify-content: center;align-items: center;'><p title='"+heldItem_description+"'>"+heldItem+"</p></div>";
-
-			console.log("DEBUG: heldItem");
-			console.log(heldItem);
 
 			buttons["heldItem"] = 
 			{
@@ -3446,8 +3287,6 @@ export function PTUAutoFight()
 
 						let move_found_in_custom = false;
 
-						console.log("DEBUG: custom_moves: ");
-						console.log(custom_moves);
 						for(let searched_move in custom_moves)
 						{
 							if(item.name.includes(searched_move))
@@ -4249,9 +4088,6 @@ export function PTUAutoFight()
 
 	async function PokedexScanButton(event)
 	{
-		// console.log("PokedexScanButton: event");
-		// console.log(event);
-		// game.PTUMoveMaster.PokedexScan(event.currentTarget.dataset.trainer_token, event.currentTarget.dataset.tarket_pokemon_token);
 		game.PTUMoveMaster.PokedexScan(event.currentTarget.dataset.trainer_token, event.currentTarget.dataset.tarket_pokemon_token);
 	}
 
@@ -4508,8 +4344,6 @@ export async function RollDamageMove(actor, item_initial, moveName, finalDB, typ
 
 			let move_found_in_custom = false;
 
-			console.log("DEBUG: custom_moves: ");
-			console.log(custom_moves);
 			for(let searched_move in custom_moves)
 			{
 				if(moveName.includes(searched_move))
@@ -5438,7 +5272,7 @@ export async function PerformFullAttack (actor, move, moveName, finalDB, bonusDa
 			inRange: in_range,
 			actorImage: actor_image,
 			targetImage: target_image
-		});//.then(data => console.log(data));
+		});
 	}, 1000);
 
 	var moveSoundFile = ((move.name).replace(/( \[.*?\]| \(.*?\)) */g, "") + ".mp3"); // Remove things like [OG] or [Playtest] from move names when looking for sound files.
@@ -5563,7 +5397,6 @@ export async function GetDiceResult(roll)
 	}
 	catch (err) 
 	{
-		// console.log("Old system detected, using deprecated rolling...")
 		diceResult = roll.parts[0].results[0];
 	}
 	return diceResult;
@@ -6826,7 +6659,6 @@ export async function ResetActionEconomy(actor, silent=true)
 
 export async function RollCaptureChance(trainer, target, pokeball, to_hit_roll, target_token, pokeball_item)
 {
-	// console.log("ROLLING CAPTURE CHANCE");
 	let CaptureRollModifier = 0;
 	let CaptureRate = 100;
 
@@ -7650,24 +7482,16 @@ export async function ShowInventoryMenu(actor)
 		"Potion", "Revive", "Antidote", "Repel", "Cure", "Heal", "Bait"
 	];
 
-	// for(let item_type of relevant_item_types)
-	// {
-		for(let item of actor.items)
+	for(let item of actor.items)
+	{
+		if(item.data.type == "item" && !item.data.name.includes(" Ball"))
 		{
-			// console.log("item: ");
-			// console.log(item);
-			if(item.data.type == "item" && !item.data.name.includes(" Ball"))
-			{
-				item_inventory.push(item);
-			}
+			item_inventory.push(item);
 		}
-	// }
+	}
 
 	for(let inventory_item of item_inventory)
-	// for(let inventory_item of actor.items_categorized.Medical)
 	{
-		// console.log("inventory_item: ");
-		// console.log(inventory_item);
 		let item_base_image = await game.PTUMoveMaster.GetItemArt(inventory_item.name);
 		let item_image = "";
 		let item_count = inventory_item.data.data.quantity;
@@ -7879,53 +7703,51 @@ export async function ShowManeuverMenu(actor)
 	};
 
 	for(let item of actor.data.items)
+	{
+		if(item.name.includes("Telekinetic") && item.type == "capability")
 		{
-			if(item.name.includes("Telekinetic") && item.type == "capability")
-			{
-				maneuver_list["Telekinetic Disarm"] = {
-					"Trainer Only":false,
-					"Action":"Standard", 
-					"AC":6, 
-					"Class":"Status", 
-					"Frequency":"At-Will", 
-					"Range":((actor.data.data.skills.focus.value.total)+", 1 Target"), 
-					"User Checks":[ "focus" ],
-					"Target Checks":[ "combat", "stealth" ],
-					"Success":"The target’s Held Item (Main Hand or Off-Hand for humans) falls to the ground.",
-					"Failure":""
-				};
+			maneuver_list["Telekinetic Disarm"] = {
+				"Trainer Only":false,
+				"Action":"Standard", 
+				"AC":6, 
+				"Class":"Status", 
+				"Frequency":"At-Will", 
+				"Range":((actor.data.data.skills.focus.value.total)+", 1 Target"), 
+				"User Checks":[ "focus" ],
+				"Target Checks":[ "combat", "stealth" ],
+				"Success":"The target’s Held Item (Main Hand or Off-Hand for humans) falls to the ground.",
+				"Failure":""
+			};
 
-				maneuver_list["Telekinetic Trip"] = {
-					"Trainer Only":false,
-					"Action":"Standard", 
-					"AC":6, 
-					"Class":"Status", 
-					"Frequency":"Scene, Per-Target", 
-					"Range":((actor.data.data.skills.focus.value.total)+", 1 Target"), 
-					"User Checks":[ "focus" ],
-					"Target Checks":[ "combat", "acrobatics" ],
-					"Success":"The target is knocked over and Tripped.",
-					"Failure":""
-				};
+			maneuver_list["Telekinetic Trip"] = {
+				"Trainer Only":false,
+				"Action":"Standard", 
+				"AC":6, 
+				"Class":"Status", 
+				"Frequency":"Scene, Per-Target", 
+				"Range":((actor.data.data.skills.focus.value.total)+", 1 Target"), 
+				"User Checks":[ "focus" ],
+				"Target Checks":[ "combat", "acrobatics" ],
+				"Success":"The target is knocked over and Tripped.",
+				"Failure":""
+			};
 
-				maneuver_list["Telekinetic Push"] = {
-					"Trainer Only":false,
-					"Action":"Standard", 
-					"AC":4, 
-					"Class":"Status", 
-					"Frequency":"Scene, Per-Target", 
-					"Range":((actor.data.data.skills.focus.value.total)+", 1 Target"), 
-					"User Checks":[ "focus" ],
-					"Target Checks":[ "combat", "athletics" ],
-					"Success":"The target is Pushed back "+Math.floor(actor.data.data.skills.focus.value.total/2)+" Meters directly away from you. Telekinetic Push may only be used against a target whose weight is no heavier than your Heavy Lifting rating (based off Focus ("+actor.data.data.skills.focus.value.total+") as if it was your Power Capability).",
-					"Failure":""
-				};
+			maneuver_list["Telekinetic Push"] = {
+				"Trainer Only":false,
+				"Action":"Standard", 
+				"AC":4, 
+				"Class":"Status", 
+				"Frequency":"Scene, Per-Target", 
+				"Range":((actor.data.data.skills.focus.value.total)+", 1 Target"), 
+				"User Checks":[ "focus" ],
+				"Target Checks":[ "combat", "athletics" ],
+				"Success":"The target is Pushed back "+Math.floor(actor.data.data.skills.focus.value.total/2)+" Meters directly away from you. Telekinetic Push may only be used against a target whose weight is no heavier than your Heavy Lifting rating (based off Focus ("+actor.data.data.skills.focus.value.total+") as if it was your Power Capability).",
+				"Failure":""
+			};
 
-				break;
-			}
+			break;
 		}
-
-	// console.log(maneuver_list);
+	}
 
 	let maneuver_buttons = {};
 
@@ -7968,8 +7790,6 @@ export async function ShowManeuverMenu(actor)
 
 	for(let maneuver in maneuver_list)
 	{
-		// console.log(maneuver);
-
 		if(actor.data.type == "pokemon" && maneuver_list[maneuver]["Trainer Only"])
 		{
 			continue;
@@ -7995,9 +7815,6 @@ export async function ShowManeuverMenu(actor)
 		maneuver_AC = maneuver_list[maneuver]["AC"];
 		currentUserChecks = maneuver_list[maneuver]["User Checks"];
 		currentTargetChecks = maneuver_list[maneuver]["Target Checks"];
-
-		// console.log("currentTargetChecks");
-		// console.log(currentTargetChecks);
 
 
 		currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
@@ -8033,22 +7850,13 @@ export async function ShowManeuverMenu(actor)
 			user_check_rank = 0;
 			let user_check_modifier = 0;
 
-			// console.log("currentUserChecks");
-			// console.log(currentUserChecks);
-
 			for(let check of currentUserChecks)
 			{
-				// console.log("check");
-				// console.log(check);
-
 				let check_skill_rank;
 				let check_skill_modifier;
 
 				eval("check_skill_rank = actor.data.data.skills."+check+".value.total;");
 				eval("check_skill_modifier = actor.data.data.skills."+check+".modifier.total;");
-
-				// console.log("check_skill_rank");
-				// console.log(check_skill_rank);
 
 				if(check_skill_rank > user_check_rank)
 				{
@@ -8059,9 +7867,7 @@ export async function ShowManeuverMenu(actor)
 			}
 
 			let checkDieSize = "d6";
-			let user_check_roll = await new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
-			// console.log("user_check_roll");
-			// console.log(user_check_roll);
+			let user_check_roll = await new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll();
 
 			let currentTargetCheckText = '<button class="skill-button-1" style="font-family:Segoe UI; font-size: 14; padding:0px !important; margin-top:5px !important; margin-bottom:5px !important; background-color:#808080;" id="Target Check 1" type="button" value="Target Check 1" data-skill='+currentTargetChecks[0]+'>'+(currentTargetChecks[0])+'</button>';
 
@@ -8079,22 +7885,13 @@ export async function ShowManeuverMenu(actor)
 			let user_check_rank = 0;
 			let user_check_modifier = 0;
 
-			// console.log("currentUserChecks");
-			// console.log(currentUserChecks);
-
 			for(let check of currentUserChecks)
 			{
-				// console.log("check");
-				// console.log(check);
-
 				let check_skill_rank;
 				let check_skill_modifier;
 
 				eval("check_skill_rank = actor.data.data.skills."+check+".value.total;");
 				eval("check_skill_modifier = actor.data.data.skills."+check+".modifier.total;");
-
-				// console.log("check_skill_rank");
-				// console.log(check_skill_rank);
 
 				if(check_skill_rank > user_check_rank)
 				{
@@ -8105,9 +7902,7 @@ export async function ShowManeuverMenu(actor)
 			}
 
 			let checkDieSize = "d6";
-			let user_check_roll = await new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll()
-			// console.log("user_check_roll");
-			// console.log(user_check_roll);
+			let user_check_roll = await new Roll(`${user_check_rank}${checkDieSize}+${user_check_modifier}`).roll();
 
 			currentEffectText = actor.name+" rolled<br><br><center>[["+user_check_roll+"]]</center><br><br>on a "+user_check_skill+" check vs the DC.<br>"+currentEffectText;
 		}
@@ -8131,11 +7926,7 @@ export async function ShowManeuverMenu(actor)
 
 		var moveSoundFile = ("struggle.mp3");
 
-
 		effectivenessBackgroundColor = SkillRankNumberColors[user_check_rank];
-		// console.log("MANEUVER DEBUG: _________________ effectivenessBackgroundColor ______________");
-		// console.log(effectivenessBackgroundColor);
-
 
 		maneuver_buttons[maneuver] = {
 			noRefresh: false,
@@ -8152,7 +7943,6 @@ export async function ShowManeuverMenu(actor)
 				let key_shift = game.keyboard.downKeys.has("ShiftLeft");
 				if (key_shift) 
 				{
-					// console.log("KEYBOARD SHIFT IS DOWN!");
 					game.PTUMoveMaster.rollDamageMoveWithBonus(this_actor , created_move_item, maneuver, finalDB, false);
 				}
 				else
@@ -8193,9 +7983,6 @@ export async function ShowManeuverMenu(actor)
 		callback: () => {
 	}};
 
-	// console.log("______________ MANEUVER BUTTONS ______________");
-	// console.log(maneuver_buttons);
-
 	var hasPokedex = false;
 	if(actor.type == "character")
 	{
@@ -8216,9 +8003,8 @@ export async function ShowManeuverMenu(actor)
 	let weather_icon = "weather_icon_"+current_weather+".png";
 
 	let pokedex_text = "Unidentified Pokemon - Click to Scan!";
-		let pokedex_camera_icon = "Pokedex_Camera.png";
+	let pokedex_camera_icon = "Pokedex_Camera.png";
 		
-
 	let actor_has_target_dex_entry = false;
 
 	if(target)
@@ -8327,53 +8113,30 @@ export async function ShowManeuverMenu(actor)
 export async function ShowSkillsMenu(actor)
 {
 	let actor_skills = actor.data.data.skills;
-
-	// console.log("Skills:");
-	// for(let skill in actor_skills)
-	// {
-	// 	console.log(skill);
-	// 	console.log(actor_skills[skill]);
-	// 	console.log(actor_skills[skill]["value"]["total"]);
-	// 	console.log(actor_skills[skill]["modifier"]["total"]);
-
-
-	// }
-
 	let skill_buttons = {};
-
 	let target = Array.from(game.user.targets)[0];
 	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
 
-	// let currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
-
 	skill_buttons["backToMainSidebar"] = {noRefresh:true, id:"backToMainSidebar", label: "<img title='Go back to main move menu.' src='"+AlternateIconPath+"BackButton.png' style='border:none; margin-top:10px;'>",
 			callback: async () => {
-
-				// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
 				PTUAutoFight().ChatWindow(actor);
 				}
-			};
-
+	};
 
 	skill_buttons["skillDivider"] = {noRefresh: true, id:"skillDivider", label: "<img src='"+AlternateIconPath+"SkillsDivider.png' style='border:none; width:200px;'>",
 		callback: () => {
-
-		}};
+	}};
 
 	let effectivenessBackgroundColor = "lightgrey";
 	let effectivenessTextColor = "black";
 
 	for(let skill in actor_skills)
 	{
-		// console.log(skill);
-
 		let currentSkillName = actor_skills[skill]["label"];
-
 		let currentRankName = actor_skills[skill]["rank"];
 		let currentRankValue = actor_skills[skill]["value"]["total"];
 		let currentModifier = actor_skills[skill]["modifier"]["total"];
 		let currentSkillCategory = actor_skills[skill]["type"];
-
 		let currentSkillCategoryBackground = "";
 		eval("currentSkillCategoryBackground = "+currentSkillCategory+"Background;")
 
@@ -8417,9 +8180,6 @@ export async function ShowSkillsMenu(actor)
 	skill_buttons["pokedexBottomBuffer"] = {noRefresh: true, id:"pokedexBottomBuffer", label: "<div class='pokedex-bottom-filler' style='border:none'></div>",
 		callback: () => {
 	}};
-
-	// console.log("______________ SKILL BUTTONS ______________");
-	// console.log(skill_buttons);
 
 	var hasPokedex = false;
 	if(actor.type == "character")
@@ -8640,13 +8400,9 @@ export async function ShowStruggleMenu(actor)
 		}
 	}
 
-	// console.log(struggle_list);
-
 	let struggle_buttons = {};
-
 	let target = Array.from(game.user.targets)[0];
 	let targetTypingText = game.PTUMoveMaster.GetTargetTypingHeader(target, actor)
-
 	var currentType;
 	var currentCategory;
 	let currentlabel;
@@ -8662,27 +8418,23 @@ export async function ShowStruggleMenu(actor)
 	let STABBorderImage = "";
 	let DBBorderImage = "";
 	let finalDB;
-
 	let currentCooldownLabel = "<img src='" + AlternateIconPath + "AtWill" + CategoryIconSuffix + "' style='border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img>";
 
 	struggle_buttons["backToMainSidebar"] = {noRefresh:true, id:"backToMainSidebar", label: "<img title='Go back to main move menu.' src='"+AlternateIconPath+"BackButton.png' style='border:none; margin-top:10px;'>",
-			callback: async () => {
+		callback: async () => {
 
-				// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
-				PTUAutoFight().ChatWindow(actor);
-				}
-			};
+			// await AudioHelper.play({src: game.PTUMoveMaster.GetSoundDirectory()+UIButtonClickSound, volume: 0.5, autoplay: true, loop: false}, true);
+			PTUAutoFight().ChatWindow(actor);
+		}
+	};
 
 
 	struggle_buttons["struggleDivider"] = {noRefresh: true, id:"struggleDivider", label: "<img src='"+AlternateIconPath+"DividerIcon_StruggleOptions.png' style='border:none; width:200px;'>",
 		callback: () => {
-
-		}};
+	}};
 
 	for(let struggle in struggle_list)
 	{
-		// console.log(struggle);
-
 		currentType=struggle_list[struggle]["Type"];
 		currentCategory=struggle_list[struggle]["Class"];
 		currentlabel = struggle;
@@ -8729,7 +8481,6 @@ export async function ShowStruggleMenu(actor)
 		{
 			if( (game.settings.get("PTUMoveMaster", "showEffectiveness") != "never") && (target) && (!isNaN(currentDamageBase)) && (currentDamageBase != "") && effectiveness)
 			{
-				// if((target.data.disposition > DISPOSITION_HOSTILE) || (game.settings.get("PTUMoveMaster", "showEffectiveness") == "always") )
 				if(
 					(
 						(target.data.disposition > DISPOSITION_HOSTILE)
@@ -8748,45 +8499,6 @@ export async function ShowStruggleMenu(actor)
 				{
 					currentEffectivenessLabel = " (x"+effectiveness[currentType]+")";
 					effectivenessBackgroundColor = EffectivenessColors[effectiveness[currentType]];
-					// if (effectiveness[currentType] == 0.5)
-					// {
-					// 	effectivenessBackgroundColor = "#cc6666";
-					// }
-					// else if (effectiveness[currentType] == 1)
-					// {
-					// 	effectivenessBackgroundColor = "white";
-					// 	effectivenessTextColor = "black";
-					// }
-					// else if (effectiveness[currentType] == 0.25)
-					// {
-					// 	effectivenessBackgroundColor = "red";
-					// 	effectivenessTextColor = "white";
-					// }
-					// else if (effectiveness[currentType] == 0)
-					// {
-					// 	effectivenessBackgroundColor = "black";
-					// 	effectivenessTextColor = "white";
-					// }
-					// else if (effectiveness[currentType] < 0.25)
-					// {
-					// 	effectivenessBackgroundColor = "darkred";
-					// 	effectivenessTextColor = "white";
-					// }
-					// else if (effectiveness[currentType] == 1.25)
-					// {
-					// 	effectivenessBackgroundColor = "#89b3b5";
-					// 	effectivenessTextColor = "white";
-					// }
-					// else if (effectiveness[currentType] == 1.5)
-					// {
-					// 	effectivenessBackgroundColor = "#6699cc";//"#3399ff";
-					// 	effectivenessTextColor = "black";
-					// }
-					// else if (effectiveness[currentType] > 1.5)
-					// {
-					// 	effectivenessBackgroundColor = "blue";
-					// 	effectivenessTextColor = "white";
-					// }
 					
 					if(game.settings.get("PTUMoveMaster", "showEffectivenessText") == "true")
 					{
@@ -8798,16 +8510,12 @@ export async function ShowStruggleMenu(actor)
 			currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + currentType + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			if(currentType == "Untyped" || currentType == "" || currentType == null)
 			{
-				// currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + item.category + CategoryIconSuffix + "' width=80px height=auto></img></div>";
 				currentMoveTypeLabel = "<div><img src='" + AlternateIconPath + currentCategory + CategoryIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img><img src='" + AlternateIconPath + "Untyped" + TypeIconSuffix + "' style='width:100px height:auto border:0px ! important;width:"+TypeIconWidth+"px;border-left-width: 0px;border-top-width: 0px;border-right-width: 0px;border-bottom-width: 0px;'></img></div>";
 			}
 
 			let rangeIconReturn = game.PTUMoveMaster.GetRangeIcons(currentRange);
 			currentRange = rangeIconReturn[0];
 			currentMoveRangeIcon = rangeIconReturn[1];
-
-			// let currentMoveFiveStrike = false;
-			// let currentMoveDoubleStrike = false;
 		}
 
 		let created_move_item = {
@@ -8879,14 +8587,10 @@ export async function ShowStruggleMenu(actor)
 
 	let background_field_URL = await game.PTUMoveMaster.GetCurrentFieldImageURL();
 	let background_field = 'background-image: url("'+background_field_URL+'"); background-repeat: repeat-x; background-position: left bottom';
-
 	let current_weather = game.settings.get("PTUMoveMaster", "currentWeather");
 	let weather_icon = "weather_icon_"+current_weather+".png";
-
 	let pokedex_text = "Unidentified Pokemon - Click to Scan!";
-		let pokedex_camera_icon = "Pokedex_Camera.png";
-		
-
+	let pokedex_camera_icon = "Pokedex_Camera.png";
 	let actor_has_target_dex_entry = false;
 
 	if(target)
@@ -9154,8 +8858,6 @@ export function GetTargetTypingHeader(target, actor)
 	let actions_image_target = "";
 	if(target)
 	{
-		console.log("DEBUG: GetTargetTypingHeader: target");
-		console.log(target);
 		actions_image_target = game.PTUMoveMaster.GetActorActionIcon(target.actor, true);
 	}
 	let camera_frame_overlay = '<img class="cameraframe-overlay" src="'+AlternateIconPath+'PTU_TargetCamera_Dark.png'+'" ></img>';
@@ -9440,7 +9142,6 @@ export async function ExpendItem(owning_actor, item_object)
 			}
 		]
 		); // Decrement the spent item count
-	// await item_object.update( { "data.quantity": Number(item_object.data.quantity-1) }); // Decrement the spent item count
 
 	if(item_object.data.name.includes("Ball")) 	// For balls, create a thrown version that can be picked up after battle (this will be changed to 
 	{										// broken or removed entirely by the capture function if it hits and fails/succeeds to capture a 
@@ -9450,16 +9151,7 @@ export async function ExpendItem(owning_actor, item_object)
 		let item = owning_actor.items.find(x => x.name == `Thrown ${item_object.data.name}`) // Search through existing items to see if we have a Thrown entry for this item already
 		if(item) 
 		{
-			await owning_actor.updateEmbeddedDocuments(
-				"Item", 
-				[
-					{
-						_id: item.id, 
-						"data.quantity": Number(duplicate(item).data.quantity+1)
-					}
-				]
-				);
-			// await item_object.update({"data.quantity": Number(duplicate(item).data.quantity)+1});
+			await owning_actor.updateEmbeddedDocuments("Item", [{_id: item.id, "data.quantity": Number(duplicate(item).data.quantity+1)}]);
 		}
 		else // If we get here, then we never found an existing thrown version to increment, so create new thrown version
 		{
@@ -9479,8 +9171,6 @@ export async function ExpendItem(owning_actor, item_object)
 	}
 	else // Not a ball, just decrement the count
 	{
-		// await owning_actor.updateOwnedItem( { _id: item_object._id, "data.quantity": Number(item_object.data.data.quantity-1) });
-		// await item_object.update( { "data.quantity": Number(item_object.data.quantity-1) });
 		return true;
 	}
 }
@@ -9583,9 +9273,13 @@ export async function SetCurrentWeather(new_weather)
 		if(FXMaster_module)
 		{
 			let fxmaster_weather_presets = {
+
 				"Clear":{ name: "MoveMasterWeather", type: "none", options: {} },
+
 				"Sunny":{ name: "MoveMasterWeather", type: "embers", options: {} },
+
 				"Rainy":{ name: "MoveMasterWeather", type: "rain", options: {} },
+
 				"Hail":{
 					name: "MoveMasterWeather",
 					options:
@@ -9602,7 +9296,7 @@ export async function SetCurrentWeather(new_weather)
 					},
 					type: "snowstorm"
 				},
-				//{ name: "MoveMasterWeather", type: "snowstorm", options: {scale: 1, speed:5000, density:5000, direction:30} },
+
 				"Sandstorm":{
 					name: "MoveMasterWeather",
 					options:
@@ -9619,38 +9313,20 @@ export async function SetCurrentWeather(new_weather)
 					},
 					type: "clouds"
 				},
-				//{ name: "MoveMasterWeather", type: "clouds", options: {scale: 2, speed:1000, density:100, direction:180, tint: {apply: true, value: "#baa24a"} } },
+				
 			};
-			console.log("fxmaster_weather_presets[new_weather]");
-			console.log(fxmaster_weather_presets[new_weather]);
 
 			if(new_weather == "Clear")
 			{
-				// await Hooks.call("fxmaster.updateWeather", []);
 				canvas.scene.unsetFlag("fxmaster", "effects");
 			}
 			else
 			{
-				await Hooks.call("fxmaster.updateWeather", [
-					fxmaster_weather_presets[new_weather]
-				]);
+				await Hooks.call("fxmaster.updateWeather", [fxmaster_weather_presets[new_weather]]);
 			}
-			
 		}
 	}
 }
-
-
-export async function GetWeatherHeader()
-{
-	let currentWeather = game.settings.get("PTUMoveMaster", "currentWeather");
-	let weatherHeader = "";
-
-	
-
-	return weatherHeader;
-}
-
 
 
 export async function RollSkillCheck(skill1, skill2="")	// If a second skill is provided, it will roll whichever has a higher rank.
@@ -10087,15 +9763,7 @@ export async function enableCondition(target_actor, condition, condition_type = 
 	chatMessage(target_actor, (target_actor.name + " gained the "+condition+" affliction!"));
 
 	let effectData = CONFIG.statusEffects.find(x => x.id == "effect."+condition_type+"."+condition);
-	// token.toggleEffect(effectData);
-	// canvas.tokens.get(target_actor.token.id).toggleEffect(effectData);
 
-	// await target_actor.createEmbeddedEntity("ActiveEffect", CONFIG.statusEffects.find(x => x.id == "effect."+condition_type+"."+condition));
-	// let target_token = game.PTUMoveMaster.GetTokenFromActor(target_actor);
-	// console.log("Target Token:");
-	// console.log(target_token);
-	// await target_token.toggleEffect("icons/svg/skull.svg");
-	// await game.PTUMoveMaster.toggleEffect({ actor : game.actors.getName(target_actor.name), effectLabel : condition });
 	await game.ptu.api.toggleEffect(target_actor, effectData);
 
 	if(condition == "fainted")
@@ -10200,8 +9868,6 @@ export async function ActorGetAutoOrderState(actor, order)
 			}
 		}
 	}
-	
-	
 
 	return return_value;
 }
@@ -10210,7 +9876,6 @@ export async function ActorGetAutoOrderState(actor, order)
 export async function ActorSetAutoOrders(actor, order, new_state)
 {
 	let order_string = "flags.ptu.auto_orders." + order.replace(" ", "_");
-	// await actor.update({order_string: new_state });
 	eval("actor.update({'"+order_string+"': "+ new_state +" })");
 	return;
 }
@@ -10225,9 +9890,6 @@ export async function ApplyTrainingToActorsActivePokemon(actor, order, previous_
 	{
 		order_flag_string = "data.training.critical";
 	}
-
-	// console.log("Debug: ApplyTrainingToActorsActivePokemon, previous_state = " + previous_state);
-	// console.log(previous_state);
 	
 	if(previous_state == "on")
 	{
@@ -10235,20 +9897,13 @@ export async function ApplyTrainingToActorsActivePokemon(actor, order, previous_
 		new_state_string = "cancelled";
 	}
 
-	// console.log("Debug: ApplyTrainingToActorsActivePokemon, new_state = " + new_state);
-	// console.log(new_state);
-
 	for(let owned_pokemon_id in active_pokemon_list)
 	{
 		let pokemon = game.actors.get(owned_pokemon_id);
 		if(pokemon)
 		{
-			// console.log("Debug: ApplyTrainingToActorsActivePokemon, owned_pokemon_id = " + owned_pokemon_id);
-			// console.log("Debug: ApplyTrainingToActorsActivePokemon, order_flag_string = " + order_flag_string);
-			// eval( 'pokemon.update({ "'+order_flag_string+'": '+new_state+' })' );
 			chatMessage(actor, (actor.name + " "+new_state_string+" "+order+" to their Pokemon, "+pokemon.name+"!"));
 
-			//////////////////////////////////////
 			const path = order_flag_string;
 			const training = path.split('.')[2];
 			const isOrder = path.split('.')[3] == "ordered";
@@ -10257,9 +9912,9 @@ export async function ApplyTrainingToActorsActivePokemon(actor, order, previous_
 			if(getProperty(pokemon.data, path)) {
 				const effects = [];
 				pokemon.data.effects.forEach(effect => {
-					if(effect.data.changes.some(change => change.key == path)) {
+					if(effect.data.changes.some(change => change.key == path)) 
+					{
 						effects.push(effect.id);
-						// return;
 					}
 				});
 				
@@ -10285,13 +9940,8 @@ export async function ApplyTrainingToActorsActivePokemon(actor, order, previous_
 				}).data
 				await pokemon.createEmbeddedDocuments("ActiveEffect", [effectData]);
 			}
-			
-			//////////////////////////////////////
 		}
 	}
-
-	
-	
 	return;
 }
 
@@ -10401,8 +10051,6 @@ export async function ActivateDigestionBuff(actor, digestionBuff, currentDigesti
 	{
 		for(let effect in digestionsBuffs[digestionBuff][liked_disliked_neutral])
 		{
-			console.log(effect);
-
 			if(effect == "cure_condition")
 			{
 				game.PTUMoveMaster.cureActorAffliction(actor, digestionsBuffs[digestionBuff][liked_disliked_neutral][effect], false);
@@ -10483,7 +10131,6 @@ export async function inflictActorAffliction(actor, affliction_name, silent=fals
 
 export async function injuryTokenSplash(actor)
 {
-	// let actor_token = GetTokenFromActor(actor);
 	let injury_splash_allowed = game.settings.get("PTUMoveMaster", "useInjurySplashes");
 	let blood_allowed = game.settings.get("PTUMoveMaster", "useBloodSplashes");
 
