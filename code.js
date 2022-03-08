@@ -169,14 +169,14 @@ function _loadModuleSettings() {
 	// 	default: true
 	// });
 
-	// game.settings.register("PTUMoveMaster", "hideConfettiButton", {
-	// 	name: "Player Setting: Hides the Confetti button.",
-	// 	hint: "Disable this if you have a reason to manually trigger confetti blasts.",
-	// 	scope: "client",
-	// 	config: true,
-	// 	type: Boolean,
-	// 	default: true
-	// });
+	game.settings.register("PTUMoveMaster", "hideConfettiButton", {
+		name: "Player Setting: Hides the Confetti button.",
+		hint: "Disable this if you have a reason to manually trigger confetti blasts.",
+		scope: "client",
+		config: true,
+		type: Boolean,
+		default: true
+	});
 
 	// game.settings.register("PTUMoveMaster", "enforcePokeballRangeLimits", {
 	// 	name: "GM Setting: Enforce Pokeball Range Limits.",
@@ -420,15 +420,16 @@ Hooks.once('init', async function()
 	
 });
 
-// Hooks.on("ready", async () => {
-// 	if(game.settings.get("PTUMoveMaster", "hideConfettiButton"))
-// 	{
-// 		$("body").addClass('confetti-hidden');
-// 	}
-// 	else
-// 	{
-// 		$("body").removeClass('confetti-hidden');
-// 	}
+Hooks.on("ready", async () => {
+	if(game.settings.get("PTUMoveMaster", "hideConfettiButton"))
+	{
+		$("body").addClass('confetti-hidden');
+	}
+	else
+	{
+		$("body").removeClass('confetti-hidden');
+	}
+});
 
 // 	loadTemplates(["./modules/PTUMoveMaster/move-combined.hbs"]);
 

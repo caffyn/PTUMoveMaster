@@ -1,0 +1,10 @@
+body.messages-dark-theme .confetti-buttons {
+    /* right: 505px !important; */
+    right: 455px !important;
+  }
+  
+  body.confetti-hidden .confetti-buttons {
+    /* right: 505px !important; */
+    /* right: 455px !important; */
+    display: none !important;
+  }
